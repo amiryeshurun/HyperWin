@@ -1,0 +1,16 @@
+#ifndef __EPROCESS_FIELDS_H_
+#define __EPROCESS_FIELDS_H_
+
+enum
+{
+    EPROCESS_PID = 1,
+    EPROCESS_IMAGE_NAME = 2
+};
+
+enum
+{
+    EPROCESS_PID_OFFSET = 0xB4,
+    EPROCESS_IMAGE_NAME_OFFSET = 0x16C
+};
+
+#endif
