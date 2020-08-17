@@ -1,3 +1,5 @@
+%define EFER_MSR 0xC0000080
+
 multiboot2_header_start:
     dd 0xE85250D6 ; magic field, DWORD
     dd 0          ; architecture - i386 safe mode, DWORD
@@ -15,3 +17,27 @@ multiboot2_header_start:
         dw 8
     multiboot2_end_tags_end:
 multiboot2_header_end:
+
+; multiboot2 starts on 32bit protected mode
+[BITS 32]
+_hypervisor_entrypoint:
+    ; Need to take care of paging configurations, still reading about it
+    ; ...
+
+    ; Enter long mode - see docs/host/entrypoint.md for details
+    mov eax, cr0
+    and eax, ~(1 << 31)
+    mov cr0, eax
+    mov eax, cr4
+    or eax, (1 << 5)
+    mov cr4, eax
+    ; mov cr3, PML4 <---- in progress
+    mov ecx, EFER_MSR
+    rdmsr ; Value is stored in EDX:EAX
+    or eax, (1 << 8)
+    wrmsr
+    mov eax, cr0
+    or eax, (1 << 31)
+    mov cr0, eax
+    ; The CPU is now in compatibility mode.
+    ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
