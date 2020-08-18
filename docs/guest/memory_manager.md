@@ -1,6 +1,6 @@
 # Memory Manager
 
-This header includes the decleration of functions and structures related to the translating of guest addresses to host addresses. 
+This header includes the decleration of functions and structures related to the translation of guest addresses to host addresses. 
 
 To get more details and have a better understanding of this part, please reffer to:
 * Windows Internals, seventh editing, pages 373-375 (32-bit version only).
