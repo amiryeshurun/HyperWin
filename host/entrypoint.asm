@@ -70,5 +70,5 @@ _hypervisor_entrypoint:
     ; The CPU is now in compatibility mode.
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
 
-; 64 bits code goes here
+; 64-bit code goes here
 [BITS 64]
