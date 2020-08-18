@@ -20,5 +20,5 @@ Here is a summary for all of the topics:
 ### Windows
 
 * [What? Why?](docs/ntoskrnl/general.md) 
-* [Translating Handles to Objects](docs/ntoskrnl/handle_translation.md) - reffers to [ntoskrnl/Windows7/handle_translation](toskrnl/Windows7/handle_translation)
-* [System Calls Entrypoint on 32bit](docs/ntoskrnl/syscall_entry.md) - reffers to [ntoskrnl/Windows7/syscall_entry](ntoskrnl/Windows7/syscall_entry)
+* [Translating Handles to Objects](docs/ntoskrnl/handle_translation.md) - reffers to [ntoskrnl/Windows 7/handle_translation](toskrnl/Windows%207/handle_translation)
+* [System Calls Entrypoint on 32bit](docs/ntoskrnl/syscall_entry.md) - reffers to [ntoskrnl/Windows 7/syscall_entry](ntoskrnl/Windows%207/syscall_entry)
