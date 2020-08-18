@@ -1,5 +1,21 @@
 %define EFER_MSR 0xC0000080
 
+; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
+%macro SetPageEntryAtAddress 2
+	mov eax, %1 ; dest
+    mov edx, %2 ; value
+    shl edx, 11
+    or edx, 3
+    mov [eax], edx
+    mov [eax+4], 0 ; little endian
+%endmacro
+
+%macro SetCr3BasePhysicalAddress 1
+	mov eax, %1
+    shl eax, 11
+    mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
+%endmacro
+
 multiboot2_header_start:
     dd 0xE85250D6 ; magic field, DWORD
     dd 0          ; architecture - i386 safe mode, DWORD
@@ -21,8 +37,20 @@ multiboot2_header_end:
 ; multiboot2 starts on 32bit protected mode
 [BITS 32]
 _hypervisor_entrypoint:
-    ; Need to take care of paging configurations, still reading about it
-    ; ...
+    ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
+    ; addresses in order to load the MBR
+    ; (cr3)PML4[0] = 0x17000
+    ; (0x17000)PDPT[0] = 0x17008 - points to physical address 0
+    ; (0) = 1GB page for hypervisor initialization (starting from physical address 0)
+
+    SetPageEntryAtAddress 0x17000, 0x17008 ; PML4[0] = PDPT[0]
+    SetPageEntryAtAddress 0x17008, 0x0 ; PDPT[0] = PDT[0]
+    mov eax, 0x17008
+    mov edx, [eax]
+    or edx, (1 << 7) ; 1GB page
+    mov [eax], edx    
+
+    ; At this point I am allowed to work with addresses from 0 to (0x40000000 - 1)
 
     ; Enter long mode - see docs/host/entrypoint.md for details
     mov eax, cr0
@@ -31,7 +59,7 @@ _hypervisor_entrypoint:
     mov eax, cr4
     or eax, (1 << 5)
     mov cr4, eax
-    ; mov cr3, PML4 <---- in progress
+    SetCr3BasePhysicalAddress 0x17000 ; set cr3 with PML4[0]
     mov ecx, EFER_MSR
     rdmsr ; Value is stored in EDX:EAX
     or eax, (1 << 8)
@@ -41,3 +69,6 @@ _hypervisor_entrypoint:
     mov cr0, eax
     ; The CPU is now in compatibility mode.
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
+
+; 64 bits code goes here
+[BITS 64]

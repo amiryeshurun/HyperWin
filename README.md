@@ -11,14 +11,14 @@ Here is a summary for all of the topics:
 
 ### The Guest
 
-* [Memory Managment](docs/guest/memory_manager.md)
+* [Memory Managment](docs/guest/memory_manager.md) - reffers to [include/guest/memory_manager.h](include/guest/memory_manager.h)
 
 ### The Host
 
-* [The Hypervisor Entrypoint](docs/host/entrypoint.md)
+* [The Hypervisor Entrypoint](docs/host/entrypoint.md) - reffers to [host/entrypoint.asm](host/entrypoint.asm)
 
 ### Windows
 
-* [What? Why?](docs/ntoskrnl/general.md)
-* [Translating Handles to Objects](docs/ntoskrnl/handle_translation.md)
-* [System Calls Entrypoint on 32bit](docs/ntoskrnl/syscall_entry.md)
+* [What? Why?](docs/ntoskrnl/general.md) 
+* [Translating Handles to Objects](docs/ntoskrnl/handle_translation.md) - reffers to [ntoskrnl/Windows7/handle_translation](toskrnl/Windows7/handle_translation)
+* [System Calls Entrypoint on 32bit](docs/ntoskrnl/syscall_entry.md) - reffers to [ntoskrnl/Windows7/syscall_entry](ntoskrnl/Windows7/syscall_entry)
