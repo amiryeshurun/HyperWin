@@ -93,7 +93,7 @@ _hypervisor_entrypoint:
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
     jmp 8:CompatibilityTo64
 
-; 64 bits code goes here
+; 64-bit code goes here
 [BITS 64]
 CompatibilityTo64:
     cli
