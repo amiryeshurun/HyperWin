@@ -16,6 +16,22 @@
     mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
 %endmacro
 
+%macro MovQwordToAddressLittleEndian 3
+    mov eax, %1
+    mov [eax], %3
+    mov [eax+4], %2
+%endmacro
+
+; 0x2800000 - stack (long mode)
+; 0x1000, 0x2000 - gdt
+; 0x17000 - cr3 (PML4 base addr, one cell)
+
+extern Initialize
+
+; multiboot2 starts on 32bit protected mode
+[BITS 32]
+SEGMENT .text
+
 multiboot2_header_start:
     dd 0xE85250D6 ; magic field, DWORD
     dd 0          ; architecture - i386 safe mode, DWORD
@@ -34,8 +50,6 @@ multiboot2_header_start:
     multiboot2_end_tags_end:
 multiboot2_header_end:
 
-; multiboot2 starts on 32bit protected mode
-[BITS 32]
 _hypervisor_entrypoint:
     ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
     ; addresses in order to load the MBR
@@ -47,10 +61,18 @@ _hypervisor_entrypoint:
     SetPageEntryAtAddress 0x17008, 0x0 ; PDPT[0] = PDT[0]
     mov eax, 0x17008
     mov edx, [eax]
-    or edx, (1 << 7) ; 1GB page
+    or edx, ((1 << 7) | (1 << 63)) ; 1GB page
     mov [eax], edx    
-
     ; At this point I am allowed to work with addresses from 0 to (0x40000000 - 1)
+
+    ; Set gdt
+    mov eax, 0x1000 ; gdt
+    mov word [eax], 0xff ; limit
+    MovQwordToAddressLittleEndian 0x1008, 0x0, 0x2000 ; gdt address
+    MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor, see AMD64 developer manual
+    MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode
+    MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode
+    lgdt [0x1000]
 
     ; Enter long mode - see docs/host/entrypoint.md for details
     mov eax, cr0
@@ -69,6 +91,15 @@ _hypervisor_entrypoint:
     mov cr0, eax
     ; The CPU is now in compatibility mode.
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
+    jmp 8:CompatibilityTo64
 
 ; 64 bits code goes here
 [BITS 64]
+CompatibilityTo64:
+    cli
+    mov cs, 8
+    mov ds, 8
+
+    mov rsp, 0x2800000
+    call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
+
