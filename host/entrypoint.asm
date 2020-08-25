@@ -22,9 +22,11 @@
     mov [eax+4], %2
 %endmacro
 
-; 0x2800000 - stack (long mode)
 ; 0x1000, 0x2000 - gdt
+; 0x3000 - first sector dest
+; 0x4000 - DAP
 ; 0x17000 - cr3 (PML4 base addr, one cell)
+; 0x2800000 - stack (long mode)
 
 extern Initialize
 
@@ -61,7 +63,7 @@ _hypervisor_entrypoint:
     SetPageEntryAtAddress 0x17008, 0x0 ; PDPT[0] = PDT[0]
     mov eax, 0x17008
     mov edx, [eax]
-    or edx, ((1 << 7) | (1 << 63)) ; 1GB page
+    or edx, (1 << 7); 1GB page
     mov [eax], edx    
     ; At this point I am allowed to work with addresses from 0 to (0x40000000 - 1)
 
