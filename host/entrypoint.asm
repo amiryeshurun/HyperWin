@@ -1,4 +1,10 @@
 %define EFER_MSR 0xC0000080
+%define MBR_ADDRESS 0x7c00
+%define DAP_ADDRESS 0x4000
+%define FIRST_SECTOR_DEST 0x3000
+%define BOOTABLE_SIGNATURE 0x55aa
+%define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
+%define REAL_MODE_CODE_START 0x4200
 
 ; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
 %macro SetPageEntryAtAddress 2
@@ -23,8 +29,10 @@
 %endmacro
 
 ; 0x1000, 0x2000 - gdt
+; 0x2200 - outout buffer for real mode functions
 ; 0x3000 - first sector dest
 ; 0x4000 - DAP
+; 0x4200 - real mode code start
 ; 0x17000 - cr3 (PML4 base addr, one cell)
 ; 0x2800000 - stack (long mode)
 
