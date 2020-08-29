@@ -78,10 +78,15 @@ _hypervisor_entrypoint:
     ; Set gdt
     mov eax, 0x1000 ; gdt
     mov word [eax], 0xff ; limit
+    ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2
     MovQwordToAddressLittleEndian 0x1008, 0x0, 0x2000 ; gdt address
-    MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor, see AMD64 developer manual
+    MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor
     MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode
     MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode
+    MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32 bit mode
+    MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit mode
+    MovQwordToAddressLittleEndian 0x2028, 0xcf9200, 0xffff ; data - 32 bit mode
+    MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode
     lgdt [0x1000]
 
     ; Enter long mode - see docs/host/entrypoint.md for details
@@ -108,7 +113,8 @@ _hypervisor_entrypoint:
 CompatibilityTo64:
     cli
     mov cs, 8
-    mov ds, 8
+    mov ds, 16
+    mov ss, 16
 
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
