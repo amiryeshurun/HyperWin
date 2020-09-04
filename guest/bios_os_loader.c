@@ -4,7 +4,7 @@
 BiosFunction functionsBegin[] = { DiskReader };
 BiosFunction functionsEnd[] = { DiskReaderEnd };
 
-VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR outputBuffer)
+VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
 {
     BiosFunction functionBegin = functionsBegin[function];
     BiosFunction functionEnd = functionsEnd[function];
@@ -12,7 +12,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR outputBuffer)
     QWORD functionLeanth = functionEnd - functionBegin;
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START, EnterRealMode, enterRealModeLength);
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
-               functionsBegin, 
+               functionBegin, 
                functionLeanth);
     
     AsmEnterRealModeRunFunction();
@@ -21,7 +21,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR outputBuffer)
         outputBuffer = (BYTE_PTR)REAL_MODE_OUTPUT_BUFFER_ADDRESS;
 }
 
-VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR address)
+VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
 {
     PDISK_ADDRESS_PACKET packet = DAP_ADDRESS;
     packet->size = 0x10;
@@ -47,6 +47,7 @@ VOID LoadMBRToEntryPoint()
         if(sectorAddress->magic == BOOTABLE_SIGNATURE)
         {
             CopyMemory(MBR_ADDRESS, sectorAddress, sizeof(MBR));
+            *(BYTE_PTR)(WINDOWS_DISK_INDEX) = diskIdx;
             break;
         }
     }

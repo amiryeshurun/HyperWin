@@ -8,21 +8,37 @@
 %define SAVED_STACK_ADDRESS 0x6000
 %define IVT_ADDRESS 0x7500
 
+
+%macro SetCr3BasePhysicalAddress 1
+	mov eax, %1
+    shl eax, 11
+    mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
+%endmacro
+
 global DiskReader
 global AsmEnterRealModeRunFunction
 
+SEGMENT .text
+
 [BITS 64]
 AsmEnterRealModeRunFunction:
+    push rbp
+    push rsp
     mov [SAVED_STACK_ADDRESS], rsp
     pushf
     push 24
+    push REAL_MODE_CODE_START
     iretq
 AsmReturnFromRealModeFunction:
     cli
-    mov cs, 8
-    mov ds, 16
-    mov ss, 16
+    mov rax, 8
+    mov cs, rax
+    mov rax 16
+    mov ds, rax
+    mov ss, rax
     mov rsp, [SAVED_STACK_ADDRESS]
+    pop rsp
+    pop rbp
     ret
 
 [BITS 32]
@@ -36,17 +52,51 @@ EnterRealMode:
 
 [BITS 16]
 DisableLongMode:
-    ; Disable long mode here, execute desired function
+    mov ax, 48
+    mov ds, ax
+    mov ss, ax
+    ; Disable long mode here, then execute desired function
+    mov eax, cr0
+    and eax, ~(1 | (1 << 31)) ; Disable paging & PM
+    mov cr0, eax
+    mov eax, cr4
+    and eax, ~(1 << 5)
+    mov cr4, eax
+    mov ecx, EFER_MSR
+    rdmsr ; Value is stored in EDX:EAX
+    and eax, ~(1 << 8)
+    wrmsr
     jmp 0:(EnterRealModeEnd - EnterRealMode + REAL_MODE_CODE_START)
 
 BackToLongMode:
+    cli
+    lgdt [0x1000]
+    mov eax, cr0
+    or eax, (1 << 0)
+    mov cr0, eax ; the system is now in the same state as it was at boot time
+    mov ax, 0
+    mov ss, ax
+    mov ds, ax
     ; Enable long mode when back from handling interrupts
     jmp 24:(EnableProtectedMode - EnterRealMode + REAL_MODE_CODE_START)
 
 [BITS 32]
 EnableProtectedMode:
+    mov eax, cr0
+    and eax, ~(1 << 31)
+    mov cr0, eax
+    mov eax, cr4
+    or eax, (1 << 5)
+    mov cr4, eax
+    SetCr3BasePhysicalAddress 0x17000 ; set cr3 with PML4[0]
+    mov ecx, EFER_MSR
+    rdmsr ; Value is stored in EDX:EAX
+    or eax, (1 << 8)
+    wrmsr
+    mov eax, cr0
+    or eax, (1 << 31)
+    mov cr0, eax
     jmp 8:AsmReturnFromRealModeFunction
-
 EnterRealModeEnd:
 
 [BITS 16]

@@ -5,6 +5,7 @@
 %define BOOTABLE_SIGNATURE 0x55aa
 %define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 %define REAL_MODE_CODE_START 0x4200
+%define WINDOWS_DISK_INDEX 0x6010
 
 ; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
 %macro SetPageEntryAtAddress 2
@@ -33,6 +34,7 @@
 ; 0x3000 - first sector dest
 ; 0x4000 - DAP
 ; 0x4200 - real mode code start
+; 0x7500 - ivt
 ; 0x17000 - cr3 (PML4 base addr, one cell)
 ; 0x2800000 - stack (long mode)
 
@@ -79,14 +81,14 @@ _hypervisor_entrypoint:
     mov eax, 0x1000 ; gdt
     mov word [eax], 0xff ; limit
     ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2
-    MovQwordToAddressLittleEndian 0x1008, 0x0, 0x2000 ; gdt address
-    MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor
-    MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode
-    MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode
-    MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32 bit mode
-    MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit mode
-    MovQwordToAddressLittleEndian 0x2028, 0xcf9200, 0xffff ; data - 32 bit mode
-    MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode
+    MovQwordToAddressLittleEndian 0x1002, 0x0, 0x2000 ; gdt address
+    MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
+    MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode - 8
+    MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode - 16
+    MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32 bit mode - 24
+    MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit mode - 32
+    MovQwordToAddressLittleEndian 0x2028, 0xcf9200, 0xffff ; data - 32 bit mode - 40
+    MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode - 48
     lgdt [0x1000]
 
     ; Enter long mode - see docs/host/entrypoint.md for details
@@ -112,10 +114,54 @@ _hypervisor_entrypoint:
 [BITS 64]
 CompatibilityTo64:
     cli
-    mov cs, 8
-    mov ds, 16
-    mov ss, 16
+    mov rax, 8
+    mov cs, rax
+    mov rax, 16
+    mov ds, rax
+    mov ss, rax
 
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
+    pushf
+    push 24
+    push REAL_MODE_CODE_START
+    iretq
 
+[BITS 32]
+SetupSystemAndHandleControlToBios:
+    ; define the interrupt vector for real mode
+    mov ax, 40
+    mov ss, ax
+    mov ds, ax
+    mov eax, IVT_ADDRESS ; ivt
+    mov word [eax], 0xff ; limit
+    MovQwordToAddressLittleEndian IVT_ADDRESS + 2, 0x0, 0x0 ; ivt address (0)
+    jmp 32:(SetupSystemAndHandleControlToBiosEnd - SetupRealMode + REAL_MODE_CODE_START)
+
+[BITS 16]
+SetupRealMode:
+    mov ax, 48
+    mov ss, ax
+    mov ds, ax
+    mov eax, cr0
+    and eax, ~(1 | (1 << 31)) ; Disable paging & PM
+    mov cr0, eax
+    mov eax, cr4
+    and eax, ~(1 << 5)        ; Disable PAE
+    mov cr4, eax
+    mov ecx, EFER_MSR
+    rdmsr ; Value is stored in EDX:EAX
+    and eax, ~(1 << 8)        ; Disable long mode
+    wrmsr
+    jmp 0:(SetupSystemAndHandleControlToBiosEnd - HandleControlToBios + REAL_MODE_CODE_START)
+
+HandleControlToBios:
+    mov dl, [WINDOWS_DISK_INDEX]
+    mov ax, 0
+    mov cs, 0
+    mov ds, 0
+    mov es, 0
+    mov ss, 0
+    jmp 0:MBR_ADDRESS
+HandleControlToBiosEnd:
+SetupSystemAndHandleControlToBiosEnd:

@@ -10,6 +10,7 @@
 #define BOOTABLE_SIGNATURE 0x55aa
 #define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 #define REAL_MODE_CODE_START 0x4200
+#define WINDOWS_DISK_INDEX 0x6010
 
 enum{
     DISK_READER = 0
@@ -19,8 +20,10 @@ extern VOID DiskReader();
 extern VOID DiskReaderEnd();
 extern VOID EnterRealMode();
 extern VOID EnterRealModeEnd();
-
 extern VOID AsmEnterRealModeRunFunction();
+extern VOID SetupSystemAndHandleControlToBios();
+extern VOID SetupSystemAndHandleControlToBiosEnd();
+
 
 typedef struct _DISK_ADDRESS_PACKET
 {
@@ -54,8 +57,8 @@ typedef struct _MBR
 
 typedef VOID (*BiosFunction)();
 
-VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR outputBuffer);
-VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR address);
+VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
+VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
 VOID LoadMBRToEntryPoint();
 
 #endif
