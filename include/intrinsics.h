@@ -7,7 +7,7 @@
 __attribute__((always_inline))
 VOID INLINE __vmread(QWORD field, QWORD_PTR value)
 {
-    asm volatile("vmread %1,%0" : "=r" (*value) : "r" (field));
+    asm volatile("vmread %1,%0" : "=rm" (*value) : "r" (field));
 }
 
 __attribute__((always_inline))
