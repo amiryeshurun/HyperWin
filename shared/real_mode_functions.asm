@@ -7,7 +7,8 @@
 %define REAL_MODE_CODE_START 0x4200
 %define SAVED_STACK_ADDRESS 0x6000
 %define IVT_ADDRESS 0x7500
-
+%define E820_OUTPUT_ADDRESS 0x8600
+%define E820_MAGIC 0x534D4150
 
 %macro SetCr3BasePhysicalAddress 1
 	mov eax, %1
@@ -108,3 +109,54 @@ DiskReader:
     int 13h
     jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
 DiskReaderEnd:
+
+[BITS 16]
+GetMemoryMap:
+    mov es, 0
+    mov di, E820_OUTPUT_ADDRESS + 4
+	xor ebx, ebx
+	xor bp, bp
+	mov edx, E820_MAGIC
+	mov eax, 0xE820
+	mov dword ptr [es:di + 20], 1
+	mov ecx, 24
+	int 0x15
+	jc short .failed
+	mov edx, E820_MAGIC
+	cmp eax, edx		
+	jne short .failed
+	test ebx, ebx
+	je short .failed
+	jmp short .jmpin
+.e820lp:
+	mov eax, 0xE820
+	mov dword ptr [es:di + 20], 1
+	mov ecx, 24
+	int 0x15
+	jc short .e820f
+	mov edx, E820_MAGIC
+.jmpin:
+	jcxz .skipent
+	cmp cl, 20
+	jbe short .notext
+	test byte ptr [es:di + 20], 1
+	je short .skipent
+.notext:
+	mov ecx, [es:di + 8]
+	or ecx, [es:di + 12]
+	jz .skipent
+	inc bp
+	add di, 24
+.skipent:
+	test ebx, ebx
+	jne short .e820lp
+.e820f:
+	mov dword ptr [E820_OUTPUT_ADDRESS], bp
+	clc
+	jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
+.failure:
+    mov eax, E820_OUTPUT_ADDRESS
+    mov byte ptr[eax], 0
+    stc
+    jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
+GetMemoryMapEnd:
