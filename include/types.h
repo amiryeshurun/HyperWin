@@ -21,4 +21,24 @@ typedef UINT32 PTR;
 #define NULL (void*)0
 #endif
 
+typedef struct _REGISTERS
+{
+    QWORD rax;
+    QWORD rbx;
+    QWORD rcx;
+    QWORD rdx;
+    QWORD rsi;
+    QWORD rdi;
+    QWORD rbp;
+    QWORD rsp;
+    QWORD r8;
+    QWORD r9;
+    QWORD r10;
+    QWORD r11;
+    QWORD r12;
+    QWORD r13;
+    QWORD r14;
+    QWORD r15;
+}REGISTERS, *PREGISTERS;
+
 #endif
