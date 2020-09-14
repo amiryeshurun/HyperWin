@@ -9,6 +9,8 @@
 #define E820_NVS_REGION 4
 #define E820_BAD_MEMORY_REGION 5
 
+#define E820_OUTPUT_MAX_ENTRIES 30
+#define NO_MEM_AVAILABLE 0
 
 typedef struct _E820_LIST_ENTRY
 {
@@ -16,8 +18,12 @@ typedef struct _E820_LIST_ENTRY
     QWORD length;
     DWORD type;
     DWORD extendedAttribute;
-}E820_LIST_ENTRY, PE820_LIST_ENTRY;
+}E820_LIST_ENTRY, *PE820_LIST_ENTRY;
 
+extern VOID GetMemoryMap();
+extern VOID GetMemoryMapEnd();
+
+QWORD AllocateMemoryUsingMemoryMap(IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize);
 QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);
 

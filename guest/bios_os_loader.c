@@ -1,8 +1,9 @@
 #include <guest/bios_os_loader.h>
+#include <host/vmm.h>
 #include <util.h>
 
-BiosFunction functionsBegin[] = { DiskReader };
-BiosFunction functionsEnd[] = { DiskReaderEnd };
+BiosFunction functionsBegin[] = { DiskReader, GetMemoryMap };
+BiosFunction functionsEnd[] = { DiskReaderEnd, GetMemoryMapEnd };
 
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
 {

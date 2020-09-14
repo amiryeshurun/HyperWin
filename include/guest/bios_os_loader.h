@@ -13,7 +13,8 @@
 #define WINDOWS_DISK_INDEX 0x6010
 
 enum{
-    DISK_READER = 0
+    DISK_READER = 0,
+    GET_MEMORY_MAP = 1
 };
 
 extern VOID DiskReader();

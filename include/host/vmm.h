@@ -2,6 +2,7 @@
 #define __VMM_H_
 
 #include <types.h>
+#include <host/memory_manager.h>
 
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
@@ -11,13 +12,22 @@
 #define STACK_SIZE (4 * PAGE_SIZE)
 #define HEAP_SIZE (4 * PAGE_SIZE)
 
-#define MAX_CORES 16
+#define MAX_CORES 8
+
+#define CODE_BEGIN_ADDRESS 0x120000
+#define E820_OUTPUT_ADDRESS 0x8600
 
 struct _SINGLE_CPU_DATA;
+struct _CURRENT_GUEST_STATE;
 
 typedef struct _SHARED_CPU_DATA
 {
     struct _SINGLE_CPU_DATA* cpuData[MAX_CORES];
+    struct _CURRENT_GUEST_STATE* currentState[MAX_CORES];
+    E820_LIST_ENTRY validRam[E820_OUTPUT_MAX_ENTRIES];
+    BYTE validRamCount;
+    E820_LIST_ENTRY allRam[E820_OUTPUT_MAX_ENTRIES];
+    BYTE memoryRangesCount;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
@@ -42,5 +52,9 @@ typedef struct _CURRENT_GUEST_STATE
     REGISTERS guestRegisters;
     PSINGLE_CPU_DATA currentCPU;
 } CURRENT_GUEST_STATE, *PCURRENT_GUEST_STATE;
+
+extern VOID UpdateInstructionPointer(QWORD offset);
+
+VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
 
 #endif

@@ -6,6 +6,7 @@
 %define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 %define REAL_MODE_CODE_START 0x4200
 %define WINDOWS_DISK_INDEX 0x6010
+%define CODE_BEGIN_ADDRESS 0x120000
 
 ; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
 %macro SetPageEntryAtAddress 2
@@ -49,6 +50,14 @@ multiboot2_header_start:
     dd 0          ; architecture - i386 safe mode, DWORD
     dd multiboot2_header_end - multiboot2_header_start ; header length, DWORD
     dd 0xF0000000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
+    multiboot2_address_tag_start:
+        dw 2 ; type, WORD
+        dw 0 ; flags, WORD
+        dd multiboot2_address_tag_end - multiboot2_address_tag_start ; dize, DWORD
+        dd CODE_BEGIN_ADDRESS
+        dd -1 ; data segment is present to the end of the imgae
+        dd 0  ; bss
+    multiboot2_address_tag_end:
     multiboot2_entry_address_tag_start:
         dw 3      ; type, WORD
         dw 0      ; flags, WORD
