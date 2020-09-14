@@ -47,7 +47,7 @@ SEGMENT .text
 
 multiboot2_header_start:
     dd 0xE85250D6 ; magic field, DWORD
-    dd 0          ; architecture - i386 safe mode, DWORD
+    dd 0          ; architecture - i386 protected mode, DWORD
     dd multiboot2_header_end - multiboot2_header_start ; header length, DWORD
     dd 0xF0000000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
     multiboot2_address_tag_start:
