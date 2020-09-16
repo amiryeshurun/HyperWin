@@ -9,6 +9,7 @@
 %define CODE_BEGIN_ADDRESS 0x120000
 %define COMPUTER_MEM_SIZE 16
 %define LARGE_PAGE_SIZE 0x200000
+%define IVT_ADDRESS 0x7500
 
 ; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
 %macro SetPageEntryAtAddress 2
@@ -16,17 +17,17 @@
     mov edx, %2 ; value
     shl edx, 12
     or edx, 3
-    mov [eax], edx
-    mov [eax+4], 0 ; little endian
+    mov dword [eax], edx
+    mov dword [eax+4], 0 ; little endian
 %endmacro
 
-%macro Set2MB-PageEntryAtAddress 2
+%macro Set2MBPageEntryAtAddress 2
 	mov eax, %1 ; dest
     mov edx, %2 ; value
     shl edx, 12
     or edx, (3 | 1 << 7)
-    mov [eax], edx
-    mov [eax+4], 0 ; little endian
+    mov dword [eax], edx
+    mov dword [eax+4], 0 ; little endian
 %endmacro
 
 %macro SetCr3BasePhysicalAddress 1
@@ -36,8 +37,8 @@
 
 %macro MovQwordToAddressLittleEndian 3
     mov eax, %1
-    mov [eax], %3
-    mov [eax+4], %2
+    mov dword [eax], %3
+    mov dword [eax+4], %2
 %endmacro
 
 ; 0x1000, 0x2000 - gdt
@@ -87,24 +88,22 @@ _hypervisor_entrypoint:
     ; (cr3)PML4[0] = 0x17000
     ; (0x17000)PDPT[0] = 0x17008 - points to physical address 0
     ; (0) = 1GB page for hypervisor initialization (starting from physical address 0)
-    SetPageEntryAtAddress 0x17000, 0x18000 ; saved space for creating a seperation of virtual and physical memory
-    xor ebx, ebx
-    xor edi, edi
-    mov ecx, COMPUTER_MEM_SIZE
-.set_page_entries:
-    SetPageEntryAtAddress 0x18000 + ebx, 0x19000 + ebx
-    add edi, 0x1000
-    add ebx, 8
-    loop .set_page_entries
+;     SetPageEntryAtAddress 0x17000, 0x18000 ; saved space for creating a seperation of virtual and physical memory
+;     xor ebx, ebx
+;     xor edi, edi
+;     mov ecx, COMPUTER_MEM_SIZE
+; .set_page_entries:
+;     SetPageEntryAtAddress (0x18000 + ebx), (0x19000 + ebx)
+;     add edi, 0x1000
+;     add ebx, 8
+;     loop .set_page_entries
 
-    xor ebx, ebx
-    mov ecx, 512 * COMPUTER_MEM_SIZE
-.set_page_entries_2:
-    Set2MB-PageEntryAtAddress 0x19000 + ebx, ebx * LARGE_PAGE_SIZE
-    add ebx, 8
-    loop .set_page_entries_2
-
-
+;     mov ebx, 
+;     mov ecx, 512 * COMPUTER_MEM_SIZE
+; .set_page_entries_2:
+;     Set2MBPageEntryAtAddress (0x19000 + ebx), (ebx + LARGE_PAGE_SIZE)
+;     add ebx, 8
+;     loop .set_page_entries_2
 
 
     SetPageEntryAtAddress 0x17000, 0x17008 ; PML4[0] = PDPT[0]
@@ -193,10 +192,10 @@ SetupRealMode:
 HandleControlToBios:
     mov dl, [WINDOWS_DISK_INDEX]
     mov ax, 0
-    mov cs, 0
-    mov ds, 0
-    mov es, 0
-    mov ss, 0
+    mov cs, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
     jmp 0:MBR_ADDRESS
 HandleControlToBiosEnd:
 SetupSystemAndHandleControlToBiosEnd:
