@@ -47,7 +47,7 @@
 ; 0x4000 - DAP
 ; 0x4200 - real mode code start
 ; 0x7500 - ivt
-; 0x17000 - cr3 (PML4 base addr, one cell)
+; 0x17000 - cr3 (PML4 base addr)
 ; 0x2800000 - stack (long mode)
 
 extern Initialize
@@ -85,37 +85,40 @@ multiboot2_header_end:
 _hypervisor_entrypoint:
     ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
     ; addresses in order to load the MBR
-    ; (cr3)PML4[0] = 0x17000
-    ; (0x17000)PDPT[0] = 0x17008 - points to physical address 0
-    ; (0) = 1GB page for hypervisor initialization (starting from physical address 0)
-;     SetPageEntryAtAddress 0x17000, 0x18000 ; saved space for creating a seperation of virtual and physical memory
-;     xor ebx, ebx
-;     xor edi, edi
-;     mov ecx, COMPUTER_MEM_SIZE
-; .set_page_entries:
-;     SetPageEntryAtAddress (0x18000 + ebx), (0x19000 + ebx)
-;     add edi, 0x1000
-;     add ebx, 8
-;     loop .set_page_entries
 
-;     mov ebx, 
-;     mov ecx, 512 * COMPUTER_MEM_SIZE
-; .set_page_entries_2:
-;     Set2MBPageEntryAtAddress (0x19000 + ebx), (ebx + LARGE_PAGE_SIZE)
-;     add ebx, 8
-;     loop .set_page_entries_2
+    MovQwordToAddressLittleEndian 0x17000, 0x0, 0x18003
+    mov eax, 0x19000
+    mov edi, 0x18000
+    mov ecx, COMPUTER_MEM_SIZE
+.setup_pdpt:
+    mov edx, eax
+    or edx, 3
+    mov dword [edi], edx
+    mov dword [edi + 4], 0
+    add eax, 0x1000
+    add edi, 8
+    loop .setup_pdpt
 
-
-    SetPageEntryAtAddress 0x17000, 0x17008 ; PML4[0] = PDPT[0]
-    SetPageEntryAtAddress 0x17008, 0x0 ; PDPT[0] = PDT[0]
+    mov ecx, 3                  ; map 3GB
+    shl ecx, 9                  ; multiply by 512
+    xor eax, eax                ; start address is 0
+    mov ebx, ((1 << 7) | (1 << 1) | 1)
+    mov edi, 0x19000
+.setup_pds:
+    or eax, ebx
+    mov dword [edi], eax
+    mov dword [edi + 4], 0
+    add edi, 8
+    add eax, LARGE_PAGE_SIZE
+    loop .setup_pds
 
     ; At this point I am allowed to work with addresses from 0 to (0x40000000 - 1)
 
     ; Set gdt
     mov eax, 0x1000 ; gdt
     mov word [eax], 0xff ; limit
-    ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2
-    MovQwordToAddressLittleEndian 0x1002, 0x0, 0x2000 ; gdt address
+    mov dword [eax + 2], 0x2000
+    ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2, GDT
     MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
     MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode - 8
     MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode - 16
@@ -148,11 +151,23 @@ _hypervisor_entrypoint:
 [BITS 64]
 CompatibilityTo64:
     cli
-    mov rax, 8
-    mov cs, rax
-    mov rax, 16
-    mov ds, rax
-    mov ss, rax
+    mov ax, 8
+    mov cs, ax
+    mov ax, 16
+    mov ds, ax
+    mov ss, ax
+
+    mov rcx, COMPUTER_MEM_SIZE  ; map ALL available memory
+    shl rcx, 9                  ; multiply by 512
+    xor rax, rax                ; start address is 0
+    mov rbx, ((1 << 7) | (1 << 1) | 1)
+    mov rdi, 0x19000
+.setup_pds_long_mode:
+    or rax, rbx
+    mov qword [rdi], rax
+    add rdi, 8
+    add rax, LARGE_PAGE_SIZE
+    loop .setup_pds_long_mode
 
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
