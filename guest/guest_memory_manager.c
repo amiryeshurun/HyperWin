@@ -32,3 +32,23 @@ QWORD TranslateGuestVirtualToGuestPhysical(IN QWORD address)
         + virtualAddress.bitFields.pageOffset;
     return guestPhysicalAddress;
 }
+
+QWORD CopyGuestMemory(OUT QWORD_PTR dest, IN QWORD src, IN DWORD length)
+{
+    return 0;
+}
+
+QWORD TranslateGuestPhysicalToPhysicalAddress(IN QWORD address)
+{
+    return 0;
+}
+
+QWORD TranslatePhysicalToHostVirtual(IN QWORD address)
+{
+    return 0;
+}
+
+QWORD TranslateGuestPhysicalToHostVirtual(IN QWORD address)
+{
+    return 0;
+}

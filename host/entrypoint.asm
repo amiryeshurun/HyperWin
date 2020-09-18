@@ -10,6 +10,10 @@
 %define COMPUTER_MEM_SIZE 16
 %define LARGE_PAGE_SIZE 0x200000
 %define IVT_ADDRESS 0x7500
+%define COM1 0x3F8
+%define COM2 0x2F8
+%define COM3 0x3E8
+%define COM4 0x2E8
 
 ; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
 %macro SetPageEntryAtAddress 2
@@ -52,6 +56,10 @@
 
 extern Initialize
 
+global _start
+global SetupSystemAndHandleControlToBios
+global SetupSystemAndHandleControlToBiosEnd
+
 ; multiboot2 starts on 32bit protected mode
 [BITS 32]
 SEGMENT .text
@@ -73,16 +81,14 @@ multiboot2_header_start:
         dw 3      ; type, WORD
         dw 0      ; flags, WORD
         dd multiboot2_entry_address_tag_end - multiboot2_entry_address_tag_start ; size, DWORD
-        dw _hypervisor_entrypoint ; entrypoint, DWORD
+        dw _start ; entrypoint, DWORD
     multiboot2_entry_address_tag_end:
-    multiboot2_end_tags_start:
         dd 0
         dd 0
         dw 8
-    multiboot2_end_tags_end:
 multiboot2_header_end:
 
-_hypervisor_entrypoint:
+_start:
     ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
     ; addresses in order to load the MBR
 

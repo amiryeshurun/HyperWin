@@ -20,9 +20,6 @@ typedef struct _E820_LIST_ENTRY
     DWORD extendedAttribute;
 }E820_LIST_ENTRY, *PE820_LIST_ENTRY;
 
-extern VOID GetMemoryMap();
-extern VOID GetMemoryMapEnd();
-
 QWORD AllocateMemoryUsingMemoryMap(IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize);
 QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);

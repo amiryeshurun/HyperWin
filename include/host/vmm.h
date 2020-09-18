@@ -53,8 +53,6 @@ typedef struct _CURRENT_GUEST_STATE
     PSINGLE_CPU_DATA currentCPU;
 } CURRENT_GUEST_STATE, *PCURRENT_GUEST_STATE;
 
-extern VOID UpdateInstructionPointer(QWORD offset);
-
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
 
 #endif

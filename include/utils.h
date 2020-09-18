@@ -12,7 +12,4 @@
 VOID CopyMemory(OUT QWORD_PTR dest, IN QWORD_PTR src, IN QWORD count);
 
 
-// assert
-VOID ASSERT(BOOL condition);
-
 #endif

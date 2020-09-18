@@ -16,8 +16,20 @@
     mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
 %endmacro
 
+%macro MovQwordToAddressLittleEndian 3
+    mov eax, %1
+    mov dword [eax], %3
+    mov dword [eax+4], %2
+%endmacro
+
 global DiskReader
+global DiskReaderEnd
 global AsmEnterRealModeRunFunction
+global AsmEnterRealModeRunFunctionEnd
+global EnterRealMode
+global EnterRealModeEnd
+global GetMemoryMap
+global GetMemoryMapEnd
 
 SEGMENT .text
 
@@ -34,7 +46,7 @@ AsmReturnFromRealModeFunction:
     cli
     mov rax, 8
     mov cs, rax
-    mov rax 16
+    mov rax, 16
     mov ds, rax
     mov ss, rax
     mov rsp, [SAVED_STACK_ADDRESS]
@@ -112,25 +124,26 @@ DiskReaderEnd:
 
 [BITS 16]
 GetMemoryMap:
-    mov es, 0
-    mov di, E820_OUTPUT_ADDRESS + 4
+    mov ax, 0
+    mov es, ax
+    mov di, E820_OUTPUT_ADDRESS + 2
 	xor ebx, ebx
 	xor bp, bp
 	mov edx, E820_MAGIC
 	mov eax, 0xE820
-	mov dword ptr [es:di + 20], 1
+	mov dword [es:di + 20], 1
 	mov ecx, 24
 	int 0x15
-	jc short .failed
+	jc short .failure
 	mov edx, E820_MAGIC
 	cmp eax, edx		
-	jne short .failed
+	jne short .failure
 	test ebx, ebx
-	je short .failed
+	je short .failure
 	jmp short .jmpin
 .e820lp:
 	mov eax, 0xE820
-	mov dword ptr [es:di + 20], 1
+	mov dword [es:di + 20], 1
 	mov ecx, 24
 	int 0x15
 	jc short .e820f
@@ -139,7 +152,7 @@ GetMemoryMap:
 	jcxz .skipent
 	cmp cl, 20
 	jbe short .notext
-	test byte ptr [es:di + 20], 1
+	test byte [es:di + 20], 1
 	je short .skipent
 .notext:
 	mov ecx, [es:di + 8]
@@ -151,12 +164,12 @@ GetMemoryMap:
 	test ebx, ebx
 	jne short .e820lp
 .e820f:
-	mov dword ptr [E820_OUTPUT_ADDRESS], bp
+	mov word [E820_OUTPUT_ADDRESS], bp
 	clc
 	jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
 .failure:
     mov eax, E820_OUTPUT_ADDRESS
-    mov byte ptr[eax], 0
+    mov byte [eax], 0
     stc
     jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
 GetMemoryMapEnd:

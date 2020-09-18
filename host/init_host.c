@@ -3,6 +3,10 @@
 #include <guest/bios_os_loader.h>
 #include <host/vmm.h>
 
+extern VOID UpdateInstructionPointer(QWORD offset);
+extern VOID SetupSystemAndHandleControlToBios();
+extern VOID SetupSystemAndHandleControlToBiosEnd();
+
 VOID Initialize()
 {
     // InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
@@ -15,8 +19,8 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
 {
     BYTE numberOfCores; // TBD...
     EnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
-    DWORD memoryRegionsCount = *((DWORD_PTR)E820_OUTPUT_ADDRESS);
-    PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 4);
+    WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
+    PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
     QWORD allocationSize = 0;
     allocationSize += ALIGN_UP(codeBase, PAGE_SIZE);
     allocationSize += ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE);

@@ -1,6 +1,6 @@
 #include <guest/bios_os_loader.h>
 #include <host/vmm.h>
-#include <util.h>
+#include <utils.h>
 
 BiosFunction functionsBegin[] = { DiskReader, GetMemoryMap };
 BiosFunction functionsEnd[] = { DiskReaderEnd, GetMemoryMapEnd };
