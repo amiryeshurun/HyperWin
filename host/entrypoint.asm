@@ -135,9 +135,9 @@ _start:
     mov dword [eax + 2], 0x2000
     ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2, GDT
     MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
-    MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode - 8
-    MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode - 16
-    MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32 bit mode - 24
+    MovQwordToAddressLittleEndian 0x2008, 0x209f00, 0x0 ; code - long mode - 8
+    MovQwordToAddressLittleEndian 0x2010, 0x9000, 0x0 ; data - long mode - 16
+    MovQwordToAddressLittleEndian 0x2018, 0x4f9e00, 0xffff ; code - 32 bit mode - 24
     MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit mode - 32
     MovQwordToAddressLittleEndian 0x2028, 0xcf9200, 0xffff ; data - 32 bit mode - 40
     MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode - 48
@@ -169,12 +169,13 @@ _start:
 CompatibilityTo64:
     OutputSerial 'T'
     cli
-    mov ax, 8
-    mov cs, ax
-    mov ax, 16
-    mov ds, ax
-    mov ss, ax
-
+    ;mov ax, 8
+    ;mov cs, ax
+    ; mov ax, 16    
+    ; mov ss, ax
+    ; mov es, ax
+    ; mov ds, ax
+                                
     OutputSerial 'F'
 
     mov rcx, COMPUTER_MEM_SIZE  ; map ALL available memory
@@ -192,6 +193,9 @@ CompatibilityTo64:
     OutputSerial 'G'
 
     mov rsp, 0x2800000
+
+    OutputSerial 'Z'
+
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
     OutputSerial 'H'
     pushf
@@ -205,9 +209,10 @@ SetupSystemAndHandleControlToBios:
     mov ax, 40
     mov ss, ax
     mov ds, ax
+    mov es, ax
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
-    MovQwordToAddressLittleEndian IVT_ADDRESS + 2, 0x0, 0x0 ; ivt address (0)
+    mov dword [eax + 2], 0x0 ; ivt address (0)
     jmp 32:(SetupSystemAndHandleControlToBiosEnd - SetupRealMode + REAL_MODE_CODE_START)
 
 [BITS 16]
@@ -215,6 +220,7 @@ SetupRealMode:
     mov ax, 48
     mov ss, ax
     mov ds, ax
+    mov es, ax
     mov eax, cr0
     and eax, ~(1 | (1 << 31)) ; Disable paging & PM
     mov cr0, eax

@@ -2,6 +2,8 @@
 #include <utils.h>
 #include <guest/bios_os_loader.h>
 #include <host/vmm.h>
+#include <intrinsics.h>
+#include <debug.h>
 
 extern VOID UpdateInstructionPointer(QWORD offset);
 extern VOID SetupSystemAndHandleControlToBios();
@@ -10,6 +12,7 @@ extern VOID SetupSystemAndHandleControlToBiosEnd();
 VOID Initialize()
 {
     // InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
+    __outbyte(COM3, 'M');
     LoadMBRToEntryPoint();
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START, (QWORD_PTR)SetupSystemAndHandleControlToBios,
         SetupSystemAndHandleControlToBiosEnd - SetupSystemAndHandleControlToBios);
