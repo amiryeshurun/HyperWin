@@ -45,6 +45,12 @@
     mov dword [eax+4], %2
 %endmacro
 
+%macro OutputSerial 1
+    mov dx, COM3
+    mov al, %1
+    out dx, al
+%endmacro
+
 ; 0x1000, 0x2000 - gdt
 ; 0x2200 - outout buffer for real mode functions
 ; 0x3000 - first sector dest
@@ -68,7 +74,7 @@ multiboot2_header_start:
     dd 0xE85250D6 ; magic field, DWORD
     dd 0          ; architecture - i386 protected mode, DWORD
     dd multiboot2_header_end - multiboot2_header_start ; header length, DWORD
-    dd 0xF0000000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
+    dd 0x100000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
     multiboot2_address_tag_start:
         dw 2 ; type, WORD
         dw 0 ; flags, WORD
@@ -76,12 +82,13 @@ multiboot2_header_start:
         dd CODE_BEGIN_ADDRESS
         dd -1 ; data segment is present to the end of the imgae
         dd 0  ; bss
+        dd 0
     multiboot2_address_tag_end:
     multiboot2_entry_address_tag_start:
         dw 3      ; type, WORD
         dw 0      ; flags, WORD
         dd multiboot2_entry_address_tag_end - multiboot2_entry_address_tag_start ; size, DWORD
-        dw _start ; entrypoint, DWORD
+        dd _start ; entrypoint, DWORD
     multiboot2_entry_address_tag_end:
         dd 0
         dd 0
@@ -91,7 +98,7 @@ multiboot2_header_end:
 _start:
     ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
     ; addresses in order to load the MBR
-
+    OutputSerial 'A'
     MovQwordToAddressLittleEndian 0x17000, 0x0, 0x18003
     mov eax, 0x19000
     mov edi, 0x18000
@@ -105,6 +112,7 @@ _start:
     add edi, 8
     loop .setup_pdpt
 
+    OutputSerial 'B'
     mov ecx, 3                  ; map 3GB
     shl ecx, 9                  ; multiply by 512
     xor eax, eax                ; start address is 0
@@ -118,7 +126,8 @@ _start:
     add eax, LARGE_PAGE_SIZE
     loop .setup_pds
 
-    ; At this point I am allowed to work with addresses from 0 to (0x40000000 - 1)
+    OutputSerial 'C'
+    ; At this point I am allowed to work with addresses from 0 to 3GB
 
     ; Set gdt
     mov eax, 0x1000 ; gdt
@@ -134,6 +143,7 @@ _start:
     MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode - 48
     lgdt [0x1000]
 
+    OutputSerial 'D'
     ; Enter long mode - see docs/host/entrypoint.md for details
     mov eax, cr0
     and eax, ~(1 << 31)
@@ -151,17 +161,21 @@ _start:
     mov cr0, eax
     ; The CPU is now in compatibility mode.
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
+    OutputSerial 'E'
     jmp 8:CompatibilityTo64
 
 ; 64-bit code goes here
 [BITS 64]
 CompatibilityTo64:
+    OutputSerial 'T'
     cli
     mov ax, 8
     mov cs, ax
     mov ax, 16
     mov ds, ax
     mov ss, ax
+
+    OutputSerial 'F'
 
     mov rcx, COMPUTER_MEM_SIZE  ; map ALL available memory
     shl rcx, 9                  ; multiply by 512
@@ -175,8 +189,11 @@ CompatibilityTo64:
     add rax, LARGE_PAGE_SIZE
     loop .setup_pds_long_mode
 
+    OutputSerial 'G'
+
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
+    OutputSerial 'H'
     pushf
     push 24
     push REAL_MODE_CODE_START

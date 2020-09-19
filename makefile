@@ -6,7 +6,8 @@ C_COMPILER_FLAGS = -I./include \
 				   -w \
 				   -fno-stack-protector \
 				   -mno-red-zone \
-				   -nostdinc
+				   -nostdinc \
+				   -g
 
 # --------------- LINKER --------------- #
 LINKER 			= ld
@@ -31,13 +32,17 @@ GUEST_ASM_SOURCE_FILES = $(addprefix guest/, $(shell find guest/ -maxdepth 1 -na
 HOST_ASM_SOURCE_FILES   = $(addprefix host/, $(shell find host/ -maxdepth 1 -name '*.asm' -printf '%f '))
 SHARED_ASM_SOURCE_FILES   = $(addprefix shared/, $(shell find shared/ -maxdepth 1 -name '*.asm' -printf '%f '))
 
-OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(GUEST_C_SOURCE_FILES:.c=.o)) 	   \
-					  $(addprefix $(OBJDIR)/, $(HOST_C_SOURCE_FILES:.c=.o)) 	   \
-					  $(addprefix $(OBJDIR)/, $(SHARED_C_SOURCE_FILES:.c=.o)) 	   \
+OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(HOST_ASM_SOURCE_FILES:.asm=.o))	   \
 					  $(addprefix $(OBJDIR)/, $(GUEST_ASM_SOURCE_FILES:.asm=.o))   \
-					  $(addprefix $(OBJDIR)/, $(HOST_ASM_SOURCE_FILES:.asm=.o))	   \
-					  $(addprefix $(OBJDIR)/, $(SHARED_ASM_SOURCE_FILES:.asm=.o))
+					  $(addprefix $(OBJDIR)/, $(SHARED_ASM_SOURCE_FILES:.asm=.o))  \
+					  $(addprefix $(OBJDIR)/, $(GUEST_C_SOURCE_FILES:.c=.o)) 	   \
+					  $(addprefix $(OBJDIR)/, $(HOST_C_SOURCE_FILES:.c=.o)) 	   \
+					  $(addprefix $(OBJDIR)/, $(SHARED_C_SOURCE_FILES:.c=.o)) 	   
 
+.PHONY: clean
+
+all: clean \
+	$(OBJDIR)/hypervisor.iso
 
 $(OBJDIR)/%.o : %.c
 	$(C_COMPILER) $(C_COMPILER_FLAGS) $< -o $@
@@ -48,8 +53,12 @@ $(OBJDIR)/%.o : %.asm
 $(OBJDIR)/hypervisor.so : $(OUTPUT_OBJECT_FILES)
 	$(LINKER) $(LINKER_FLAGS) $(OUTPUT_OBJECT_FILES) -o $@
 
-all: clean $(OUTPUT_OBJECT_FILES) 
+$(OBJDIR)/hypervisor.iso : $(OBJDIR)/hypervisor.so
+	cp $< $(OBJDIR)/iso/boot/$(notdir $<)
+	cd $(OBJDIR) && grub-mkrescue -o $(notdir $@) iso
 
 clean:
 	@rm -f $(OUTPUT_OBJECT_FILES)
 	@rm -f $(OBJDIR)/hypervisor.so
+	@rm -f $(OBJDIR)/iso/boot/hypervisor.so
+	@rm -f $(OBJDIR)/hypervisor.iso
