@@ -12,7 +12,6 @@ extern VOID SetupSystemAndHandleControlToBiosEnd();
 VOID Initialize()
 {
     // InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
-    __outbyte(COM3, 'M');
     LoadMBRToEntryPoint();
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START, (QWORD_PTR)SetupSystemAndHandleControlToBios,
         SetupSystemAndHandleControlToBiosEnd - SetupSystemAndHandleControlToBios);

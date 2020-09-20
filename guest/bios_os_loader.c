@@ -35,7 +35,6 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     packet->sectorNumberLowPart = 0;
     packet->sectorNumberHighPart = 0;
     CopyMemory(DAP_ADDRESS + sizeof(DISK_ADDRESS_PACKET), &diskIndex, sizeof(BYTE));
-    __outbyte(COM3, 'R');
     EnterRealModeRunFunction(DISK_READER, NULL);
     *address = FIRST_SECTOR_DEST;
 }
@@ -43,7 +42,6 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
 VOID LoadMBRToEntryPoint()
 {
     PMBR sectorAddress;
-    __outbyte(COM3, 'Q');
 
     for(BYTE diskIdx = 0x80; diskIdx < 0xff; diskIdx++)
     {

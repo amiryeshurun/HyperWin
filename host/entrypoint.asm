@@ -98,7 +98,6 @@ multiboot2_header_end:
 _start:
     ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
     ; addresses in order to load the MBR
-    OutputSerial 'A'
     MovQwordToAddressLittleEndian 0x17000, 0x0, 0x18003
     mov eax, 0x19000
     mov edi, 0x18000
@@ -112,7 +111,6 @@ _start:
     add edi, 8
     loop .setup_pdpt
 
-    OutputSerial 'B'
     mov ecx, 3                  ; map 3GB
     shl ecx, 9                  ; multiply by 512
     xor eax, eax                ; start address is 0
@@ -126,7 +124,6 @@ _start:
     add eax, LARGE_PAGE_SIZE
     loop .setup_pds
 
-    OutputSerial 'C'
     ; At this point I am allowed to work with addresses from 0 to 3GB
 
     ; Set gdt
@@ -143,7 +140,6 @@ _start:
     MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode - 48
     lgdt [0x1000]
 
-    OutputSerial 'D'
     ; Enter long mode - see docs/host/entrypoint.md for details
     mov eax, cr0
     and eax, ~(1 << 31)
@@ -161,13 +157,11 @@ _start:
     mov cr0, eax
     ; The CPU is now in compatibility mode.
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
-    OutputSerial 'E'
     jmp 8:CompatibilityTo64
 
 ; 64-bit code goes here
 [BITS 64]
 CompatibilityTo64:
-    OutputSerial 'T'
     cli
     ;mov ax, 8
     ;mov cs, ax
@@ -176,8 +170,6 @@ CompatibilityTo64:
     ; mov es, ax
     ; mov ds, ax
                                 
-    OutputSerial 'F'
-
     mov rcx, COMPUTER_MEM_SIZE  ; map ALL available memory
     shl rcx, 9                  ; multiply by 512
     xor rax, rax                ; start address is 0
@@ -190,12 +182,7 @@ CompatibilityTo64:
     add rax, LARGE_PAGE_SIZE
     loop .setup_pds_long_mode
 
-    OutputSerial 'G'
-
     mov rsp, 0x2800000
-
-    OutputSerial 'Z'
-
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
     OutputSerial 'H'
     pushf
