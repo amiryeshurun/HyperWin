@@ -53,7 +53,7 @@ AsmEnterRealModeRunFunction:
     push rax
     mov rax, REAL_MODE_CODE_START
     push rax
-    iretq
+    iretq ; jump with selector is not supported in 64 bit mode
 AsmReturnFromRealModeFunction:
     cli
     mov ax, 8

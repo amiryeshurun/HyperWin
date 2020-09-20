@@ -72,7 +72,7 @@ QWORD pow(IN QWORD base, IN QWORD power)
 {
     QWORD res = 1;
     for(; power; res *= base, --power);
-    return base;
+    return res;
 }
 
 QWORD NumberOfDigits(IN QWORD number)

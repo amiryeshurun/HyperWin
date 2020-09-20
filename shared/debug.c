@@ -2,6 +2,7 @@
 #include <intrinsics.h>
 #include <utils.h>
 
+
 VOID PrintBuffer(IN PCHAR buffer, IN QWORD length)
 {
     for(QWORD i = 0; i < length; i++)
@@ -45,11 +46,12 @@ VOID Print(IN PCHAR fmt, ...)
                         case 'b': // %.b
                         {
                             QWORD length = va_arg(args, QWORD);
-                            PCHAR byteArr = (PCHAR)va_arg(args, QWORD);
+                            BYTE_PTR byteArr = (BYTE_PTR)va_arg(args, QWORD);
                             for(QWORD j = 0; j < length; j++)
                             {
-                                BYTE currByte = byteArr[j];
-                                buffer[bufferPosition++] = ConvertHalfByteToHexChar((UCHAR)currByte >> 4);
+                                BYTE currByte = *(byteArr + j);
+
+                                buffer[bufferPosition++] = ConvertHalfByteToHexChar(currByte >> 4);
                                 buffer[bufferPosition++] = ConvertHalfByteToHexChar(currByte & 0xf);
                                 buffer[bufferPosition++] = ' ';
                             }
@@ -62,7 +64,8 @@ VOID Print(IN PCHAR fmt, ...)
                 default: // %<NUMBER>
                 {
                     BYTE numberOfBytes = fmt[i + 1] - '0';
-                    QWORD num = va_arg(args, QWORD), currq = 2 * numberOfBytes - 1, mask = 0xf << (currq * 4);
+                    CHAR currq = 2 * numberOfBytes - 1;
+                    QWORD num = va_arg(args, QWORD), mask = 0xf << (currq * 4);
                     for(; currq >= 0; currq--, mask >>= 4)
                     {
                         buffer[bufferPosition++] = ConvertHalfByteToHexChar((num & mask) >> (currq * 4));
@@ -73,9 +76,7 @@ VOID Print(IN PCHAR fmt, ...)
         }
         else
             buffer[bufferPosition++] = fmt[i];
-        __outbyte(DEBUG_PORT, 'I');
     }
     va_end(args);
     PrintBuffer(buffer, bufferPosition);
-
 }

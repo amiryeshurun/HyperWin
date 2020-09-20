@@ -17,7 +17,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
                functionLeanth);
-    Print("Addr: %8\n", REAL_MODE_CODE_START);
+    Print("Code: %.b\n", enterRealModeLength, REAL_MODE_CODE_START);
     AsmEnterRealModeRunFunction();
 
     if(outputBuffer != NULL)

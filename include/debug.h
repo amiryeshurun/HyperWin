@@ -9,7 +9,7 @@
 #define COM4 0x2E8
 #define DEBUG_PORT COM3
 
-#define BUFF_MAX_SIZE 500
+#define BUFF_MAX_SIZE 0x500
 
 VOID PrintBuffer(IN PCHAR buffer, IN QWORD length);
 VOID PrintNullTerminatedBuffer(IN PCHAR buffer);
