@@ -10,6 +10,9 @@
 #define NEG_INF (-0xffff)
 
 VOID CopyMemory(OUT QWORD_PTR dest, IN QWORD_PTR src, IN QWORD count);
-
+CHAR ConvertHalfByteToHexChar(IN BYTE halfByte);
+QWORD pow(IN QWORD base, IN QWORD power);
+QWORD NumberOfDigits(IN QWORD number);
+QWORD StringLength(IN PCHAR str);
 
 #endif

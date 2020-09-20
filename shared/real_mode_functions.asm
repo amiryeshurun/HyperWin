@@ -48,7 +48,7 @@ AsmEnterRealModeRunFunction:
     push rbp
     push rsp
     mov qword [SAVED_STACK_ADDRESS], rsp
-    pushf
+    pushfq
     mov rax, 24
     push rax
     mov rax, REAL_MODE_CODE_START
@@ -73,7 +73,7 @@ EnterRealMode:
     ; define the interrupt vector for real mode
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
-    MovQwordToAddressLittleEndian IVT_ADDRESS + 2, 0x0, 0x0 ; ivt address (0)
+    mov dword [eax + 2], 0x0 ; ivt address (0)
     lidt [IVT_ADDRESS]
     OutputSerial 'V'
     jmp 32:(DisableLongMode - EnterRealMode + REAL_MODE_CODE_START) ; 16 bit code selector
