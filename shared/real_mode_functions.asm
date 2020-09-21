@@ -7,47 +7,75 @@
 %define REAL_MODE_CODE_START 0x4200
 %define SAVED_STACK_ADDRESS 0x6000
 %define IVT_ADDRESS 0x7500
-
+%define E820_OUTPUT_ADDRESS 0x8600
+%define E820_MAGIC 0x534D4150
+%define COM1 0x3F8
+%define COM2 0x2F8
+%define COM3 0x3E8
+%define COM4 0x2E8
 
 %macro SetCr3BasePhysicalAddress 1
 	mov eax, %1
-    shl eax, 11
     mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
 %endmacro
 
+%macro MovQwordToAddressLittleEndian 3
+    mov eax, %1
+    mov dword [eax], %3
+    mov dword [eax+4], %2
+%endmacro
+
+%macro OutputSerial 1
+    mov dx, COM3
+    mov al, %1
+    out dx, al
+%endmacro
+
 global DiskReader
+global DiskReaderEnd
 global AsmEnterRealModeRunFunction
+global AsmEnterRealModeRunFunctionEnd
+global EnterRealMode
+global EnterRealModeEnd
+global GetMemoryMap
+global GetMemoryMapEnd
 
 SEGMENT .text
 
 [BITS 64]
 AsmEnterRealModeRunFunction:
+    OutputSerial 'P'
     push rbp
     push rsp
-    mov [SAVED_STACK_ADDRESS], rsp
-    pushf
-    push 24
-    push REAL_MODE_CODE_START
-    iretq
+    mov qword [SAVED_STACK_ADDRESS], rsp
+    pushfq
+    mov rax, 24
+    push rax
+    mov rax, REAL_MODE_CODE_START
+    push rax
+    iretq ; jump with selector is not supported in 64 bit mode
 AsmReturnFromRealModeFunction:
     cli
-    mov rax, 8
-    mov cs, rax
-    mov rax 16
-    mov ds, rax
-    mov ss, rax
-    mov rsp, [SAVED_STACK_ADDRESS]
+    mov ax, 8
+    mov cs, ax
+    mov ax, 16
+    mov ds, ax
+    mov ss, ax
+    mov es, ax
+    mov rsp, qword [SAVED_STACK_ADDRESS]
     pop rsp
     pop rbp
     ret
 
 [BITS 32]
 EnterRealMode:
+    OutputSerial 'K'
     ; define the interrupt vector for real mode
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
-    MovQwordToAddressLittleEndian IVT_ADDRESS + 2, 0x0, 0x0 ; ivt address (0)
+    mov dword [eax + 2], 0x0 ; ivt address (0)
     lidt [IVT_ADDRESS]
+    OutputSerial 'V'
     jmp 32:(DisableLongMode - EnterRealMode + REAL_MODE_CODE_START) ; 16 bit code selector
 
 [BITS 16]
@@ -55,6 +83,7 @@ DisableLongMode:
     mov ax, 48
     mov ds, ax
     mov ss, ax
+    mov es, ax
     ; Disable long mode here, then execute desired function
     mov eax, cr0
     and eax, ~(1 | (1 << 31)) ; Disable paging & PM
@@ -77,6 +106,7 @@ BackToLongMode:
     mov ax, 0
     mov ss, ax
     mov ds, ax
+    mov es, ax
     ; Enable long mode when back from handling interrupts
     jmp 24:(EnableProtectedMode - EnterRealMode + REAL_MODE_CODE_START)
 
@@ -108,3 +138,55 @@ DiskReader:
     int 13h
     jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
 DiskReaderEnd:
+
+[BITS 16]
+GetMemoryMap:
+    mov ax, 0
+    mov es, ax
+    mov di, E820_OUTPUT_ADDRESS + 2
+	xor ebx, ebx
+	xor bp, bp
+	mov edx, E820_MAGIC
+	mov eax, 0xE820
+	mov dword [es:di + 20], 1
+	mov ecx, 24
+	int 0x15
+	jc short .failure
+	mov edx, E820_MAGIC
+	cmp eax, edx		
+	jne short .failure
+	test ebx, ebx
+	je short .failure
+	jmp short .jmpin
+.e820lp:
+	mov eax, 0xE820
+	mov dword [es:di + 20], 1
+	mov ecx, 24
+	int 0x15
+	jc short .e820f
+	mov edx, E820_MAGIC
+.jmpin:
+	jcxz .skipent
+	cmp cl, 20
+	jbe short .notext
+	test byte [es:di + 20], 1
+	je short .skipent
+.notext:
+	mov ecx, [es:di + 8]
+	or ecx, [es:di + 12]
+	jz .skipent
+	inc bp
+	add di, 24
+.skipent:
+	test ebx, ebx
+	jne short .e820lp
+.e820f:
+	mov word [E820_OUTPUT_ADDRESS], bp
+	clc
+	jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
+.failure:
+    mov eax, E820_OUTPUT_ADDRESS
+    mov byte [eax], 0
+    stc
+    jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
+GetMemoryMapEnd:

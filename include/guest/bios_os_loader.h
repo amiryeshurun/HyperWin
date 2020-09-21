@@ -13,17 +13,9 @@
 #define WINDOWS_DISK_INDEX 0x6010
 
 enum{
-    DISK_READER = 0
+    DISK_READER = 0,
+    GET_MEMORY_MAP = 1
 };
-
-extern VOID DiskReader();
-extern VOID DiskReaderEnd();
-extern VOID EnterRealMode();
-extern VOID EnterRealModeEnd();
-extern VOID AsmEnterRealModeRunFunction();
-extern VOID SetupSystemAndHandleControlToBios();
-extern VOID SetupSystemAndHandleControlToBiosEnd();
-
 
 typedef struct _DISK_ADDRESS_PACKET
 {
@@ -56,6 +48,14 @@ typedef struct _MBR
 }MBR, *PMBR;
 
 typedef VOID (*BiosFunction)();
+
+extern VOID DiskReader();
+extern VOID DiskReaderEnd();
+extern VOID EnterRealMode();
+extern VOID EnterRealModeEnd();
+extern VOID AsmEnterRealModeRunFunction();
+extern VOID GetMemoryMap();
+extern VOID GetMemoryMapEnd();
 
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);

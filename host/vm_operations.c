@@ -1,4 +1,4 @@
-#include <vm_operations.h>
+#include <host/vm_operations.h>
 #include <intrinsics.h>
 
 QWORD vmread(IN QWORD field)

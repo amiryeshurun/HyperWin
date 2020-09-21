@@ -6,27 +6,49 @@
 %define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 %define REAL_MODE_CODE_START 0x4200
 %define WINDOWS_DISK_INDEX 0x6010
+%define CODE_BEGIN_ADDRESS 0x120000
+%define COMPUTER_MEM_SIZE 16
+%define LARGE_PAGE_SIZE 0x200000
+%define IVT_ADDRESS 0x7500
+%define COM1 0x3F8
+%define COM2 0x2F8
+%define COM3 0x3E8
+%define COM4 0x2E8
 
 ; <NX disabled><11 reserved><40 PDPT address><11 bits 0><writable & readable><valid>
 %macro SetPageEntryAtAddress 2
 	mov eax, %1 ; dest
     mov edx, %2 ; value
-    shl edx, 11
+    shl edx, 12
     or edx, 3
-    mov [eax], edx
-    mov [eax+4], 0 ; little endian
+    mov dword [eax], edx
+    mov dword [eax+4], 0 ; little endian
+%endmacro
+
+%macro Set2MBPageEntryAtAddress 2
+	mov eax, %1 ; dest
+    mov edx, %2 ; value
+    shl edx, 12
+    or edx, (3 | 1 << 7)
+    mov dword [eax], edx
+    mov dword [eax+4], 0 ; little endian
 %endmacro
 
 %macro SetCr3BasePhysicalAddress 1
 	mov eax, %1
-    shl eax, 11
     mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
 %endmacro
 
 %macro MovQwordToAddressLittleEndian 3
     mov eax, %1
-    mov [eax], %3
-    mov [eax+4], %2
+    mov dword [eax], %3
+    mov dword [eax+4], %2
+%endmacro
+
+%macro OutputSerial 1
+    mov dx, COM3
+    mov al, %1
+    out dx, al
 %endmacro
 
 ; 0x1000, 0x2000 - gdt
@@ -35,10 +57,14 @@
 ; 0x4000 - DAP
 ; 0x4200 - real mode code start
 ; 0x7500 - ivt
-; 0x17000 - cr3 (PML4 base addr, one cell)
+; 0x17000 - cr3 (PML4 base addr)
 ; 0x2800000 - stack (long mode)
 
 extern Initialize
+
+global _start
+global SetupSystemAndHandleControlToBios
+global SetupSystemAndHandleControlToBiosEnd
 
 ; multiboot2 starts on 32bit protected mode
 [BITS 32]
@@ -48,44 +74,67 @@ multiboot2_header_start:
     dd 0xE85250D6 ; magic field, DWORD
     dd 0          ; architecture - i386 protected mode, DWORD
     dd multiboot2_header_end - multiboot2_header_start ; header length, DWORD
-    dd 0xF0000000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
+    dd 0x100000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
+    multiboot2_address_tag_start:
+        dw 2 ; type, WORD
+        dw 0 ; flags, WORD
+        dd multiboot2_address_tag_end - multiboot2_address_tag_start ; dize, DWORD
+        dd CODE_BEGIN_ADDRESS
+        dd -1 ; data segment is present to the end of the imgae
+        dd 0  ; bss
+        dd 0
+    multiboot2_address_tag_end:
     multiboot2_entry_address_tag_start:
         dw 3      ; type, WORD
         dw 0      ; flags, WORD
         dd multiboot2_entry_address_tag_end - multiboot2_entry_address_tag_start ; size, DWORD
-        dw _hypervisor_entrypoint ; entrypoint, DWORD
+        dd _start ; entrypoint, DWORD
     multiboot2_entry_address_tag_end:
-    multiboot2_end_tags_start:
         dd 0
         dd 0
         dw 8
-    multiboot2_end_tags_end:
 multiboot2_header_end:
 
-_hypervisor_entrypoint:
+_start:
     ; Create a "linear address" page table. This is usefull because it is much easier to reffer to "physical"
     ; addresses in order to load the MBR
-    ; (cr3)PML4[0] = 0x17000
-    ; (0x17000)PDPT[0] = 0x17008 - points to physical address 0
-    ; (0) = 1GB page for hypervisor initialization (starting from physical address 0)
+    MovQwordToAddressLittleEndian 0x17000, 0x0, 0x18003
+    mov eax, 0x19000
+    mov edi, 0x18000
+    mov ecx, COMPUTER_MEM_SIZE
+.setup_pdpt:
+    mov edx, eax
+    or edx, 3
+    mov dword [edi], edx
+    mov dword [edi + 4], 0
+    add eax, 0x1000
+    add edi, 8
+    loop .setup_pdpt
 
-    SetPageEntryAtAddress 0x17000, 0x17008 ; PML4[0] = PDPT[0]
-    SetPageEntryAtAddress 0x17008, 0x0 ; PDPT[0] = PDT[0]
-    mov eax, 0x17008
-    mov edx, [eax]
-    or edx, (1 << 7); 1GB page
-    mov [eax], edx    
-    ; At this point I am allowed to work with addresses from 0 to (0x40000000 - 1)
+    mov ecx, 3                  ; map 3GB
+    shl ecx, 9                  ; multiply by 512
+    xor eax, eax                ; start address is 0
+    mov ebx, ((1 << 7) | (1 << 1) | 1)
+    mov edi, 0x19000
+.setup_pds:
+    or eax, ebx
+    mov dword [edi], eax
+    mov dword [edi + 4], 0
+    add edi, 8
+    add eax, LARGE_PAGE_SIZE
+    loop .setup_pds
+
+    ; At this point I am allowed to work with addresses from 0 to 3GB
 
     ; Set gdt
     mov eax, 0x1000 ; gdt
     mov word [eax], 0xff ; limit
-    ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2
-    MovQwordToAddressLittleEndian 0x1002, 0x0, 0x2000 ; gdt address
+    mov dword [eax + 2], 0x2000
+    ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2, GDT
     MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
-    MovQwordToAddressLittleEndian 0x2008, 0x190400, 0x0 ; code - long mode - 8
-    MovQwordToAddressLittleEndian 0x2010, 0x90400, 0x0 ; data - long mode - 16
-    MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32 bit mode - 24
+    MovQwordToAddressLittleEndian 0x2008, 0x209f00, 0x0 ; code - long mode - 8
+    MovQwordToAddressLittleEndian 0x2010, 0x9000, 0x0 ; data - long mode - 16
+    MovQwordToAddressLittleEndian 0x2018, 0x4f9e00, 0xffff ; code - 32 bit mode - 24
     MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit mode - 32
     MovQwordToAddressLittleEndian 0x2028, 0xcf9200, 0xffff ; data - 32 bit mode - 40
     MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode - 48
@@ -114,14 +163,28 @@ _hypervisor_entrypoint:
 [BITS 64]
 CompatibilityTo64:
     cli
-    mov rax, 8
-    mov cs, rax
-    mov rax, 16
-    mov ds, rax
-    mov ss, rax
+    ;mov ax, 8
+    ;mov cs, ax
+    ; mov ax, 16    
+    ; mov ss, ax
+    ; mov es, ax
+    ; mov ds, ax
+                                
+    mov rcx, COMPUTER_MEM_SIZE  ; map ALL available memory
+    shl rcx, 9                  ; multiply by 512
+    xor rax, rax                ; start address is 0
+    mov rbx, ((1 << 7) | (1 << 1) | 1)
+    mov rdi, 0x19000
+.setup_pds_long_mode:
+    or rax, rbx
+    mov qword [rdi], rax
+    add rdi, 8
+    add rax, LARGE_PAGE_SIZE
+    loop .setup_pds_long_mode
 
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
+    OutputSerial 'H'
     pushf
     push 24
     push REAL_MODE_CODE_START
@@ -133,9 +196,10 @@ SetupSystemAndHandleControlToBios:
     mov ax, 40
     mov ss, ax
     mov ds, ax
+    mov es, ax
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
-    MovQwordToAddressLittleEndian IVT_ADDRESS + 2, 0x0, 0x0 ; ivt address (0)
+    mov dword [eax + 2], 0x0 ; ivt address (0)
     jmp 32:(SetupSystemAndHandleControlToBiosEnd - SetupRealMode + REAL_MODE_CODE_START)
 
 [BITS 16]
@@ -143,6 +207,7 @@ SetupRealMode:
     mov ax, 48
     mov ss, ax
     mov ds, ax
+    mov es, ax
     mov eax, cr0
     and eax, ~(1 | (1 << 31)) ; Disable paging & PM
     mov cr0, eax
@@ -158,10 +223,10 @@ SetupRealMode:
 HandleControlToBios:
     mov dl, [WINDOWS_DISK_INDEX]
     mov ax, 0
-    mov cs, 0
-    mov ds, 0
-    mov es, 0
-    mov ss, 0
+    mov cs, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
     jmp 0:MBR_ADDRESS
 HandleControlToBiosEnd:
 SetupSystemAndHandleControlToBiosEnd:

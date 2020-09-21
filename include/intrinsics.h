@@ -17,4 +17,11 @@ VOID INLINE __movsb(BYTE_PTR dest, BYTE_PTR src, QWORD length)
         "[source]" (src), "[destination]" (dest), "[count]" (length));
 }
 
+__attribute__((always_inline))
+VOID INLINE __outbyte(DWORD port, BYTE data)
+{
+    asm volatile("out %1, %0" :: "d" (port), "a" (data));
+}
+
+
 #endif
