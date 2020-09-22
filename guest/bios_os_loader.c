@@ -17,10 +17,9 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
                functionLeanth);
-    Print("Code: %.b\n", enterRealModeLength, REAL_MODE_CODE_START);
     AsmEnterRealModeRunFunction();
 
-    if(outputBuffer != NULL)
+    if(outputBuffer)
         outputBuffer = (BYTE_PTR)REAL_MODE_OUTPUT_BUFFER_ADDRESS;
 }
 
@@ -30,12 +29,17 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     packet->size = 0x10;
     packet->reserved = 0;
     packet->count = 1;
-    packet->offset = 0;
-    packet->dest = FIRST_SECTOR_DEST;
+    packet->offset = FIRST_SECTOR_DEST;
+    packet->segment = 0;
     packet->sectorNumberLowPart = 0;
     packet->sectorNumberHighPart = 0;
-    CopyMemory(DAP_ADDRESS + sizeof(DISK_ADDRESS_PACKET), &diskIndex, sizeof(BYTE));
+    *(BYTE_PTR)(DAP_ADDRESS + 0x10) = diskIndex;
     EnterRealModeRunFunction(DISK_READER, NULL);
+    if(!address)
+    {
+        Print("Output address was not specified as a destenation for int 13h\n");
+        ASSERT(FALSE);
+    }
     *address = FIRST_SECTOR_DEST;
 }
 
@@ -46,9 +50,10 @@ VOID LoadMBRToEntryPoint()
     for(BYTE diskIdx = 0x80; diskIdx < 0xff; diskIdx++)
     {
         ReadFirstSectorToRam(diskIdx, &sectorAddress);
-        if(sectorAddress->magic == BOOTABLE_SIGNATURE)
+        if(*(WORD_PTR)((BYTE_PTR)sectorAddress + MBR_SIZE - sizeof(WORD)) == BOOTABLE_SIGNATURE)
         {
-            CopyMemory(MBR_ADDRESS, sectorAddress, sizeof(MBR));
+            Print("An MBR disk was found at disk #%d\n", diskIdx);
+            CopyMemory(MBR_ADDRESS, sectorAddress, MBR_SIZE);
             *(BYTE_PTR)(WINDOWS_DISK_INDEX) = diskIdx;
             break;
         }

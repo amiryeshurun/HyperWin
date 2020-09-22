@@ -7,26 +7,28 @@
 #define MBR_ADDRESS 0x7c00
 #define DAP_ADDRESS 0x4000
 #define FIRST_SECTOR_DEST 0x3000
-#define BOOTABLE_SIGNATURE 0x55aa
+#define BOOTABLE_SIGNATURE 0xAA55
 #define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 #define REAL_MODE_CODE_START 0x4200
 #define WINDOWS_DISK_INDEX 0x6010
+
+#define MBR_SIZE 512 
 
 enum{
     DISK_READER = 0,
     GET_MEMORY_MAP = 1
 };
 
-typedef struct _DISK_ADDRESS_PACKET
+typedef struct _DISK_ADDRESS_PACKET 
 {
     BYTE size;
     BYTE reserved;
     WORD count;
     WORD offset;
-    WORD dest;
+    WORD segment;
     DWORD sectorNumberLowPart;
     DWORD sectorNumberHighPart;
-}DISK_ADDRESS_PACKET, *PDISK_ADDRESS_PACKET;
+} __attribute__((__packed__)) DISK_ADDRESS_PACKET, *PDISK_ADDRESS_PACKET;
 
 typedef struct _PARTITION_TABLE_ENTRY
 {
@@ -36,7 +38,7 @@ typedef struct _PARTITION_TABLE_ENTRY
     BYTE CHSLastAddress[3];
     DWORD firstSectorLBA;
     DWORD sectorsCount;
-}PARTITION_TABLE_ENTRY, *PPARTITION_TABLE_ENTRY;
+} __attribute__((__packed__)) PARTITION_TABLE_ENTRY, *PPARTITION_TABLE_ENTRY;
 
 typedef struct _MBR
 {
@@ -45,7 +47,7 @@ typedef struct _MBR
     WORD reserved;
     PARTITION_TABLE_ENTRY partitionTable[4];
     WORD magic;
-}MBR, *PMBR;
+}__attribute__((__packed__))  MBR, *PMBR;
 
 typedef VOID (*BiosFunction)();
 
