@@ -12,6 +12,8 @@
 #define REAL_MODE_CODE_START 0x4200
 #define WINDOWS_DISK_INDEX 0x6010
 
+#define MBR_SIZE 512 
+
 enum{
     DISK_READER = 0,
     GET_MEMORY_MAP = 1

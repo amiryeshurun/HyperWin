@@ -182,49 +182,45 @@ CompatibilityTo64:
 
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
-    OutputSerial 'H'
-    pushf
-    push 24
-    push REAL_MODE_CODE_START
-    iretq
+    push 16
+	mov rax, 0x25ff0
+	push rax
+	pushf
+	push 24 ; 32 bit code selector
+	push REAL_MODE_CODE_START
+	iretq
 
 [BITS 32]
 SetupSystemAndHandleControlToBios:
     ; define the interrupt vector for real mode
-    mov ax, 24
-    mov ss, ax
-    mov ds, ax
-    mov es, ax
-    mov gs, ax
-    mov fs, ax
-
+    cli
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
     mov dword [eax + 2], 0x0 ; ivt address (0)
     mov dword [eax + 6], 0x0
     lidt [IVT_ADDRESS]
-    jmp 32:(SetupSystemAndHandleControlToBiosEnd - SetupRealMode + REAL_MODE_CODE_START)
+    jmp 32:(SetupRealMode - SetupSystemAndHandleControlToBios + REAL_MODE_CODE_START) ; 16 bit code selector
 
 [BITS 16]
 SetupRealMode:
     mov ax, 40
     mov ss, ax
-    mov ds, ax
     mov es, ax
-    mov gs, ax
+    mov ds, ax
     mov fs, ax
-
+    mov gs, ax
+    ; Disable long mode here, then execute desired function
     mov eax, cr0
     and eax, ~(1 | (1 << 31)) ; Disable paging & PM
     mov cr0, eax
     mov eax, cr4
-    and eax, ~(1 << 5)        ; Disable PAE
+    and eax, ~(1 << 5)
     mov cr4, eax
     mov ecx, EFER_MSR
     rdmsr ; Value is stored in EDX:EAX
-    and eax, ~(1 << 8)        ; Disable long mode
+    and eax, ~(1 << 8)
     wrmsr
-    jmp 0:(SetupSystemAndHandleControlToBiosEnd - HandleControlToBios + REAL_MODE_CODE_START)
+    jmp 0:(HandleControlToBios - SetupSystemAndHandleControlToBios + REAL_MODE_CODE_START)
 
 HandleControlToBios:
     mov dl, [WINDOWS_DISK_INDEX]

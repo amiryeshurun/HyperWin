@@ -16,7 +16,7 @@
 
 %macro SetCr3BasePhysicalAddress 1
 	mov eax, %1
-    mov cr3, eax ; need to test - not sure about it, what happens to the 32 MSBs?
+    mov cr3, eax
 %endmacro
 
 %macro MovQwordToAddressLittleEndian 3
@@ -53,7 +53,7 @@ AsmEnterRealModeRunFunction:
 	pushf
 	push 24
 	push REAL_MODE_CODE_START
-	iretq
+	iretq   ; jmp with selector is not supported in long mode, use IRET instead
 AsmReturnFromRealModeFunction:
     cli
     mov ax, 16
@@ -151,6 +151,7 @@ DiskReader:
     mov ds, ax
     mov fs, ax
     mov gs, ax
+    
     xor eax, eax
     mov si, DAP_ADDRESS
     mov ah, 0x42
