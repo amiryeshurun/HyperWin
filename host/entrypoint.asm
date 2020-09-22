@@ -123,21 +123,19 @@ _start:
     add edi, 8
     add eax, LARGE_PAGE_SIZE
     loop .setup_pds
-
     ; At this point I am allowed to work with addresses from 0 to 3GB
 
     ; Set gdt
     mov eax, 0x1000 ; gdt
-    mov word [eax], 0xff ; limit
-    mov dword [eax + 2], 0x2000
+    mov word [eax], 0x00ff ; limit
+    MovQwordToAddressLittleEndian 0x1002, 0x0, 0x2000
     ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2, GDT
     MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
-    MovQwordToAddressLittleEndian 0x2008, 0x209f00, 0x0 ; code - long mode - 8
-    MovQwordToAddressLittleEndian 0x2010, 0x9000, 0x0 ; data - long mode - 16
-    MovQwordToAddressLittleEndian 0x2018, 0x4f9e00, 0xffff ; code - 32 bit mode - 24
-    MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit mode - 32
-    MovQwordToAddressLittleEndian 0x2028, 0xcf9200, 0xffff ; data - 32 bit mode - 40
-    MovQwordToAddressLittleEndian 0x2030, 0x9200, 0xffff ; data - 16 bit mode - 48
+	MovQwordToAddressLittleEndian 0x2008, 0x209a00, 0x0	; code - long mode - 8
+	MovQwordToAddressLittleEndian 0x2010, 0xcf9200, 0xffff ; data - long and compatibility - 16
+	MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; data - 32-bit mode - 24
+	MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit (not real) - 32
+	MovQwordToAddressLittleEndian 0x2028, 0x9200, 0xffff ; data - 16 bit (not real) - 40
     lgdt [0x1000]
 
     ; Enter long mode - see docs/host/entrypoint.md for details
@@ -157,26 +155,26 @@ _start:
     mov cr0, eax
     ; The CPU is now in compatibility mode.
     ; Still need to load the GDT with the 64-bit flags set in the code and data selectors.
+
     jmp 8:CompatibilityTo64
 
 ; 64-bit code goes here
 [BITS 64]
 CompatibilityTo64:
     cli
-    ;mov ax, 8
-    ;mov cs, ax
-    ; mov ax, 16    
-    ; mov ss, ax
-    ; mov es, ax
-    ; mov ds, ax
-                                
+    mov ax, 16    
+    mov ss, ax
+    mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+
     mov rcx, COMPUTER_MEM_SIZE  ; map ALL available memory
     shl rcx, 9                  ; multiply by 512
     xor rax, rax                ; start address is 0
-    mov rbx, ((1 << 7) | (1 << 1) | 1)
+    or rax, ((1 << 7) | (1 << 1) | 1)
     mov rdi, 0x19000
 .setup_pds_long_mode:
-    or rax, rbx
     mov qword [rdi], rax
     add rdi, 8
     add rax, LARGE_PAGE_SIZE
@@ -193,21 +191,29 @@ CompatibilityTo64:
 [BITS 32]
 SetupSystemAndHandleControlToBios:
     ; define the interrupt vector for real mode
-    mov ax, 40
+    mov ax, 24
     mov ss, ax
     mov ds, ax
     mov es, ax
+    mov gs, ax
+    mov fs, ax
+
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
     mov dword [eax + 2], 0x0 ; ivt address (0)
+    mov dword [eax + 6], 0x0
+    lidt [IVT_ADDRESS]
     jmp 32:(SetupSystemAndHandleControlToBiosEnd - SetupRealMode + REAL_MODE_CODE_START)
 
 [BITS 16]
 SetupRealMode:
-    mov ax, 48
+    mov ax, 40
     mov ss, ax
     mov ds, ax
     mov es, ax
+    mov gs, ax
+    mov fs, ax
+
     mov eax, cr0
     and eax, ~(1 | (1 << 31)) ; Disable paging & PM
     mov cr0, eax
@@ -223,10 +229,12 @@ SetupRealMode:
 HandleControlToBios:
     mov dl, [WINDOWS_DISK_INDEX]
     mov ax, 0
-    mov cs, ax
     mov ds, ax
     mov es, ax
     mov ss, ax
+    mov fs, ax
+    mov gs, ax
+
     jmp 0:MBR_ADDRESS
 HandleControlToBiosEnd:
 SetupSystemAndHandleControlToBiosEnd:

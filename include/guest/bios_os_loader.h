@@ -17,7 +17,7 @@ enum{
     GET_MEMORY_MAP = 1
 };
 
-typedef struct _DISK_ADDRESS_PACKET
+typedef struct __attribute__((__packed__)) _DISK_ADDRESS_PACKET 
 {
     BYTE size;
     BYTE reserved;

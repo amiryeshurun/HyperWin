@@ -44,24 +44,25 @@ SEGMENT .text
 
 [BITS 64]
 AsmEnterRealModeRunFunction:
-    OutputSerial 'P'
     push rbp
     push rsp
     mov qword [SAVED_STACK_ADDRESS], rsp
-    pushfq
-    mov rax, 24
-    push rax
-    mov rax, REAL_MODE_CODE_START
-    push rax
-    iretq ; jump with selector is not supported in 64 bit mode
+    push 16
+	mov rax, 0x25ff0
+	push rax
+	pushf
+	push 24
+	push REAL_MODE_CODE_START
+	iretq
 AsmReturnFromRealModeFunction:
     cli
-    mov ax, 8
-    mov cs, ax
     mov ax, 16
     mov ds, ax
     mov ss, ax
     mov es, ax
+    mov fs, ax
+    mov gs, ax
+
     mov rsp, qword [SAVED_STACK_ADDRESS]
     pop rsp
     pop rbp
@@ -69,21 +70,24 @@ AsmReturnFromRealModeFunction:
 
 [BITS 32]
 EnterRealMode:
-    OutputSerial 'K'
+    cli
     ; define the interrupt vector for real mode
     mov eax, IVT_ADDRESS ; ivt
     mov word [eax], 0xff ; limit
     mov dword [eax + 2], 0x0 ; ivt address (0)
+    mov dword [eax + 6], 0x0
     lidt [IVT_ADDRESS]
-    OutputSerial 'V'
     jmp 32:(DisableLongMode - EnterRealMode + REAL_MODE_CODE_START) ; 16 bit code selector
 
 [BITS 16]
 DisableLongMode:
-    mov ax, 48
-    mov ds, ax
+    mov ax, 40
     mov ss, ax
     mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+
     ; Disable long mode here, then execute desired function
     mov eax, cr0
     and eax, ~(1 | (1 << 31)) ; Disable paging & PM
@@ -99,19 +103,33 @@ DisableLongMode:
 
 BackToLongMode:
     cli
-    lgdt [0x1000]
-    mov eax, cr0
-    or eax, (1 << 0)
-    mov cr0, eax ; the system is now in the same state as it was at boot time
+    OutputSerial 'S'
+    lgdt [0x6000]
     mov ax, 0
     mov ss, ax
     mov ds, ax
     mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax ; the system is now in the same state as it was at boot time
     ; Enable long mode when back from handling interrupts
+    OutputSerial 'R'
     jmp 24:(EnableProtectedMode - EnterRealMode + REAL_MODE_CODE_START)
 
 [BITS 32]
 EnableProtectedMode:
+    OutputSerial 'C'
+    cli
+    mov ax, 16
+    mov ss, ax
+    mov ds, ax
+    mov es, ax
+    mov gs, ax
+    mov fs, ax
+
     mov eax, cr0
     and eax, ~(1 << 31)
     mov cr0, eax
@@ -131,9 +149,17 @@ EnterRealModeEnd:
 
 [BITS 16]
 DiskReader:
+    mov ax, 0
+    mov ss, ax
+    mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+    
+    xor eax, eax
     mov si, DAP_ADDRESS
     mov ah, 0x42
-    mov dl, [DAP_ADDRESS + 0x10]
+    mov dl, byte [DAP_ADDRESS + 0x10]
     xor bx, bx
     int 13h
     jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)

@@ -17,7 +17,6 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
                functionLeanth);
-    Print("Code: %.b\n", enterRealModeLength, REAL_MODE_CODE_START);
     AsmEnterRealModeRunFunction();
 
     if(outputBuffer != NULL)
@@ -34,7 +33,7 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     packet->dest = FIRST_SECTOR_DEST;
     packet->sectorNumberLowPart = 0;
     packet->sectorNumberHighPart = 0;
-    CopyMemory(DAP_ADDRESS + sizeof(DISK_ADDRESS_PACKET), &diskIndex, sizeof(BYTE));
+    CopyMemory(DAP_ADDRESS + 0x10, &diskIndex, sizeof(BYTE));
     EnterRealModeRunFunction(DISK_READER, NULL);
     *address = FIRST_SECTOR_DEST;
 }
