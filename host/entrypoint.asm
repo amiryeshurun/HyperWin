@@ -133,7 +133,7 @@ _start:
     MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
 	MovQwordToAddressLittleEndian 0x2008, 0x209a00, 0x0	; code - long mode - 8
 	MovQwordToAddressLittleEndian 0x2010, 0xcf9200, 0xffff ; data - long and compatibility - 16
-	MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; data - 32-bit mode - 24
+	MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32-bit mode - 24
 	MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit (not real) - 32
 	MovQwordToAddressLittleEndian 0x2028, 0x9200, 0xffff ; data - 16 bit (not real) - 40
     lgdt [0x1000]

@@ -103,25 +103,22 @@ DisableLongMode:
 
 BackToLongMode:
     cli
-    OutputSerial 'S'
-    lgdt [0x6000]
+    lgdt [0x1000]
     mov ax, 0
     mov ss, ax
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
-
+    
     mov eax, cr0
     or eax, 1
     mov cr0, eax ; the system is now in the same state as it was at boot time
     ; Enable long mode when back from handling interrupts
-    OutputSerial 'R'
     jmp 24:(EnableProtectedMode - EnterRealMode + REAL_MODE_CODE_START)
 
 [BITS 32]
 EnableProtectedMode:
-    OutputSerial 'C'
     cli
     mov ax, 16
     mov ss, ax
@@ -129,7 +126,6 @@ EnableProtectedMode:
     mov es, ax
     mov gs, ax
     mov fs, ax
-
     mov eax, cr0
     and eax, ~(1 << 31)
     mov cr0, eax
@@ -155,7 +151,6 @@ DiskReader:
     mov ds, ax
     mov fs, ax
     mov gs, ax
-    
     xor eax, eax
     mov si, DAP_ADDRESS
     mov ah, 0x42

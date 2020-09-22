@@ -29,11 +29,11 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     packet->size = 0x10;
     packet->reserved = 0;
     packet->count = 1;
-    packet->offset = 0;
-    packet->dest = FIRST_SECTOR_DEST;
+    packet->offset = FIRST_SECTOR_DEST;
+    packet->segment = 0;
     packet->sectorNumberLowPart = 0;
     packet->sectorNumberHighPart = 0;
-    CopyMemory(DAP_ADDRESS + 0x10, &diskIndex, sizeof(BYTE));
+    *(BYTE_PTR)(DAP_ADDRESS + 0x10) = diskIndex;
     EnterRealModeRunFunction(DISK_READER, NULL);
     *address = FIRST_SECTOR_DEST;
 }
@@ -45,9 +45,9 @@ VOID LoadMBRToEntryPoint()
     for(BYTE diskIdx = 0x80; diskIdx < 0xff; diskIdx++)
     {
         ReadFirstSectorToRam(diskIdx, &sectorAddress);
-        if(sectorAddress->magic == BOOTABLE_SIGNATURE)
+        if(*(WORD_PTR)((BYTE_PTR)sectorAddress + 510) == BOOTABLE_SIGNATURE)
         {
-            CopyMemory(MBR_ADDRESS, sectorAddress, sizeof(MBR));
+            CopyMemory(MBR_ADDRESS, sectorAddress, 512;
             *(BYTE_PTR)(WINDOWS_DISK_INDEX) = diskIdx;
             break;
         }
