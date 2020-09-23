@@ -4,7 +4,7 @@
 #include <types.h>
 #include <utils.h>
 
-#define MBR_ADDRESS 0x7c00
+#define MBR_ADDRESS 0x7C00
 #define DAP_ADDRESS 0x4000
 #define FIRST_SECTOR_DEST 0x3000
 #define BOOTABLE_SIGNATURE 0xAA55
@@ -13,6 +13,15 @@
 #define WINDOWS_DISK_INDEX 0x6010
 
 #define MBR_SIZE 512 
+
+
+/* RSDP related data */
+#define EBDA_POINTER_ADDRESS 0x040E
+#define RSDP_CHECKSUM_OFFSET 0x8
+#define RSDP_REVISION_OFFSET 0xF
+#define RSDP_ADDRESS_OFFSET 0x10
+#define RSDP_STRUCTURE_SIZE 20
+#define RSDP_EXTENSION_SIZE 16
 
 enum{
     DISK_READER = 0,
@@ -62,5 +71,6 @@ extern VOID GetMemoryMapEnd();
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
 VOID LoadMBRToEntryPoint();
+STATUS FindRSDP(OUT BYTE_PTR* address);
 
 #endif

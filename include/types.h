@@ -9,6 +9,13 @@ typedef unsigned char BOOL;
 typedef unsigned char BYTE, UCHAR, *BYTE_PTR;
 typedef unsigned short WORD, *WORD_PTR;
 typedef char CHAR, *PCHAR;
+typedef int INT;
+
+#define STATUS QWORD
+#define STATUS_SUCCESS 0
+#define STATUS_FAILURE 1
+#define STATUS_RSDP_NOT_FOUND 2
+#define STATUS_RSDP_INVALID_CHECKSUM 3
 
 #define va_list __builtin_va_list
 #define va_start(v,l) __builtin_va_start(v,l)

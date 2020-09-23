@@ -83,3 +83,48 @@ QWORD AllocateMemoryUsingMemoryMap
     memoryMap[upperIdx].length -= alignedAllocationSize;
     return memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
 }
+
+STATUS FindRSDP(OUT BYTE_PTR* address)
+{
+    CHAR pattern[] = "RSD PTR ";
+    BYTE_PTR ebdaAddress = (*(WORD_PTR)EBDA_POINTER_ADDRESS) >> 4;
+    BYTE_PTR rsdpBaseAddress;
+
+    for(QWORD i = 0; i < 0x1024; i += 16)
+    {
+        if(!CompareMemory(ebdaAddress + i, pattern, 9))
+        {
+            rsdpBaseAddress = (ebdaAddress + i);
+            goto RSDPFound;
+        }
+    }
+
+    for(QWORD start = 0xE0000; start < 0xFFFFF; start += 16)
+    {
+        if(!CompareMemory(start, pattern, 9))
+        {
+            rsdpBaseAddress = start;
+            goto RSDPFound;
+        }
+    }
+
+    return STATUS_FAILURE;
+
+RSDPFound:
+    *address = rsdpBaseAddress + RSDP_ADDRESS_OFFSET;
+
+    QWORD sum = 0;
+    for(BYTE i = 0; i < RSDP_STRUCTURE_SIZE; i++)
+            sum += rsdpBaseAddress[i];
+    if(sum & 0xff) // checksum failed
+        return STATUS_RSDP_INVALID_CHECKSUM;
+    
+    if(rsdpBaseAddress[RSDP_REVISION_OFFSET] == 1) // ACPI Vesrion 1.0
+        return STATUS_SUCCESS;
+    // ACPI Vesrion 2.0 and above
+    for(BYTE i = 0; i < RSDP_EXTENSION_SIZE; i++)
+        sum += (rsdpBaseAddress + RSDP_STRUCTURE_SIZE)[i];
+    if(sum & 0xff)
+        return STATUS_RSDP_INVALID_CHECKSUM;
+    return STATUS_SUCCESS;
+}

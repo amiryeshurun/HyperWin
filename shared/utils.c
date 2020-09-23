@@ -93,3 +93,10 @@ QWORD StringLength(IN PCHAR str)
         length++;
     return length;
 }
+
+INT CompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, QWORD length)
+{
+    QWORD count = 0;
+    while(*buff1 == *buff2 && count++ != length);
+    return count < length ? ((CHAR)*buff1 - (CHAR)*buff2) : 0;
+}
