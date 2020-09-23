@@ -131,11 +131,11 @@ _start:
     MovQwordToAddressLittleEndian 0x1002, 0x0, 0x2000
     ; left = high part, right = low part. For more information, read AMD64 developer manual volume 2, GDT
     MovQwordToAddressLittleEndian 0x2000, 0x0, 0x0 ; null descriptor - 0
-	MovQwordToAddressLittleEndian 0x2008, 0x209a00, 0x0	; code - long mode - 8
-	MovQwordToAddressLittleEndian 0x2010, 0xcf9200, 0xffff ; data - long and compatibility - 16
-	MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32-bit mode - 24
-	MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit (not real) - 32
-	MovQwordToAddressLittleEndian 0x2028, 0x9200, 0xffff ; data - 16 bit (not real) - 40
+    MovQwordToAddressLittleEndian 0x2008, 0x209a00, 0x0	; code - long mode - 8
+    MovQwordToAddressLittleEndian 0x2010, 0xcf9200, 0xffff ; data - long and compatibility - 16
+    MovQwordToAddressLittleEndian 0x2018, 0xcf9a00, 0xffff ; code - 32-bit mode - 24
+    MovQwordToAddressLittleEndian 0x2020, 0x9a00, 0xffff ; code - 16 bit (not real) - 32
+    MovQwordToAddressLittleEndian 0x2028, 0x9200, 0xffff ; data - 16 bit (not real) - 40
     lgdt [0x1000]
 
     ; Enter long mode - see docs/host/entrypoint.md for details
@@ -183,12 +183,12 @@ CompatibilityTo64:
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
     push 16
-	mov rax, 0x25ff0
-	push rax
-	pushf
-	push 24 ; 32 bit code selector
-	push REAL_MODE_CODE_START
-	iretq
+    mov rax, 0x25ff0
+    push rax
+    pushf
+    push 24 ; 32 bit code selector
+    push REAL_MODE_CODE_START
+    iretq
 
 [BITS 32]
 SetupSystemAndHandleControlToBios:
