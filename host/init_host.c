@@ -111,8 +111,6 @@ STATUS FindRSDP(OUT BYTE_PTR* address)
     return STATUS_FAILURE;
 
 RSDPFound:
-    *address = rsdpBaseAddress + RSDP_ADDRESS_OFFSET;
-
     QWORD sum = 0;
     for(BYTE i = 0; i < RSDP_STRUCTURE_SIZE; i++)
             sum += rsdpBaseAddress[i];
@@ -120,11 +118,15 @@ RSDPFound:
         return STATUS_RSDP_INVALID_CHECKSUM;
     
     if(rsdpBaseAddress[RSDP_REVISION_OFFSET] == 1) // ACPI Vesrion 1.0
+    {   
+        *address = rsdpBaseAddress + RSDP_ADDRESS_OFFSET;
         return STATUS_SUCCESS;
+    }
     // ACPI Vesrion 2.0 and above
     for(BYTE i = 0; i < RSDP_EXTENSION_SIZE; i++)
         sum += (rsdpBaseAddress + RSDP_STRUCTURE_SIZE)[i];
     if(sum & 0xff)
         return STATUS_RSDP_INVALID_CHECKSUM;
+    *address = rsdpBaseAddress + RSDP_STRUCTURE_SIZE +  4; // Xsdt
     return STATUS_SUCCESS;
 }
