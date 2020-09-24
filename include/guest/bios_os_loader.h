@@ -84,7 +84,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
 VOID LoadMBRToEntryPoint();
 STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
-STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type, IN PCHAR signature);
+STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature);
 STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
 
 #endif

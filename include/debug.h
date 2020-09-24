@@ -9,7 +9,7 @@
 #define COM4 0x2E8
 #define DEBUG_PORT COM3
 
-#define BUFF_MAX_SIZE 0x1000
+#define BUFF_MAX_SIZE 0x700
 
 VOID PrintBuffer(IN PCHAR buffer, IN QWORD length);
 VOID PrintNullTerminatedBuffer(IN PCHAR buffer);
@@ -20,6 +20,7 @@ VOID Print(IN PCHAR fmt, ...);
 #define STR(x) STR_HELPER(x)
 
 #define DEBUG
+#define NOP if(TRUE) 5;
 
 #define ASSERT(condition) \
         do \

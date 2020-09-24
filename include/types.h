@@ -2,7 +2,7 @@
 #define __TYPES_H_
 
 typedef unsigned int UINT32;
-typedef unsigned long DWORD, *DWORD_PTR;
+typedef unsigned int DWORD, *DWORD_PTR;
 typedef unsigned long long UINT64;
 typedef unsigned long long QWORD, *QWORD_PTR;
 typedef unsigned char BOOL;
