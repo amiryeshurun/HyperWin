@@ -35,7 +35,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     BYTE_PTR physicalHypervisorBase;
     if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize, &physicalHypervisorBase))
     {
-        Print("Allocation of %d bytes failed.\n", allocationSize);
+        Print("Allocation of %8 bytes failed.\n", allocationSize);
         ASSERT(FALSE);
     }
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
@@ -79,14 +79,14 @@ STATUS AllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address)
 {
     QWORD alignedAllocationSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
-    int upperIdx = NEG_INF; // high addresses are more rarely to be in use on the computer startup, use them
+    INT upperIdx = NEG_INF; // high addresses are more rarely to be in use on the computer startup, use them
     for(DWORD i = 0; i < memoryRegionsCount; i++)
     {
         if(memoryMap[i].type != E820_USABLE_REGION)
             continue;
         if(memoryMap[i].length <= allocationSize)
             continue;
-        if(i > upperIdx)
+        if((INT)i > upperIdx)
             upperIdx = i;
     }
     if(upperIdx == NEG_INF)
@@ -205,4 +205,13 @@ STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYT
         return STATUS_NO_CORES_FOUND;
     
     return STATUS_SUCCESS;
+}
+
+VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count)
+{
+    for(QWORD i = 0; i < count; i++)
+        Print("######### %d\n"
+               "Base address: %8\n"
+               "Length: %d\n"
+               "Type: %d\n", i, start[i].baseAddress, start[i].length, start[i].type);
 }

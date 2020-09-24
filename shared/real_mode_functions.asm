@@ -164,7 +164,11 @@ DiskReaderEnd:
 [BITS 16]
 GetMemoryMap:
     mov ax, 0
+    mov ss, ax
     mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
     mov di, E820_OUTPUT_ADDRESS + 2
 	xor ebx, ebx
 	xor bp, bp
