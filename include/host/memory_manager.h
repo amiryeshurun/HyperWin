@@ -18,10 +18,11 @@ typedef struct _E820_LIST_ENTRY
     QWORD length;
     DWORD type;
     DWORD extendedAttribute;
-}E820_LIST_ENTRY, *PE820_LIST_ENTRY;
+} __attribute__((__packed__)) E820_LIST_ENTRY, *PE820_LIST_ENTRY;
 
 STATUS AllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address);
+VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count);
 QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);
 
