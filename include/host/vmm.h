@@ -10,7 +10,7 @@
 #define COMPUTER_MEM_SIZE 16
 
 #define STACK_SIZE (4 * PAGE_SIZE)
-#define HEAP_SIZE (4 * PAGE_SIZE)
+#define HEAP_SIZE (8 * PAGE_SIZE)
 
 #define MAX_CORES 8
 
@@ -22,19 +22,20 @@ struct _CURRENT_GUEST_STATE;
 
 typedef struct _SHARED_CPU_DATA
 {
+    BYTE heap[HEAP_SIZE];
     struct _SINGLE_CPU_DATA* cpuData[MAX_CORES];
     struct _CURRENT_GUEST_STATE* currentState[MAX_CORES];
     E820_LIST_ENTRY validRam[E820_OUTPUT_MAX_ENTRIES];
     BYTE validRamCount;
     E820_LIST_ENTRY allRam[E820_OUTPUT_MAX_ENTRIES];
     BYTE memoryRangesCount;
+    BYTE numberOfCores;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
 {
     BYTE vmcs[PAGE_SIZE];
     BYTE stack[STACK_SIZE];
-    BYTE heap[HEAP_SIZE];
     QWORD pageMapLevel4s[ARRAY_PAGE_SIZE]; // cr3
     QWORD pageDirectoryPointerTables[ARRAY_PAGE_SIZE]; // 1 PML entry = 512GB, enough for the HV
     QWORD pageDirectories[ARRAY_PAGE_SIZE * ARRAY_PAGE_SIZE]; // HV will use 2MB pages
@@ -44,6 +45,7 @@ typedef struct _SINGLE_CPU_DATA
         Each entry in the previous table maps 1GB of memory */
     QWORD eptPageDirectories[ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE]; 
     QWORD eptPageTables[ARRAY_PAGE_SIZE * ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE];
+    BYTE coreIdentifier;
     PSHARED_CPU_DATA sharedData;
 } SINGLE_CPU_DATA, *PSINGLE_CPU_DATA;
 

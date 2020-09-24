@@ -3,8 +3,9 @@
 
 #include <types.h>
 #include <utils.h>
+#include <error_codes.h>
 
-#define MBR_ADDRESS 0x7c00
+#define MBR_ADDRESS 0x7C00
 #define DAP_ADDRESS 0x4000
 #define FIRST_SECTOR_DEST 0x3000
 #define BOOTABLE_SIGNATURE 0xAA55
@@ -13,6 +14,26 @@
 #define WINDOWS_DISK_INDEX 0x6010
 
 #define MBR_SIZE 512 
+
+
+/* RSDP related data */
+#define EBDA_POINTER_ADDRESS 0x040E
+#define RSDP_CHECKSUM_OFFSET 0x8
+#define RSDP_REVISION_OFFSET 0xF
+#define RSDP_ADDRESS_OFFSET 0x10
+#define RSDP_STRUCTURE_SIZE 20
+#define RSDP_EXTENSION_SIZE 16
+
+/* RSDT related data */
+#define RSDT_LENGTH_OFFSET 4
+#define ACPI_SDT_HEADER_SIZE 36
+
+/* MADT related data */
+#define PROCESSOR_LOCAL_APIC 0
+#define IO_APIC 1
+#define INTERRUPT_SOURCE_OVERRIDE 2
+#define NON_MASKABLE_INTERRUPTS 4
+#define LOCAL_APIC_ADDRESS_OVERRIDE 5
 
 enum{
     DISK_READER = 0,
@@ -62,5 +83,8 @@ extern VOID GetMemoryMapEnd();
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
 VOID LoadMBRToEntryPoint();
+STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
+STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature);
+STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
 
 #endif
