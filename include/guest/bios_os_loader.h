@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <utils.h>
+#include <error_codes.h>
 
 #define MBR_ADDRESS 0x7C00
 #define DAP_ADDRESS 0x4000
@@ -22,6 +23,10 @@
 #define RSDP_ADDRESS_OFFSET 0x10
 #define RSDP_STRUCTURE_SIZE 20
 #define RSDP_EXTENSION_SIZE 16
+
+/* RSDT related data */
+#define RSDT_LENGTH_OFFSET 4
+#define ACPI_SDT_HEADER_SIZE 36
 
 enum{
     DISK_READER = 0,
@@ -71,6 +76,7 @@ extern VOID GetMemoryMapEnd();
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
 VOID LoadMBRToEntryPoint();
-STATUS FindRSDP(OUT BYTE_PTR* address);
+STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
+STATUS FindAPICTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type);
 
 #endif

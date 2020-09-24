@@ -28,7 +28,12 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     allocationSize += ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE);
     allocationSize += (ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE) * numberOfCores);
     allocationSize += (ALIGN_UP(sizeof(CURRENT_GUEST_STATE) * numberOfCores, PAGE_SIZE));
-    QWORD physicalHypervisorBase = AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize);
+    BYTE_PTR physicalHypervisorBase;
+    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize, &physicalHypervisorBase))
+    {
+        Print("Allocation of %d bytes failed.\n", allocationSize);
+        ASSERT(FALSE);
+    }
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     /// TODO: ZERO THE MEMORY
     CopyMemory(hypervisorBase, codeBase, codeBase);
@@ -64,8 +69,8 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->validRamCount = validRamCount;
 }
 
-QWORD AllocateMemoryUsingMemoryMap
-    (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize)
+STATUS AllocateMemoryUsingMemoryMap
+    (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address)
 {
     QWORD alignedAllocationSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
     int upperIdx = NEG_INF; // high addresses are more rarely to be in use on the computer startup, use them
@@ -79,12 +84,13 @@ QWORD AllocateMemoryUsingMemoryMap
             upperIdx = i;
     }
     if(upperIdx == NEG_INF)
-        return NO_MEM_AVAILABLE;
+        return  STATUS_NO_MEM_AVAILABLE;
     memoryMap[upperIdx].length -= alignedAllocationSize;
-    return memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
+    *address = memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
+    return STATUS_SUCCESS;
 }
 
-STATUS FindRSDP(OUT BYTE_PTR* address)
+STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
 {
     CHAR pattern[] = "RSD PTR ";
     BYTE_PTR ebdaAddress = (*(WORD_PTR)EBDA_POINTER_ADDRESS) >> 4;
@@ -119,6 +125,7 @@ RSDPFound:
     
     if(rsdpBaseAddress[RSDP_REVISION_OFFSET] == 1) // ACPI Vesrion 1.0
     {   
+        *type = 1;
         *address = rsdpBaseAddress + RSDP_ADDRESS_OFFSET;
         return STATUS_SUCCESS;
     }
@@ -127,6 +134,19 @@ RSDPFound:
         sum += (rsdpBaseAddress + RSDP_STRUCTURE_SIZE)[i];
     if(sum & 0xff)
         return STATUS_RSDP_INVALID_CHECKSUM;
+    *type = 2;
     *address = rsdpBaseAddress + RSDP_STRUCTURE_SIZE +  4; // Xsdt
+    return STATUS_SUCCESS;
+}
+
+STATUS FindAPICTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type)
+{
+    QWORD sum = 0;
+    for(QWORD i = 0; i < *(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET); i++)
+        sum += rsdt[i];
+    if(sum % 0x100)
+        return STATUS_RSDT_INVALID_CHECKSUM;
+    
+    // TBD
     return STATUS_SUCCESS;
 }
