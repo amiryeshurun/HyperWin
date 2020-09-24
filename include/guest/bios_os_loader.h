@@ -28,6 +28,13 @@
 #define RSDT_LENGTH_OFFSET 4
 #define ACPI_SDT_HEADER_SIZE 36
 
+/* MADT related data */
+#define PROCESSOR_LOCAL_APIC 0
+#define IO_APIC 1
+#define INTERRUPT_SOURCE_OVERRIDE 2
+#define NON_MASKABLE_INTERRUPTS 4
+#define LOCAL_APIC_ADDRESS_OVERRIDE 5
+
 enum{
     DISK_READER = 0,
     GET_MEMORY_MAP = 1
@@ -77,6 +84,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
 VOID LoadMBRToEntryPoint();
 STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
-STATUS FindAPICTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type);
+STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type, IN PCHAR signature);
+STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
 
 #endif

@@ -19,7 +19,12 @@ VOID Initialize()
 
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
 {
-    BYTE numberOfCores; // TBD...
+    BYTE rsdtType, numberOfCores, processorIdentifires[MAX_CORES];
+    BYTE_PTR apicTable, rsdtTable;
+    ASSERT(FindRSDT(&rsdtTable, &rsdtType) == STATUS_SUCCESS);
+    ASSERT(LocateSystemDescriptorTable(rsdtTable, &apicTable, rsdtType, "APIC") == STATUS_SUCCESS);
+    ASSERT(GetCoresData(apicTable, &numberOfCores, processorIdentifires) == STATUS_SUCCESS);
+
     EnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
     WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
@@ -39,6 +44,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     CopyMemory(hypervisorBase, codeBase, codeBase);
     UpdateInstructionPointer(hypervisorBase - codeBase);
     PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE);
+    sharedData->numberOfCores = numberOfCores;
     for(BYTE i = 0; i < numberOfCores; i++)
     {
         sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE) 
@@ -48,6 +54,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
             + i * sizeof(CURRENT_GUEST_STATE);
         sharedData->currentState[i] = sharedData->cpuData[i];
         sharedData->cpuData[i]->sharedData = sharedData;
+        sharedData->cpuData[i]->coreIdentifier = processorIdentifires[i];
     }
     DWORD validRamCount = 0;
     for(DWORD i = 0; i < memoryRegionsCount; i++)
@@ -139,7 +146,7 @@ RSDPFound:
     return STATUS_SUCCESS;
 }
 
-STATUS FindAPICTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type)
+STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type, IN PCHAR signature)
 {
     QWORD sum = 0;
     for(QWORD i = 0; i < *(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET); i++)
@@ -147,6 +154,59 @@ STATUS FindAPICTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* apicTable, IN QWORD type)
     if(sum % 0x100)
         return STATUS_RSDT_INVALID_CHECKSUM;
     
-    // TBD
+    QWORD entriesCount;
+    if(type == 1) // ACPI Version 1.0
+    {
+        entriesCount = ((*(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET)) - ACPI_SDT_HEADER_SIZE) / 4;
+        DWORD_PTR sectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
+
+        for(QWORD i = 0; i < entriesCount; i++)
+        {
+            if(!CompareMemory(signature, sectionsArrayBase[i], 4))
+            {
+                *apicTable = sectionsArrayBase[i];
+                return STATUS_SUCCESS;
+            }
+        }
+
+    }
+    else // Version >= 2.0
+    {
+        entriesCount = ((*(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET)) - ACPI_SDT_HEADER_SIZE) / 8;
+        QWORD_PTR sectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
+
+        for(QWORD i = 0; i < entriesCount; i++)
+        {
+            if(!CompareMemory(signature, sectionsArrayBase[i], 4))
+            {
+                *apicTable = sectionsArrayBase[i];
+                return STATUS_SUCCESS;
+            }
+        }
+    }
+
+    return STATUS_APIC_NOT_FOUND;
+}
+
+STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers)
+{
+    QWORD tableLength = *(DWORD_PTR)(apicTable + RSDT_LENGTH_OFFSET);
+    *processorsCount = 0;
+
+    for(QWORD offset = 0x2C; offset < tableLength;)
+    {
+        switch(*(BYTE_PTR)offset)
+        {
+            case PROCESSOR_LOCAL_APIC: 
+                processorsIdentifiers[(*processorsCount)++] = *((BYTE_PTR)offset + 2);
+                break;
+            /* reserved for future usage */
+        }
+        offset += *((BYTE_PTR)offset + 1);
+    }
+
+    if(!(*processorsCount))
+        return STATUS_NO_CORES_FOUND;
+    
     return STATUS_SUCCESS;
 }
