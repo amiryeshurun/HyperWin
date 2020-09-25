@@ -8,6 +8,7 @@ extern VOID UpdateInstructionPointer(QWORD offset);
 
 VOID Initialize()
 {
+    SetupVirtualAddress(__readcr3());
     InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
     LoadMBRToEntryPoint();
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START, (QWORD_PTR)SetupSystemAndHandleControlToBios,
@@ -36,7 +37,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         ASSERT(FALSE);
     }
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
-    /// TODO: ZERO THE MEMORY
+    SetMemory(hypervisorBase, 0, allocationSize);
     CopyMemory(hypervisorBase, codeBase, codeBase);
     UpdateInstructionPointer(hypervisorBase - codeBase);
     PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE);
@@ -69,7 +70,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         sharedData->allRam[i].extendedAttribute = memoryMap[i].extendedAttribute;
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
-    sharedData->validRamCount = validRamCount;
+    sharedData->validRamCount = validRamCount;    
 }
 
 STATUS AllocateMemoryUsingMemoryMap

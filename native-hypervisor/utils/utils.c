@@ -107,3 +107,8 @@ INT CompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length)
     }
     return 0;
 }
+
+VOID SetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length)
+{
+    for(; length; length--, *base++ = value);
+}

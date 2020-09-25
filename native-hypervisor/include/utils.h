@@ -15,5 +15,6 @@ CHAR ConvertHalfByteToHexChar(IN BYTE halfByte);
 QWORD pow(IN QWORD base, IN QWORD power);
 QWORD NumberOfDigits(IN QWORD number);
 QWORD StringLength(IN PCHAR str);
+VOID SetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length);
 
 #endif
