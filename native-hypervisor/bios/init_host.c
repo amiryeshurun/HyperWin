@@ -70,7 +70,8 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         sharedData->allRam[i].extendedAttribute = memoryMap[i].extendedAttribute;
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
-    sharedData->validRamCount = validRamCount;    
+    sharedData->validRamCount = validRamCount;
+    InitializeSingleHypervisor(sharedData->cpuData[0]);
 }
 
 STATUS AllocateMemoryUsingMemoryMap
@@ -88,8 +89,9 @@ STATUS AllocateMemoryUsingMemoryMap
             upperIdx = i;
     }
     if(upperIdx == NEG_INF)
-        return  STATUS_NO_MEM_AVAILABLE;
-    memoryMap[upperIdx].length -= alignedAllocationSize;
+        return STATUS_NO_MEM_AVAILABLE;
+    QWORD unalignedCount = memoryMap[upperIdx].baseAddress % PAGE_SIZE;
+    memoryMap[upperIdx].length -= (alignedAllocationSize + unalignedCount);
     *address = memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
     return STATUS_SUCCESS;
 }

@@ -17,6 +17,8 @@ typedef int INT;
 #define va_arg(v,l) __builtin_va_arg(v,l)
 
 #define VOID void
+#define PVOID VOID*
+
 #define FALSE (0)
 #define TRUE (!(FALSE))
 
