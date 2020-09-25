@@ -2,7 +2,7 @@
 #define __VMM_H_
 
 #include <types.h>
-#include <host/memory_manager.h>
+#include <vmm/memory_manager.h>
 
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000

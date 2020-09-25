@@ -1,13 +1,10 @@
-#include <types.h>
 #include <utils.h>
-#include <guest/bios_os_loader.h>
-#include <host/vmm.h>
+#include <bios/bios_os_loader.h>
+#include <vmm/vmm.h>
 #include <intrinsics.h>
 #include <debug.h>
 
 extern VOID UpdateInstructionPointer(QWORD offset);
-extern VOID SetupSystemAndHandleControlToBios();
-extern VOID SetupSystemAndHandleControlToBiosEnd();
 
 VOID Initialize()
 {

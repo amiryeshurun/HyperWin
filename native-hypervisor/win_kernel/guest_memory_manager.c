@@ -1,6 +1,6 @@
-#include <guest/memory_manager.h>
-#include <host/vmcs.h>
-#include <host/vm_operations.h>
+#include <win_kernel/memory_manager.h>
+#include <vmm/vmcs.h>
+#include <vmm/vm_operations.h>
 
 /* For more information about address translation, see Windows Internals, 7th edition, 
     page 381 */

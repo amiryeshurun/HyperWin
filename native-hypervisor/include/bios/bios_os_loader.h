@@ -35,6 +35,14 @@
 #define NON_MASKABLE_INTERRUPTS 4
 #define LOCAL_APIC_ADDRESS_OVERRIDE 5
 
+/* E820 related dat */
+#define E820_USABLE_REGION 1
+#define E820_RESERVED_REGION 2
+#define E820_RECLAIMABLE_REGION 3
+#define E820_NVS_REGION 4
+#define E820_BAD_MEMORY_REGION 5
+#define E820_OUTPUT_MAX_ENTRIES 30
+
 enum{
     DISK_READER = 0,
     GET_MEMORY_MAP = 1
@@ -70,6 +78,14 @@ typedef struct _MBR
     WORD magic;
 }__attribute__((__packed__))  MBR, *PMBR;
 
+typedef struct _E820_LIST_ENTRY
+{
+    QWORD baseAddress;
+    QWORD length;
+    DWORD type;
+    DWORD extendedAttribute;
+} __attribute__((__packed__)) E820_LIST_ENTRY, *PE820_LIST_ENTRY;
+
 typedef VOID (*BiosFunction)();
 
 extern VOID DiskReader();
@@ -79,6 +95,8 @@ extern VOID EnterRealModeEnd();
 extern VOID AsmEnterRealModeRunFunction();
 extern VOID GetMemoryMap();
 extern VOID GetMemoryMapEnd();
+extern VOID SetupSystemAndHandleControlToBios();
+extern VOID SetupSystemAndHandleControlToBiosEnd();
 
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
@@ -86,5 +104,8 @@ VOID LoadMBRToEntryPoint();
 STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
 STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature);
 STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
+STATUS AllocateMemoryUsingMemoryMap
+    (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address);
+VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count);
 
 #endif

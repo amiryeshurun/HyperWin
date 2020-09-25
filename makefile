@@ -1,6 +1,6 @@
 # --------------- C COMPILER --------------- #
 C_COMPILER 		 = gcc
-C_COMPILER_FLAGS = -I./include \
+C_COMPILER_FLAGS = -I./native-hypervisor/include \
 				   -nostdlib \
 				   -c \
 				   -w \
@@ -18,36 +18,40 @@ LINKER_FLAGS    = -nostdlib \
 
 # --------------- ASM COMPILER --------------- #
 ASM_COMPILER 	= nasm
-ASM_FLAGS 		= -Iinclude \
+ASM_FLAGS 		= -I./native-hypervisor/include \
 			      -f elf64 \
 				  -w-all
 
 
 OBJDIR := build
+SRC_DIR := native-hypervisor
 
-GUEST_C_SOURCE_FILES  = $(addprefix guest/, $(shell find guest/ -maxdepth 1 -name '*.c' -printf '%f '))
-HOST_C_SOURCE_FILES   = $(addprefix host/, $(shell find host/ -maxdepth 1 -name '*.c' -printf '%f '))
-SHARED_C_SOURCE_FILES   = $(addprefix shared/, $(shell find shared/ -maxdepth 1 -name '*.c' -printf '%f '))
-GUEST_ASM_SOURCE_FILES = $(addprefix guest/, $(shell find guest/ -maxdepth 1 -name '*.asm' -printf '%f '))
-HOST_ASM_SOURCE_FILES   = $(addprefix host/, $(shell find host/ -maxdepth 1 -name '*.asm' -printf '%f '))
-SHARED_ASM_SOURCE_FILES   = $(addprefix shared/, $(shell find shared/ -maxdepth 1 -name '*.asm' -printf '%f '))
+ENTRYPOINT_ASM		      = entrypoint.asm
+BIOS_C_SOURCE_FILES       = $(addprefix bios/, $(shell find native-hypervisor/bios/ -maxdepth 1 -name '*.c' -printf '%f '))
+DEBUG_C_SOURCE_FILES      = $(addprefix debug/, $(shell find native-hypervisor/debug/ -maxdepth 1 -name '*.c' -printf '%f '))
+UTILS_C_SOURCE_FILES      = $(addprefix utils/, $(shell find native-hypervisor/utils/ -maxdepth 1 -name '*.c' -printf '%f '))
+VMM_C_SOURCE_FILES        = $(addprefix vmm/, $(shell find native-hypervisor/vmm/ -maxdepth 1 -name '*.c' -printf '%f '))
+WIN_KERNEL_C_SOURCE_FILES = $(addprefix win_kernel/, $(shell find native-hypervisor/win_kernel/ -maxdepth 1 -name '*.c' -printf '%f '))
+BIOS_ASM_SOURCE_FILES     = $(addprefix bios/, $(shell find native-hypervisor/bios/ -maxdepth 1 -name '*.asm' -printf '%f '))
+UTILS_ASM_SOURCE_FILES    = $(addprefix utils/, $(shell find native-hypervisor/utils/ -maxdepth 1 -name '*.asm' -printf '%f '))
 
-OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(HOST_ASM_SOURCE_FILES:.asm=.o))	   \
-					  $(addprefix $(OBJDIR)/, $(GUEST_ASM_SOURCE_FILES:.asm=.o))   \
-					  $(addprefix $(OBJDIR)/, $(SHARED_ASM_SOURCE_FILES:.asm=.o))  \
-					  $(addprefix $(OBJDIR)/, $(GUEST_C_SOURCE_FILES:.c=.o)) 	   \
-					  $(addprefix $(OBJDIR)/, $(HOST_C_SOURCE_FILES:.c=.o)) 	   \
-					  $(addprefix $(OBJDIR)/, $(SHARED_C_SOURCE_FILES:.c=.o)) 	   
-
+OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(ENTRYPOINT_ASM:.asm=.o))           \
+					  $(addprefix $(OBJDIR)/, $(BIOS_ASM_SOURCE_FILES:.asm=.o))	   \
+					  $(addprefix $(OBJDIR)/, $(UTILS_ASM_SOURCE_FILES:.asm=.o))   \
+					  $(addprefix $(OBJDIR)/, $(BIOS_C_SOURCE_FILES:.c=.o))  	   \
+					  $(addprefix $(OBJDIR)/, $(DEBUG_C_SOURCE_FILES:.c=.o)) 	   \
+					  $(addprefix $(OBJDIR)/, $(UTILS_C_SOURCE_FILES:.c=.o))       \
+					  $(addprefix $(OBJDIR)/, $(VMM_C_SOURCE_FILES:.c=.o))         \
+					  $(addprefix $(OBJDIR)/, $(WIN_KERNEL_C_SOURCE_FILES:.c=.o))
 .PHONY: clean
 
 all: clean \
 	$(OBJDIR)/hypervisor.iso
 
-$(OBJDIR)/%.o : %.c
+$(OBJDIR)/%.o : $(SRC_DIR)/%.c
 	$(C_COMPILER) $(C_COMPILER_FLAGS) $< -o $@
 
-$(OBJDIR)/%.o : %.asm
+$(OBJDIR)/%.o : $(SRC_DIR)/%.asm
 	$(ASM_COMPILER) $(ASM_FLAGS) $< -o $@
 
 $(OBJDIR)/hypervisor.so : $(OUTPUT_OBJECT_FILES)
