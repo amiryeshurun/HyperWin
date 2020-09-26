@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <intrinsics.h>
 #include <vmm/msr.h>
+#include <vmm/memory_manager.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -15,5 +16,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __writemsr(MSR_IA32_FEATURE_CONTROL, __readmsr(MSR_IA32_FEATURE_CONTROL) | 7);
     *(DWORD_PTR)(cpuData->vmcs) = (DWORD)__readmsr(MSR_IA32_VMX_BASIC);
     *(DWORD_PTR)(cpuData->vmxon) = (DWORD)__readmsr(MSR_IA32_VMX_BASIC);
-
+    Print("%8\n", VirtualToPhysical(cpuData->vmxon));
+    ASSERT(__vmxon(VirtualToPhysical(cpuData->vmxon)) == 0);
+    Print("After vmxon\n");
 }

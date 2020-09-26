@@ -3,8 +3,8 @@
 
 #include <types.h>
 
-#define ALIGN_UP(x, y) (((x) + ((x) % (y))))
-#define ALIGN_DOWN(x, y) (((x) - ((x) % (y))))
+#define ALIGN_UP(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
+#define ALIGN_DOWN(x, y) ((x) & (~((y) - 1)))
 
 #define INF 0xffffffffffffffffULL
 #define NEG_INF (-0xffff)

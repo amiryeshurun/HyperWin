@@ -13,7 +13,7 @@ QWORD VirtualToPhysical(IN QWORD address)
 
 QWORD PhysicalToVirtual(IN QWORD address)
 {
-    return address | VIRTUAL_ADDRESS_OFFET;
+    return address + VIRTUAL_ADDRESS_OFFET;
 }
 
 VOID InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)

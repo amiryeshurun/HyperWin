@@ -16,6 +16,13 @@ VOID INLINE __vmwrite(QWORD field, QWORD value)
     asm volatile("vmwrite %1,%0" :: "r" (field), "r" (value));
 }
 
+/// TODO: Add return value
+__attribute__((always_inline))
+QWORD INLINE __vmxon(QWORD vmxonPhysicalAddress)
+{
+    asm volatile("vmxon %0" :: "m" (vmxonPhysicalAddress));
+}
+
 __attribute__((always_inline))
 VOID INLINE __writemsr(QWORD field, QWORD value)
 {

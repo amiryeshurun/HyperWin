@@ -44,6 +44,7 @@ SEGMENT .text
 
 [BITS 64]
 AsmEnterRealModeRunFunction:
+    OutputSerial 'H'
     push rbp
     push rsp
     mov qword [SAVED_STACK_ADDRESS], rsp
@@ -70,6 +71,7 @@ AsmReturnFromRealModeFunction:
 
 [BITS 32]
 EnterRealMode:
+    OutputSerial 'Q'
     cli
     ; define the interrupt vector for real mode
     mov eax, IVT_ADDRESS ; ivt
@@ -81,6 +83,7 @@ EnterRealMode:
 
 [BITS 16]
 DisableLongMode:
+    OutputSerial 'B'
     mov ax, 40
     mov ss, ax
     mov es, ax
@@ -145,6 +148,7 @@ EnterRealModeEnd:
 
 [BITS 16]
 DiskReader:
+    OutputSerial 'N'
     mov ax, 0
     mov ss, ax
     mov es, ax

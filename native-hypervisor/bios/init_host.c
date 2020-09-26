@@ -1,6 +1,7 @@
 #include <utils.h>
 #include <bios/bios_os_loader.h>
 #include <vmm/vmm.h>
+#include <vmm/memory_manager.h>
 #include <intrinsics.h>
 #include <debug.h>
 
@@ -72,6 +73,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
     InitializeSingleHypervisor(sharedData->cpuData[0]);
+    Print("Done HV\n");
 }
 
 STATUS AllocateMemoryUsingMemoryMap
@@ -90,8 +92,9 @@ STATUS AllocateMemoryUsingMemoryMap
     }
     if(upperIdx == NEG_INF)
         return STATUS_NO_MEM_AVAILABLE;
-    QWORD unalignedCount = memoryMap[upperIdx].baseAddress % PAGE_SIZE;
-    memoryMap[upperIdx].length -= (alignedAllocationSize + unalignedCount);
+    QWORD unalignedCountBase = memoryMap[upperIdx].baseAddress % PAGE_SIZE;
+    QWORD unalignedCountLength = memoryMap[upperIdx].length % PAGE_SIZE;
+    memoryMap[upperIdx].length -= (alignedAllocationSize + unalignedCountBase + unalignedCountLength);
     *address = memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
     return STATUS_SUCCESS;
 }
