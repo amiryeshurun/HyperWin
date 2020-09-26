@@ -15,6 +15,7 @@
 #define MAX_CORES 8
 
 #define CR4_VMX_ENABLED (1 << 13)
+#define CR4_NE_ENABLED (1 << 5)
 
 /* HOST SELECTORS */
 #define HYPERVISOR_CS_SELECTOR 8
@@ -63,6 +64,7 @@ typedef struct _CURRENT_GUEST_STATE
 
 extern VOID VmmToVm();
 extern VOID HandleVmExit();
+extern QWORD SetupCompleteBackToGuestState();
 
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
 VOID InitializeSingleHypervisor(IN PVOID data);

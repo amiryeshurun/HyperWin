@@ -144,4 +144,13 @@ VOID INLINE __writecr4(QWORD cr4)
     asm volatile("mov %0, %%cr4" :: "r"(cr4));
 }
 
+__attribute__((always_inline))
+QWORD INLINE __readflags()
+{
+    QWORD flags;
+    asm volatile("pushf; pop %0": "=r" (flags));
+    return flags;
+}
+
+
 #endif

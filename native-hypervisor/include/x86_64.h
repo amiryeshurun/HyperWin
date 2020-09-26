@@ -1,5 +1,5 @@
-#ifndef __X86_H_
-#define __X86_H_
+#ifndef __X86_64_H_
+#define __X86_64_H_
 
 #include <types.h>
 
@@ -18,5 +18,11 @@ typedef struct _IDT
 extern VOID UpdateInstructionPointer(QWORD offset);
 extern VOID GetGDT(PGDT address);
 extern VOID GetIDT(PIDT address);
+extern QWORD GetCS();
+extern QWORD GetDS();
+extern QWORD GetSS();
+extern QWORD GetES();
+extern QWORD GetFS();
+extern QWORD GetGS();
 
 #endif
