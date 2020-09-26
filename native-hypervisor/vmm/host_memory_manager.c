@@ -16,7 +16,7 @@ QWORD PhysicalToVirtual(IN QWORD address)
     return address + VIRTUAL_ADDRESS_OFFET;
 }
 
-VOID InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)
+QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)
 {
     cpuData->pageMapLevel4s[0] = cpuData->pageDirectoryPointerTables;
     cpuData->pageMapLevel4s[200] = cpuData->pageDirectoryPointerTables;

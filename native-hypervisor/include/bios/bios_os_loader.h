@@ -87,6 +87,25 @@ typedef struct _E820_LIST_ENTRY
     DWORD extendedAttribute;
 } __attribute__((__packed__)) E820_LIST_ENTRY, *PE820_LIST_ENTRY;
 
+typedef union _INTERRUPT_COMMAND_REGISTER
+{
+    QWORD full;
+    struct
+    {
+        QWORD vector : 8;
+        QWORD deliveryMode : 3;
+        QWORD destinationMode : 1;
+        QWORD deliveryStatus : 1;
+        QWORD reserved0 : 1;
+        QWORD level : 1;
+        QWORD triggerMode : 1;
+        QWORD reserved1 : 2;
+        QWORD destinationShort : 2;
+        QWORD reserved2 : 35;
+        QWORD destination : 8;
+    } bitFields;
+}INTERRUPT_COMMAND_REGISTER, *PINTERRUPT_COMMAND_REGISTER;;
+
 typedef VOID (*BiosFunction)();
 
 extern VOID DiskReader();

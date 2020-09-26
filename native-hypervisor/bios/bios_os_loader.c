@@ -34,7 +34,6 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     packet->sectorNumberLowPart = 0;
     packet->sectorNumberHighPart = 0;
     *(BYTE_PTR)(DAP_ADDRESS + 0x10) = diskIndex;
-    Print("Calling RM\n");
     EnterRealModeRunFunction(DISK_READER, NULL);
     if(!address)
     {

@@ -2,7 +2,10 @@
 #define __INTRINSICS_H_
 
 #include <types.h>
+
 #define INLINE inline
+#define CARRY_FLAG_MASK 1
+#define ZERO_FLAG_MASK (1 << 6)
 
 __attribute__((always_inline))
 VOID INLINE __vmread(QWORD field, QWORD_PTR value)
@@ -16,11 +19,46 @@ VOID INLINE __vmwrite(QWORD field, QWORD value)
     asm volatile("vmwrite %1,%0" :: "r" (field), "r" (value));
 }
 
-/// TODO: Add return value
 __attribute__((always_inline))
 QWORD INLINE __vmxon(QWORD vmxonPhysicalAddress)
 {
-    asm volatile("vmxon %0" :: "m" (vmxonPhysicalAddress));
+    QWORD flags;
+    asm volatile("vmxon %1; pushf; pop %0" : "=r" (flags) : "m" (vmxonPhysicalAddress));
+    if(flags & CARRY_FLAG_MASK)
+        return 1;
+    if(flags & ZERO_FLAG_MASK)
+        return 2;
+    return 0;
+}
+
+__attribute__((always_inline))
+VOID INLINE __vmxoff()
+{
+    asm volatile("vmxoff");
+}
+
+__attribute__((always_inline))
+QWORD INLINE __vmclear(QWORD vmcsPhysicalAddress)
+{
+    QWORD flags;
+    asm volatile("vmclear %1; pushf; pop %0" : "=r" (flags) : "m" (vmcsPhysicalAddress));
+    if(flags & CARRY_FLAG_MASK)
+        return 1;
+    if(flags & ZERO_FLAG_MASK)
+        return 2;
+    return 0;
+}
+
+__attribute__((always_inline))
+QWORD INLINE __vmptrld(QWORD vmcsPhysicalAddress)
+{
+    QWORD flags;
+    asm volatile("vmptrld %1; pushf; pop %0" : "=r" (flags) : "m" (vmcsPhysicalAddress));
+    if(flags & CARRY_FLAG_MASK)
+        return 1;
+    if(flags & ZERO_FLAG_MASK)
+        return 2;
+    return 0;
 }
 
 __attribute__((always_inline))
@@ -34,7 +72,7 @@ QWORD INLINE __readmsr(QWORD field)
 {
     QWORD upperHalf = 0, lowerHalf = 0;
     asm volatile("rdmsr" : "=d" (upperHalf), "=a" (lowerHalf) : "c"(field));
-    return upperHalf << 32 | lowerHalf;
+    return (upperHalf << 32) | lowerHalf;
 }
 
 __attribute__((always_inline))

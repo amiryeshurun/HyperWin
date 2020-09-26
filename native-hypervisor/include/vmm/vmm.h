@@ -16,6 +16,10 @@
 
 #define CR4_VMX_ENABLED (1 << 13)
 
+/* HOST SELECTORS */
+#define HYPERVISOR_CS_SELECTOR 8
+#define HYPERVISOR_DS_SELECTOR 16
+
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
 
@@ -35,6 +39,7 @@ typedef struct _SINGLE_CPU_DATA
 {
     BYTE vmcs[PAGE_SIZE];
     BYTE vmxon[PAGE_SIZE];
+    BYTE msrBitmap[PAGE_SIZE];
     BYTE stack[STACK_SIZE];
     QWORD pageMapLevel4s[ARRAY_PAGE_SIZE]; // cr3
     QWORD pageDirectoryPointerTables[ARRAY_PAGE_SIZE]; // 1 PML entry = 512GB, enough for the HV
@@ -46,6 +51,7 @@ typedef struct _SINGLE_CPU_DATA
     QWORD eptPageDirectories[ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE]; 
     QWORD eptPageTables[ARRAY_PAGE_SIZE * ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE];
     BYTE coreIdentifier;
+    QWORD gdt[0xff];
     PSHARED_CPU_DATA sharedData;
 } SINGLE_CPU_DATA, *PSINGLE_CPU_DATA;
 
@@ -54,6 +60,9 @@ typedef struct _CURRENT_GUEST_STATE
     REGISTERS guestRegisters;
     PSINGLE_CPU_DATA currentCPU;
 } CURRENT_GUEST_STATE, *PCURRENT_GUEST_STATE;
+
+extern VOID VmmToVm();
+extern VOID HandleVmExit();
 
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
 VOID InitializeSingleHypervisor(IN PVOID data);

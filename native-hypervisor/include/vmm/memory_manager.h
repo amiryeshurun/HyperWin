@@ -14,6 +14,6 @@
 VOID SetupVirtualAddress(IN QWORD pml4BaseAddress);
 QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);
-VOID InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
+QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
 
 #endif

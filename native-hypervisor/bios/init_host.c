@@ -4,8 +4,7 @@
 #include <vmm/memory_manager.h>
 #include <intrinsics.h>
 #include <debug.h>
-
-extern VOID UpdateInstructionPointer(QWORD offset);
+#include <x86_64.h>
 
 VOID Initialize()
 {
@@ -73,7 +72,6 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
     InitializeSingleHypervisor(sharedData->cpuData[0]);
-    Print("Done HV\n");
 }
 
 STATUS AllocateMemoryUsingMemoryMap
