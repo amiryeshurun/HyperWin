@@ -152,5 +152,11 @@ QWORD INLINE __readflags()
     return flags;
 }
 
+__attribute__((always_inline))
+VOID INLINE __writedr7(QWORD dr7)
+{
+    asm volatile("mov %0, %%dr7" :: "r"(dr7));
+}
+
 
 #endif
