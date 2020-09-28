@@ -81,8 +81,7 @@ multiboot2_header_start:
         dd multiboot2_address_tag_end - multiboot2_address_tag_start ; dize, DWORD
         dd CODE_BEGIN_ADDRESS
         dd -1 ; data segment is present to the end of the imgae
-        dd 0  ; bss
-        dd 0
+        dq 0  ; bss
     multiboot2_address_tag_end:
     multiboot2_entry_address_tag_start:
         dw 3      ; type, WORD
