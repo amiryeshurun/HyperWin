@@ -23,6 +23,7 @@ SetupCompleteBackToGuestState:
     mov rbx, rsp
     vmwrite rax, rbx
     vmlaunch
+    OutputSerial 'E'
     pushf
     pop rax
     ret ; an error occured

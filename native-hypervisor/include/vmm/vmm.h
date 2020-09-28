@@ -68,6 +68,6 @@ extern QWORD SetupCompleteBackToGuestState();
 
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
 VOID InitializeSingleHypervisor(IN PVOID data);
-QWORD AdjustControls(IN QWORD control, IN QWORD msr);
+DWORD AdjustControls(IN DWORD control, IN QWORD msr);
 
 #endif
