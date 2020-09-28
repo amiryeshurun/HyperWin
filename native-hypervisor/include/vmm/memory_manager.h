@@ -11,9 +11,65 @@
 #define PAGE_RW (1 << 1)
 #define PAGE_LARGE_PAGE (1 << 7)
 
+
+typedef union _EXTENDED_PAGE_TABLE_POINTER {
+    QWORD value;
+    struct 
+    {
+        QWORD memoryType : 3; 
+        QWORD pageWalkLength : 3;
+        QWORD dirtyAndAceessEnabled : 1; 
+        QWORD reserved : 5; 
+        QWORD pml4Address : 36;
+        QWORD reserved1 : 16;
+    }bitFields;
+}EXTENDED_PAGE_TABLE_POINTER, *PEXTENDED_PAGE_TABLE_POINTER;
+
+
+typedef union _EPT_PML4E_PDPTE_PDE
+{
+	QWORD value;
+	struct
+    {
+		QWORD read : 1;
+		QWORD write : 1;
+		QWORD execute : 1;
+		QWORD reserved : 5; // MBZ
+		QWORD accessed : 1;
+		QWORD ignored : 1;
+		QWORD executeForUserMode : 1;
+		QWORD ignored1 : 1;
+		QWORD physicalAddress : 36;
+		QWORD reserved1 : 4;
+		QWORD ignored2 : 12;
+	}bitFields;
+}EPT_PML4E_PDPTE_PDE, *PEPT_PML4E_PDPTE_PDE;
+
+typedef union _EPT_PTE 
+{
+	QWORD value;
+	struct {
+		QWORD read : 1;
+		QWORD write : 1;
+		QWORD execute : 1;
+		QWORD eptMemoryType : 3;
+		QWORD ignorePAT : 1;
+		QWORD ignored : 1;
+		QWORD accessedFlag : 1;	
+		QWORD dirtyFlag : 1;
+		QWORD executeForUserMode : 1;
+		QWORD ignored1 : 1;
+		QWORD physicalAddress : 36;
+		QWORD reserved : 4;
+		QWORD ignored2 : 11;
+		QWORD suppressVE : 1;
+	}bitFields;
+}EPT_PTE, *PEPT_PTE;
+
 VOID SetupVirtualAddress(IN QWORD pml4BaseAddress);
 QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);
 QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
+QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData);
 
 #endif
