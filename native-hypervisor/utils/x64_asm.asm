@@ -2,6 +2,7 @@
 
 SEGMENT .text
 
+global GetCurrentInstructionPointer
 global UpdateInstructionPointer
 global GetGDT
 global GetIDT
@@ -14,6 +15,7 @@ global GetGS
 
 UpdateInstructionPointer: ; 1st = RIP offset
     add [rsp], rdi ; current return address is stored on the stack
+    mov rax, [rsp]
     ret
 
 GetGDT:

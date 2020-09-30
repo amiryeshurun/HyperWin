@@ -15,7 +15,7 @@ typedef struct _IDT
     QWORD address;
 } __attribute__((__packed__)) IDT, *PIDT;
 
-extern VOID UpdateInstructionPointer(QWORD offset);
+extern QWORD UpdateInstructionPointer(QWORD offset);
 extern VOID GetGDT(PGDT address);
 extern VOID GetIDT(PIDT address);
 extern QWORD GetCS();

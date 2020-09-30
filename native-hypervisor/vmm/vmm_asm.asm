@@ -20,10 +20,8 @@ global SetupCompleteBackToGuestState
 
 SetupCompleteBackToGuestState:
     mov rax, 0x0000681c
-    mov rbx, rsp
-    vmwrite rax, rbx
+    vmwrite rax, rsp
     vmlaunch
-    OutputSerial 'E'
     pushf
     pop rax
     ret ; an error occured
