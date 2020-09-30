@@ -7,6 +7,7 @@
 #include <vmm/vmcs.h>
 #include <vmm/control_fields.h>
 #include <x86_64.h>
+#include <vmm/exit_reasons.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -88,7 +89,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     // Initialize host area
     __vmwrite(HOST_CR0, __readcr0());
     __vmwrite(HOST_CR3, InitializeHypervisorPaging(cpuData));
-    //__vmwrite(HOST_CR3, __readcr3());
     __vmwrite(HOST_CR4, __readcr4());
     __vmwrite(HOST_RIP, HandleVmExit);
     __vmwrite(HOST_RSP, cpuData->stack + sizeof(cpuData->stack)); // from high addresses to lower
@@ -138,4 +138,27 @@ DWORD AdjustControls(IN DWORD control, IN QWORD msr)
 	control &= (msrValue >> 32);            // force 0 if the corresponding MSR requires it
 	control |= (msrValue & 0xffffffffULL); // force 1 if the corresponding MSR requires it
 	return control;
+}
+
+VOID HandleVmExitEx()
+{
+    QWORD exitReason = vmread(VM_EXIT_REASON) & 0xffff; // 0..15, Intel SDM 26.7
+    switch(exitReason)
+    {
+        case EXIT_REASON_INVALID_GUEST_STATE:
+            Print("INVALID GUEST STATE!\n");
+            ASSERT(FALSE);
+            break;
+        case EXIT_REASON_MSR_LOADING:
+            Print("INVALID MSR LOADING!\n");
+            ASSERT(FALSE);
+            break;
+        case EXIT_REASON_MCE_DURING_VMENTRY:
+            Print("Failure due to machine-check event!\n");
+            ASSERT(FALSE);
+            break;
+        default:
+            Print("No match found, exit reason %d\n", exitReason);
+            ASSERT(FALSE);
+    }
 }

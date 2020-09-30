@@ -18,6 +18,8 @@ global VmmToVm
 global HandleVmExit
 global SetupCompleteBackToGuestState
 
+extern HandleVmExitEx
+
 SetupCompleteBackToGuestState:
     mov rax, 0x0000681c
     vmwrite rax, rsp
@@ -31,8 +33,9 @@ VmmToVm:
     ret
 
 HandleVmExit:
-    OutputSerial 'A'
+    call HandleVmExitEx
     vmresume
-    OutputSerial 'B' ; This should never be executed
+    OutputSerial 'F' ; This should never be executed
 .assertHandleVmExit:
+    OutputSerial 'F'
     jmp .assertHandleVmExit
