@@ -18,11 +18,12 @@ QWORD PhysicalToVirtual(IN QWORD address)
 
 QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)
 {
-    cpuData->pageMapLevel4s[0] = cpuData->pageDirectoryPointerTables;
-    cpuData->pageMapLevel4s[200] = cpuData->pageDirectoryPointerTables;
+    cpuData->pageMapLevel4s[0] = VirtualToPhysical(cpuData->pageDirectoryPointerTables) | PAGE_PRESENT | PAGE_RW;
+    cpuData->pageMapLevel4s[200] = VirtualToPhysical(cpuData->pageDirectoryPointerTables) | PAGE_PRESENT | PAGE_RW;
     for(QWORD i = 0; i < COMPUTER_MEM_SIZE; i++)
-        cpuData->pageDirectoryPointerTables[i] = cpuData->pageDirectories[i * PAGE_SIZE]
-                                                    | PAGE_PRESENT | PAGE_RW;
+        cpuData->pageDirectoryPointerTables[i] = 
+            VirtualToPhysical(&(cpuData->pageDirectories[i * ARRAY_PAGE_SIZE])) | PAGE_PRESENT | PAGE_RW;
+    
     QWORD physicalAddress = 0;
     for(QWORD i = 0; i < COMPUTER_MEM_SIZE * ARRAY_PAGE_SIZE; 
         i++, physicalAddress += LARGE_PAGE_SIZE)

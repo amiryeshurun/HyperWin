@@ -38,8 +38,9 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
-    CopyMemory(hypervisorBase, codeBase, codeBase);
-    UpdateInstructionPointer(hypervisorBase - codeBase);
+    //CopyMemory(hypervisorBase, codeBase, codeBase);
+    //UpdateInstructionPointer(hypervisorBase - codeBase);
+    //SetMemory(codeBase, 0, codeLength);
     PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE);
     sharedData->numberOfCores = numberOfCores;
     for(BYTE i = 0; i < numberOfCores; i++)
