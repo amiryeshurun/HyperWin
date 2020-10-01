@@ -14,8 +14,9 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     PSINGLE_CPU_DATA cpuData = (PSINGLE_CPU_DATA)data;
     Print("Initializing hypervisor on core #%d\n", cpuData->coreIdentifier);
 
-    __writecr0((__readcr0() | __readmsr(MSR_IA32_VMX_CR0_FIXED0)) & __readmsr(MSR_IA32_VMX_CR0_FIXED1));
-    __writecr4((__readcr4() | CR4_NE_ENABLED | CR4_VMX_ENABLED | __readmsr(MSR_IA32_VMX_CR4_FIXED0))
+    __writecr0((__readcr0() | CR0_NE_ENABLED  | __readmsr(MSR_IA32_VMX_CR0_FIXED0)) 
+                 & __readmsr(MSR_IA32_VMX_CR0_FIXED1));
+    __writecr4((__readcr4() | CR4_VMX_ENABLED | __readmsr(MSR_IA32_VMX_CR4_FIXED0))
                  & __readmsr(MSR_IA32_VMX_CR4_FIXED1));
     // Enable VMXON in SMX and non-SMX. Also set the lock bit
     __writemsr(MSR_IA32_FEATURE_CONTROL, __readmsr(MSR_IA32_FEATURE_CONTROL) | 7);
@@ -29,8 +30,10 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     // Current & active
     ASSERT(__vmptrld(VirtualToPhysical(cpuData->vmcs)) == STATUS_SUCCESS);  
     cpuData->gdt[0] = 0x0ULL;
-    cpuData->gdt[1] = 0x00209a0000000000ULL;
-    cpuData->gdt[2] = 0x00cf92000000ffffULL;
+    cpuData->gdt[1] = 0x00a09b0000000000ULL;
+    cpuData->gdt[2] = 0x00cf93000000ffffULL;
+    __writemsr(MSR_IA32_DEBUGCTL, __readmsr(MSR_IA32_DEBUGCTL) & 0xffc3); // see Intel SDM, 26.3.1.1, 4th point
+	__writedr7(__readdr7() & 0xffffffff);
     // Initialize guest area
     __vmwrite(GUEST_CR0, __readcr0());
     __vmwrite(GUEST_CR3, __readcr3());
@@ -43,49 +46,59 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_GDTR_LIMIT, gdt.limit);
     __vmwrite(GUEST_IDTR_BASE, idt.address);
     __vmwrite(GUEST_IDTR_LIMIT, idt.limit);
-    __vmwrite(GUEST_LDTR_BASE, 0);
+    __vmwrite(GUEST_LDTR_BASE, 0ULL);
     __vmwrite(GUEST_LDTR_LIMIT, 0xff);
+    __vmwrite(GUEST_LDTR_AR_BYTES, VMCS_SELECTOR_UNUSABLE);
     // To understand the AR fields, see section 24.4.1 on Intel DSM
     /// Note for the future: Try to clear reseved fields (in AR VMCS fields) if vmlaunch is failing
     // CS related data
     __vmwrite(GUEST_CS_SELECTOR, GetCS() & 0xf8);
-    __vmwrite(GUEST_CS_BASE, 0);
+    __vmwrite(GUEST_CS_BASE, 0ULL);
     __vmwrite(GUEST_CS_LIMIT, 0xffffffff);
-    __vmwrite(GUEST_CS_AR_BYTES, 0x209a);
+    __vmwrite(GUEST_CS_AR_BYTES, 0xa09b);
     // DS related data
     __vmwrite(GUEST_DS_SELECTOR, GetDS() & 0xf8);
-    __vmwrite(GUEST_DS_BASE, 0);
+    __vmwrite(GUEST_DS_BASE, 0ULL);
     __vmwrite(GUEST_DS_LIMIT, 0xffffffff);
-    __vmwrite(GUEST_DS_AR_BYTES, 0xcf92);
+    __vmwrite(GUEST_DS_AR_BYTES, 0xc093);
     // SS related data
     __vmwrite(GUEST_SS_SELECTOR, GetSS() & 0xf8);
-    __vmwrite(GUEST_SS_BASE, 0);
+    __vmwrite(GUEST_SS_BASE, 0ULL);
     __vmwrite(GUEST_SS_LIMIT, 0xffffffff);
-    __vmwrite(GUEST_SS_AR_BYTES, 0xcf92);
+    __vmwrite(GUEST_SS_AR_BYTES, 0xc093);
     // ES related data
     __vmwrite(GUEST_ES_SELECTOR, GetES() & 0xf8);
-    __vmwrite(GUEST_ES_BASE, 0);
+    __vmwrite(GUEST_ES_BASE, 0ULL);
     __vmwrite(GUEST_ES_LIMIT, 0xffffffff);
-    __vmwrite(GUEST_ES_AR_BYTES, 0xcf92);
+    __vmwrite(GUEST_ES_AR_BYTES, 0xc093);
     // GS related data
     __vmwrite(GUEST_GS_SELECTOR, GetGS() & 0xf8);
-    __vmwrite(GUEST_GS_BASE, 0);
+    __vmwrite(GUEST_GS_BASE, 0ULL);
     __vmwrite(GUEST_GS_LIMIT, 0xffffffff);
-    __vmwrite(GUEST_GS_AR_BYTES, 0xcf92);
+    __vmwrite(GUEST_GS_AR_BYTES, 0xc093);
     // FS related data
     __vmwrite(GUEST_FS_SELECTOR, GetFS() & 0xf8);
-    __vmwrite(GUEST_FS_BASE, 0);
+    __vmwrite(GUEST_FS_BASE, 0ULL);
     __vmwrite(GUEST_FS_LIMIT, 0xffffffff);
-    __vmwrite(GUEST_FS_AR_BYTES, 0xcf92);
+    __vmwrite(GUEST_FS_AR_BYTES, 0xc093);
+    // TR related data
+    __vmwrite(GUEST_TR_SELECTOR, GetDS() & 0xf8);
+    __vmwrite(GUEST_TR_BASE, 0ULL);
+    __vmwrite(GUEST_TR_LIMIT, 0xffffffff);
+    __vmwrite(GUEST_TR_AR_BYTES, 0xc08b);
     __vmwrite(GUEST_RIP, VmmToVm);
     __vmwrite(GUEST_RSP, 0); // Will be handled before vmlaunch is called, see x86_64.asm
     __vmwrite(GUEST_EFER, __readmsr(MSR_IA32_EFER));
-    __vmwrite(GUEST_RFLAGS, __readflags());
-	__vmwrite(GUEST_IA32_DEBUGCTL, __readmsr(MSR_IA32_DEBUGCTL) & 0xffffffff);
+    __vmwrite(GUEST_RFLAGS, __readflags() & 0x1fffd7);
+    __vmwrite(GUEST_IA32_DEBUGCTL, __readmsr(MSR_IA32_DEBUGCTL) & 0xffffffff);
 	__vmwrite(GUEST_IA32_DEBUGCTL_HIGH, __readmsr(MSR_IA32_DEBUGCTL) >> 32);
     __vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
 	__vmwrite(GUEST_ACTIVITY_STATE, 0);
-    
+    __vmwrite(GUEST_SYSENTER_EIP, 0xffff);
+    __vmwrite(GUEST_SYSENTER_ESP, 0xffff);
+    __vmwrite(GUEST_SYSENTER_CS, 8);
+    __vmwrite(GUEST_DR7, __readdr7());
+
     // Initialize host area
     __vmwrite(HOST_CR0, __readcr0());
     __vmwrite(HOST_CR3, InitializeHypervisorPaging(cpuData));
@@ -124,7 +137,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PROCBASED_CTLS2));
     __vmwrite(PIN_BASED_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PINBASED_CTLS));
 	__vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT, MSR_IA32_VMX_EXIT_CTLS));
-	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE, MSR_IA32_VMX_ENTRY_CTLS));
+	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
     //__vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     QWORD flags = SetupCompleteBackToGuestState();
     // Should never arrive here
@@ -142,8 +155,11 @@ DWORD AdjustControls(IN DWORD control, IN QWORD msr)
 
 VOID HandleVmExitEx()
 {
-    QWORD exitReason = vmread(VM_EXIT_REASON) & 0xffff; // 0..15, Intel SDM 26.7
-    switch(exitReason)
+    QWORD exitReason = vmread(VM_EXIT_REASON);
+    if(exitReason & VM_ENTRY_FAILURE_MASK)
+        Print("VM-Entry failure occured. Exit qualification: %d\n", vmread(EXIT_QUALIFICATION));
+
+    switch(exitReason & 0xffff) // 0..15, Intel SDM 26.7
     {
         case EXIT_REASON_INVALID_GUEST_STATE:
             Print("INVALID GUEST STATE!\n");

@@ -158,5 +158,12 @@ VOID INLINE __writedr7(QWORD dr7)
     asm volatile("mov %0, %%dr7" :: "r"(dr7));
 }
 
+__attribute__((always_inline))
+QWORD INLINE __readdr7()
+{
+    QWORD dr7;
+    asm volatile("mov %%dr7, %0" : "=r"(dr7));
+    return dr7;
+}
 
 #endif

@@ -65,4 +65,6 @@
 #define EXIT_REASON_UMWAIT              67
 #define EXIT_REASON_TPAUSE              68
 
+#define VM_ENTRY_FAILURE_MASK           (1 << 31)
+
 #endif

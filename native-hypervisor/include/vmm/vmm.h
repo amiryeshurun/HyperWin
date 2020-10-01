@@ -15,7 +15,9 @@
 #define MAX_CORES 8
 
 #define CR4_VMX_ENABLED (1 << 13)
-#define CR4_NE_ENABLED (1 << 5)
+#define CR0_NE_ENABLED (1 << 5)
+
+#define VMCS_SELECTOR_UNUSABLE (1 << 16)
 
 /* HOST SELECTORS */
 #define HYPERVISOR_CS_SELECTOR 8

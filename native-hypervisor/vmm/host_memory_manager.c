@@ -89,16 +89,16 @@ QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData)
     for(QWORD i = 0; i < COMPUTER_MEM_SIZE * ARRAY_PAGE_SIZE * ARRAY_PAGE_SIZE; i++)
     {
         PEPT_PTE ptp = &(cpuData->eptPageTables[i]);
-		ptp->bitFields.accessedFlag = 0;
-		ptp->bitFields.dirtyFlag = 0;
-		ptp->bitFields.eptMemoryType = 6;
-		ptp->bitFields.execute = 1;
-		ptp->bitFields.executeForUserMode = 1;
-		ptp->bitFields.ignorePAT = 0;
-		ptp->bitFields.physicalAddress = i;
-		ptp->bitFields.read = 1;
-		ptp->bitFields.suppressVE = 0;
-		ptp->bitFields.write = 1;
+        ptp->bitFields.accessedFlag = 0;
+        ptp->bitFields.dirtyFlag = 0;
+        ptp->bitFields.eptMemoryType = 6;
+        ptp->bitFields.execute = 1;
+        ptp->bitFields.executeForUserMode = 1;
+        ptp->bitFields.ignorePAT = 0;
+        ptp->bitFields.physicalAddress = i;
+        ptp->bitFields.read = 1;
+        ptp->bitFields.suppressVE = 0;
+        ptp->bitFields.write = 1;
     }
     
     return eptp.value;

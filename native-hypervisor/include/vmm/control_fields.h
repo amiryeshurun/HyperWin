@@ -31,6 +31,7 @@
 #define CPU_BASED_CTL2_ENABLE_VMFUNC        0x2000
 
 // VM-entry controls
+#define VM_ENTRY_LOAD_DEBUG_CTLS        (1 << 2)
 #define VM_ENTRY_IA32E_MODE             0x00000200
 #define VM_ENTRY_SMM                    0x00000400
 #define VM_ENTRY_DEACT_DUAL_MONITOR     0x00000800
