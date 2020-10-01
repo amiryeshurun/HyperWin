@@ -72,5 +72,6 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
 VOID InitializeSingleHypervisor(IN PVOID data);
 DWORD AdjustControls(IN DWORD control, IN QWORD msr);
 VOID HandleVmExitEx();
+PCURRENT_GUEST_STATE GetVMMStruct();
 
 #endif

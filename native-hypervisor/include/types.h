@@ -38,7 +38,6 @@ typedef struct _REGISTERS
     QWORD rsi;
     QWORD rdi;
     QWORD rbp;
-    QWORD rsp;
     QWORD r8;
     QWORD r9;
     QWORD r10;
@@ -47,6 +46,8 @@ typedef struct _REGISTERS
     QWORD r13;
     QWORD r14;
     QWORD r15;
+    QWORD rsp;
+    QWORD rip;
 }REGISTERS, *PREGISTERS;
 
 #endif

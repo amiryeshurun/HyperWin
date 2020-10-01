@@ -121,7 +121,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(HOST_SYSENTER_ESP, 0xffffffff);
     __vmwrite(HOST_GDTR_BASE, cpuData->gdt);
     
-    
     // General
     __vmwrite(VMCS_LINK_POINTER, -1ULL);
     __vmwrite(TSC_OFFSET, 0);
@@ -133,12 +132,12 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
     __vmwrite(VM_ENTRY_INTR_INFO, 0);
     __vmwrite(CPU_BASED_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_ACTIVATE_SECONDARY_CONTROLS, MSR_IA32_VMX_PROCBASED_CTLS));
-	//__vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
-    __vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PROCBASED_CTLS2));
+	__vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
+    //__vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PROCBASED_CTLS2));
     __vmwrite(PIN_BASED_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PINBASED_CTLS));
 	__vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT, MSR_IA32_VMX_EXIT_CTLS));
 	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
-    //__vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
+    __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     QWORD flags = SetupCompleteBackToGuestState();
     // Should never arrive here
     Print("FLAGS: %8, instruction error: %8\n", flags, vmread(VM_INSTRUCTION_ERROR));
@@ -158,9 +157,14 @@ VOID HandleVmExitEx()
     QWORD exitReason = vmread(VM_EXIT_REASON);
     if(exitReason & VM_ENTRY_FAILURE_MASK)
         Print("VM-Entry failure occured. Exit qualification: %d\n", vmread(EXIT_QUALIFICATION));
-
+    
+    PCURRENT_GUEST_STATE data = GetVMMStruct();
     switch(exitReason & 0xffff) // 0..15, Intel SDM 26.7
     {
+        case EXIT_REASON_EPT_VIOLATION:
+            Print("EPT Violation occured at: (P)%8, (V)%8\n", 
+                vmread(GUEST_PHYSICAL_ADDRESS), data->guestRegisters.rip);
+            ASSERT(FALSE);
         case EXIT_REASON_INVALID_GUEST_STATE:
             Print("INVALID GUEST STATE!\n");
             ASSERT(FALSE);
@@ -177,4 +181,9 @@ VOID HandleVmExitEx()
             Print("No match found, exit reason %d\n", exitReason);
             ASSERT(FALSE);
     }
+}
+
+PCURRENT_GUEST_STATE GetVMMStruct()
+{
+    return (PCURRENT_GUEST_STATE)vmread(HOST_FS_BASE);
 }

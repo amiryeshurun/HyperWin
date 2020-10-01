@@ -6,6 +6,8 @@
 #define ALIGN_UP(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 #define ALIGN_DOWN(x, y) ((x) & (~((y) - 1)))
 
+#define FIELD_OFFSET(type, field) (&((type)(0)->field))
+
 #define INF 0xffffffffffffffffULL
 #define NEG_INF (-0xffff)
 
