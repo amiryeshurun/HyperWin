@@ -34,15 +34,18 @@ VMM_C_SOURCE_FILES        = $(addprefix vmm/, $(shell find native-hypervisor/vmm
 WIN_KERNEL_C_SOURCE_FILES = $(addprefix win_kernel/, $(shell find native-hypervisor/win_kernel/ -maxdepth 1 -name '*.c' -printf '%f '))
 BIOS_ASM_SOURCE_FILES     = $(addprefix bios/, $(shell find native-hypervisor/bios/ -maxdepth 1 -name '*.asm' -printf '%f '))
 UTILS_ASM_SOURCE_FILES    = $(addprefix utils/, $(shell find native-hypervisor/utils/ -maxdepth 1 -name '*.asm' -printf '%f '))
+VMM_ASM_SOURCE_FILES      = $(addprefix vmm/, $(shell find native-hypervisor/vmm/ -maxdepth 1 -name '*.asm' -printf '%f '))
 
 OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(ENTRYPOINT_ASM:.asm=.o))           \
 					  $(addprefix $(OBJDIR)/, $(BIOS_ASM_SOURCE_FILES:.asm=.o))	   \
 					  $(addprefix $(OBJDIR)/, $(UTILS_ASM_SOURCE_FILES:.asm=.o))   \
+					  $(addprefix $(OBJDIR)/, $(VMM_ASM_SOURCE_FILES:.asm=.o))     \
 					  $(addprefix $(OBJDIR)/, $(BIOS_C_SOURCE_FILES:.c=.o))  	   \
 					  $(addprefix $(OBJDIR)/, $(DEBUG_C_SOURCE_FILES:.c=.o)) 	   \
 					  $(addprefix $(OBJDIR)/, $(UTILS_C_SOURCE_FILES:.c=.o))       \
 					  $(addprefix $(OBJDIR)/, $(VMM_C_SOURCE_FILES:.c=.o))         \
 					  $(addprefix $(OBJDIR)/, $(WIN_KERNEL_C_SOURCE_FILES:.c=.o))
+
 .PHONY: clean
 
 all: clean \

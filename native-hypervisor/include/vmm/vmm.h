@@ -2,11 +2,11 @@
 #define __VMM_H_
 
 #include <types.h>
-#include <vmm/memory_manager.h>
+#include <bios/bios_os_loader.h>
 
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
-#define ARRAY_PAGE_SIZE (PAGE_SIZE / sizeof(QWORD))
+#define ARRAY_PAGE_SIZE (PAGE_SIZE / 8)
 #define COMPUTER_MEM_SIZE 16
 
 #define STACK_SIZE (4 * PAGE_SIZE)
@@ -14,8 +14,14 @@
 
 #define MAX_CORES 8
 
-#define CODE_BEGIN_ADDRESS 0x120000
-#define E820_OUTPUT_ADDRESS 0x8600
+#define CR4_VMX_ENABLED (1 << 13)
+#define CR0_NE_ENABLED (1 << 5)
+
+#define VMCS_SELECTOR_UNUSABLE (1 << 16)
+
+/* HOST SELECTORS */
+#define HYPERVISOR_CS_SELECTOR 8
+#define HYPERVISOR_DS_SELECTOR 16
 
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
@@ -35,6 +41,8 @@ typedef struct _SHARED_CPU_DATA
 typedef struct _SINGLE_CPU_DATA
 {
     BYTE vmcs[PAGE_SIZE];
+    BYTE vmxon[PAGE_SIZE];
+    BYTE msrBitmap[PAGE_SIZE];
     BYTE stack[STACK_SIZE];
     QWORD pageMapLevel4s[ARRAY_PAGE_SIZE]; // cr3
     QWORD pageDirectoryPointerTables[ARRAY_PAGE_SIZE]; // 1 PML entry = 512GB, enough for the HV
@@ -46,6 +54,7 @@ typedef struct _SINGLE_CPU_DATA
     QWORD eptPageDirectories[ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE]; 
     QWORD eptPageTables[ARRAY_PAGE_SIZE * ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE];
     BYTE coreIdentifier;
+    QWORD gdt[0xff];
     PSHARED_CPU_DATA sharedData;
 } SINGLE_CPU_DATA, *PSINGLE_CPU_DATA;
 
@@ -55,6 +64,14 @@ typedef struct _CURRENT_GUEST_STATE
     PSINGLE_CPU_DATA currentCPU;
 } CURRENT_GUEST_STATE, *PCURRENT_GUEST_STATE;
 
+extern VOID VmmToVm();
+extern VOID HandleVmExit();
+extern QWORD SetupCompleteBackToGuestState();
+
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
+VOID InitializeSingleHypervisor(IN PVOID data);
+DWORD AdjustControls(IN DWORD control, IN QWORD msr);
+VOID HandleVmExitEx();
+PCURRENT_GUEST_STATE GetVMMStruct();
 
 #endif

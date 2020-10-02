@@ -12,9 +12,9 @@
 #define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 #define REAL_MODE_CODE_START 0x4200
 #define WINDOWS_DISK_INDEX 0x6010
+#define CODE_BEGIN_ADDRESS 0x120000
 
 #define MBR_SIZE 512 
-
 
 /* RSDP related data */
 #define EBDA_POINTER_ADDRESS 0x040E
@@ -42,6 +42,7 @@
 #define E820_NVS_REGION 4
 #define E820_BAD_MEMORY_REGION 5
 #define E820_OUTPUT_MAX_ENTRIES 30
+#define E820_OUTPUT_ADDRESS 0x8600
 
 enum{
     DISK_READER = 0,
@@ -85,6 +86,25 @@ typedef struct _E820_LIST_ENTRY
     DWORD type;
     DWORD extendedAttribute;
 } __attribute__((__packed__)) E820_LIST_ENTRY, *PE820_LIST_ENTRY;
+
+typedef union _INTERRUPT_COMMAND_REGISTER
+{
+    QWORD full;
+    struct
+    {
+        QWORD vector : 8;
+        QWORD deliveryMode : 3;
+        QWORD destinationMode : 1;
+        QWORD deliveryStatus : 1;
+        QWORD reserved0 : 1;
+        QWORD level : 1;
+        QWORD triggerMode : 1;
+        QWORD reserved1 : 2;
+        QWORD destinationShort : 2;
+        QWORD reserved2 : 35;
+        QWORD destination : 8;
+    } bitFields;
+}INTERRUPT_COMMAND_REGISTER, *PINTERRUPT_COMMAND_REGISTER;;
 
 typedef VOID (*BiosFunction)();
 

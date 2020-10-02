@@ -17,6 +17,8 @@ typedef int INT;
 #define va_arg(v,l) __builtin_va_arg(v,l)
 
 #define VOID void
+#define PVOID VOID*
+
 #define FALSE (0)
 #define TRUE (!(FALSE))
 
@@ -36,7 +38,6 @@ typedef struct _REGISTERS
     QWORD rsi;
     QWORD rdi;
     QWORD rbp;
-    QWORD rsp;
     QWORD r8;
     QWORD r9;
     QWORD r10;
@@ -45,6 +46,8 @@ typedef struct _REGISTERS
     QWORD r13;
     QWORD r14;
     QWORD r15;
+    QWORD rsp;
+    QWORD rip;
 }REGISTERS, *PREGISTERS;
 
 #endif

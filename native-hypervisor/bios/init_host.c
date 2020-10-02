@@ -1,10 +1,10 @@
 #include <utils.h>
 #include <bios/bios_os_loader.h>
 #include <vmm/vmm.h>
+#include <vmm/memory_manager.h>
 #include <intrinsics.h>
 #include <debug.h>
-
-extern VOID UpdateInstructionPointer(QWORD offset);
+#include <x86_64.h>
 
 VOID Initialize()
 {
@@ -38,8 +38,9 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
-    CopyMemory(hypervisorBase, codeBase, codeBase);
-    UpdateInstructionPointer(hypervisorBase - codeBase);
+    //CopyMemory(hypervisorBase, codeBase, codeBase);
+    //UpdateInstructionPointer(hypervisorBase - codeBase);
+    //SetMemory(codeBase, 0, codeLength);
     PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE);
     sharedData->numberOfCores = numberOfCores;
     for(BYTE i = 0; i < numberOfCores; i++)
@@ -70,7 +71,8 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         sharedData->allRam[i].extendedAttribute = memoryMap[i].extendedAttribute;
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
-    sharedData->validRamCount = validRamCount;    
+    sharedData->validRamCount = validRamCount;
+    InitializeSingleHypervisor(sharedData->cpuData[0]);
 }
 
 STATUS AllocateMemoryUsingMemoryMap
@@ -88,8 +90,10 @@ STATUS AllocateMemoryUsingMemoryMap
             upperIdx = i;
     }
     if(upperIdx == NEG_INF)
-        return  STATUS_NO_MEM_AVAILABLE;
-    memoryMap[upperIdx].length -= alignedAllocationSize;
+        return STATUS_NO_MEM_AVAILABLE;
+    QWORD unalignedCountBase = memoryMap[upperIdx].baseAddress % PAGE_SIZE;
+    QWORD unalignedCountLength = memoryMap[upperIdx].length % PAGE_SIZE;
+    memoryMap[upperIdx].length -= (alignedAllocationSize + unalignedCountBase + unalignedCountLength);
     *address = memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
     return STATUS_SUCCESS;
 }
