@@ -12,6 +12,17 @@
 #define PAGE_LARGE_PAGE (1 << 7)
 
 
+/* EPT Configurations */
+#define EPT_POINTER_WB 6
+#define EPT_PAGE_WALK_LENGTH (3 << 3)
+#define EPT_READ 1
+#define EPT_WRITE (1 << 1)
+#define EPT_EXECUTE (1 << 2)
+#define EPT_RWX (EPT_READ | EPT_WRITE | EPT_EXECUTE)
+#define EPT_RW (EPT_READ | EPT_WRITE)
+#define EPT_WX (EPT_WRITE | EPT_EXECUTE)
+#define EPT_RX (EPT_READ | EPT_EXECUTE)
+
 typedef union _EXTENDED_PAGE_TABLE_POINTER {
     QWORD value;
     struct 
@@ -23,7 +34,7 @@ typedef union _EXTENDED_PAGE_TABLE_POINTER {
         QWORD pml4Address : 36;
         QWORD reserved1 : 16;
     }bitFields;
-}EXTENDED_PAGE_TABLE_POINTER, *PEXTENDED_PAGE_TABLE_POINTER;
+}__attribute__((__packed__)) EXTENDED_PAGE_TABLE_POINTER, *PEXTENDED_PAGE_TABLE_POINTER;
 
 
 typedef union _EPT_PML4E_PDPTE_PDE
@@ -43,7 +54,7 @@ typedef union _EPT_PML4E_PDPTE_PDE
 		QWORD reserved1 : 4;
 		QWORD ignored2 : 12;
 	}bitFields;
-}EPT_PML4E_PDPTE_PDE, *PEPT_PML4E_PDPTE_PDE;
+}__attribute__((__packed__)) EPT_PML4E_PDPTE_PDE, *PEPT_PML4E_PDPTE_PDE;
 
 typedef union _EPT_PTE 
 {
@@ -64,7 +75,7 @@ typedef union _EPT_PTE
 		QWORD ignored2 : 11;
 		QWORD suppressVE : 1;
 	}bitFields;
-}EPT_PTE, *PEPT_PTE;
+}__attribute__((__packed__)) EPT_PTE, *PEPT_PTE;
 
 VOID SetupVirtualAddress(IN QWORD pml4BaseAddress);
 QWORD VirtualToPhysical(IN QWORD address);
