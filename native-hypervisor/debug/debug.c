@@ -15,10 +15,8 @@ VOID PrintNullTerminatedBuffer(IN PCHAR buffer)
         __outbyte(DEBUG_PORT, *buffer);
 }
 
-VOID Print(IN PCHAR fmt, ...)
+static VOID PrintVaArg(IN PCHAR fmt, va_list args)
 {
-    va_list args;
-    va_start(args, fmt);
     CHAR buffer[BUFF_MAX_SIZE] = { 0 };
     QWORD bufferPosition = 0, fmtLength = StringLength(fmt);
 
@@ -77,6 +75,44 @@ VOID Print(IN PCHAR fmt, ...)
         else
             buffer[bufferPosition++] = fmt[i];
     }
-    va_end(args);
     PrintBuffer(buffer, bufferPosition);
+}
+
+
+VOID Print(IN PCHAR fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    PrintVaArg(fmt, args);
+    va_end(args);
+}
+
+VOID PrintDebugLevelDebug(IN PCHAR fmt, ...)
+{
+#if DEBUG_LVL <= 3
+    va_list args;
+    va_start(args, fmt);
+    PrintVaArg(fmt, args);
+    va_end(args);
+#endif
+}
+
+VOID PrintDebugLevelWarning(IN PCHAR fmt, ...)
+{
+#if DEBUG_LVL <= 2
+    va_list args;
+    va_start(args, fmt);
+    PrintVaArg(fmt, args);
+    va_end(args);
+#endif
+}
+
+VOID PrintDebugLevelInfo(IN PCHAR fmt, ...)
+{
+#if DEBUG_LVL <= 1
+    va_list args;
+    va_start(args, fmt);
+    PrintVaArg(fmt, args);
+    va_end(args);
+#endif
 }
