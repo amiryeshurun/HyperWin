@@ -112,3 +112,14 @@ VOID SetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length)
 {
     for(; length; length--, *base++ = value);
 }
+
+VOID DumpHostStack(IN QWORD_PTR stackAddress)
+{
+    for(QWORD offset = 0; offset < 200; offset++)
+    {
+        if(offset != 0 && !(offset % 8))
+            Print("\n");
+        Print("%8 ", *(stackAddress + offset));
+    }
+    Print("\n");
+}
