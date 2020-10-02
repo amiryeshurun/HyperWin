@@ -131,12 +131,15 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
     __vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
     __vmwrite(VM_ENTRY_INTR_INFO, 0);
-    __vmwrite(CPU_BASED_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_ACTIVATE_SECONDARY_CONTROLS, MSR_IA32_VMX_PROCBASED_CTLS));
+    __vmwrite(CPU_BASED_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_ACTIVATE_MSR_BITMAP | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS, MSR_IA32_VMX_PROCBASED_CTLS));
+    Print("%8\n", vmread(CPU_BASED_VM_EXEC_CONTROL));
 	__vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
+    Print("%8\n", vmread(SECONDARY_VM_EXEC_CONTROL));
     __vmwrite(PIN_BASED_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PINBASED_CTLS));
 	__vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT, MSR_IA32_VMX_EXIT_CTLS));
 	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
+    __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
         // Should never arrive here
@@ -157,16 +160,22 @@ DWORD AdjustControls(IN DWORD control, IN QWORD msr)
 VOID HandleVmExitEx()
 {
     QWORD exitReason = vmread(VM_EXIT_REASON);
+    QWORD exitQualification = vmread(EXIT_QUALIFICATION);
     if(exitReason & VM_ENTRY_FAILURE_MASK)
-        Print("VM-Entry failure occured. Exit qualification: %d\n", vmread(EXIT_QUALIFICATION));
+        Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
     
     PCURRENT_GUEST_STATE data = GetVMMStruct();
     switch(exitReason & 0xffff) // 0..15, Intel SDM 26.7
     {
+        case EXIT_REASON_CR_ACCESS: // moving to/from CR3 always causes a vm-exit on the first processor to support VMX
+            HandleCrAccess(&(data->guestRegisters), exitQualification);
+            data->guestRegisters.rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+            break;
         case EXIT_REASON_EPT_VIOLATION:
             Print("EPT Violation occured at: (P)%8, (V)%8\n", 
                 vmread(GUEST_PHYSICAL_ADDRESS), data->guestRegisters.rip);
             ASSERT(FALSE);
+            break;
         case EXIT_REASON_INVALID_GUEST_STATE:
             Print("INVALID GUEST STATE!\n");
             ASSERT(FALSE);
@@ -188,4 +197,137 @@ VOID HandleVmExitEx()
 PCURRENT_GUEST_STATE GetVMMStruct()
 {
     return (PCURRENT_GUEST_STATE)vmread(HOST_FS_BASE);
+}
+
+VOID HandleCrAccess(IN PREGISTERS regs, IN QWORD accessInformation)
+{
+    QWORD operation = accessInformation & CR_ACCESS_TYPE_MASK;
+    switch(accessInformation & CR_ACCESS_CR_NUMBER_MASK)
+    {
+        case 0:
+        {
+            if(operation == CR_ACCESS_TYPE_LMSW)
+                Print("An attempt to execute LMSW detected\n");
+            else if(operation == CR_ACCESS_TYPE_CLTS)
+                Print("An attempt to execute CLTS detected\n");
+            else
+                Print("An unknown instruction causing a CR ACCESS vm-exit detected\n");
+            ASSERT(FALSE);
+        }
+        case 3: // mov to/from CR3
+        {
+            if(operation == CR_ACCESS_TYPE_MOV_TO_CR)
+            {
+                PrintDebugLevelDebug("A mov to CR3 detected, checking source operand\n");
+                switch(accessInformation & CR_ACCESS_REGISTER_MASK)
+                {
+                    case CR_ACCESS_REGISTER_RAX:
+                        __vmwrite(GUEST_CR3, regs->rax);
+                        break;
+                    case CR_ACCESS_REGISTER_RBX:
+                        __vmwrite(GUEST_CR3, regs->rbx);
+                        break;
+                    case CR_ACCESS_REGISTER_RCX:
+                        __vmwrite(GUEST_CR3, regs->rcx);
+                        break;
+                    case CR_ACCESS_REGISTER_RDX:
+                        __vmwrite(GUEST_CR3, regs->rdx);
+                        break;
+                    case CR_ACCESS_REGISTER_RSP:
+                        __vmwrite(GUEST_CR3, regs->rsp);
+                        break;
+                    case CR_ACCESS_REGISTER_RBP:
+                        __vmwrite(GUEST_CR3, regs->rbp);
+                        break;
+                    case CR_ACCESS_REGISTER_RSI:
+                        __vmwrite(GUEST_CR3, regs->rsi);
+                        break;
+                    case CR_ACCESS_REGISTER_RDI:
+                        __vmwrite(GUEST_CR3, regs->rdi);
+                        break;
+                    case CR_ACCESS_REGISTER_R8:
+                        __vmwrite(GUEST_CR3, regs->r8);
+                        break;
+                    case CR_ACCESS_REGISTER_R9:
+                        __vmwrite(GUEST_CR3, regs->r9);
+                        break;
+                    case CR_ACCESS_REGISTER_R10:
+                        __vmwrite(GUEST_CR3, regs->r10);
+                        break;
+                    case CR_ACCESS_REGISTER_R11:
+                        __vmwrite(GUEST_CR3, regs->r11);
+                        break;
+                    case CR_ACCESS_REGISTER_R12:
+                        __vmwrite(GUEST_CR3, regs->r12);
+                        break;
+                    case CR_ACCESS_REGISTER_R13:
+                        __vmwrite(GUEST_CR3, regs->r13);
+                        break;
+                    case CR_ACCESS_REGISTER_R14:
+                        __vmwrite(GUEST_CR3, regs->r14);
+                        break;
+                    case CR_ACCESS_REGISTER_R15:
+                        __vmwrite(GUEST_CR3, regs->r15);
+                        break;
+                }
+                PrintDebugLevelDebug("CR3 was set with: %8\n", vmread(GUEST_CR3));
+            }
+            else if(operation == CR_ACCESS_TYPE_MOV_FROM_CR)
+            {
+                PrintDebugLevelDebug("An attempt to load CR3's value was detected, checking dest operand\n");
+                QWORD cr3Value = vmread(GUEST_CR3);
+                switch(accessInformation & CR_ACCESS_REGISTER_MASK)
+                {
+                    case CR_ACCESS_REGISTER_RAX:
+                        regs->rax = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RBX:
+                        regs->rbx = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RCX:
+                        regs->rcx = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RDX:
+                        regs->rdx = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RSP:
+                        regs->rsp = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RBP:
+                        regs->rbp = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RSI:
+                        regs->rsi = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_RDI:
+                        regs->rdi = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R8:
+                        regs->r8 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R9:
+                        regs->r9 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R10:
+                        regs->r10 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R11:
+                        regs->r11 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R12:
+                        regs->r12 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R13:
+                        regs->r13 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R14:
+                        regs->r14 = cr3Value;
+                        break;
+                    case CR_ACCESS_REGISTER_R15:
+                        regs->r15 = cr3Value;
+                        break;
+                }
+            }
+        }
+    }
 }

@@ -67,4 +67,33 @@
 
 #define VM_ENTRY_FAILURE_MASK           (1 << 31)
 
+/* CR access data */
+#define CR_ACCESS_CR_NUMBER_MASK    0xf
+#define CR_ACCESS_TYPE_MASK        (3 << 4)
+#define CR_ACCESS_TYPE_MOV_TO_CR   0
+#define CR_ACCESS_TYPE_MOV_FROM_CR (1 << 4)
+#define CR_ACCESS_TYPE_CLTS        (2 << 4)
+#define CR_ACCESS_TYPE_LMSW        (3 << 4)
+#define CR_ACCESS_LMSW_OP_MASK     (1 << 6)
+#define CR_ACCESS_LMSW_OP_REGISTER 0
+#define CR_ACCESS_LMSW_OP_MEMORY   (1 << 6)
+#define CR_ACCESS_REGISTER_MASK    (0xf << 8)
+#define CR_ACCESS_REGISTER_RAX     (0 << 8)
+#define CR_ACCESS_REGISTER_RBX     (3 << 8)
+#define CR_ACCESS_REGISTER_RCX     (1 << 8)
+#define CR_ACCESS_REGISTER_RDX     (2 << 8)
+#define CR_ACCESS_REGISTER_RSP     (4 << 8)
+#define CR_ACCESS_REGISTER_RBP     (5 << 8)
+#define CR_ACCESS_REGISTER_RSI     (6 << 8)
+#define CR_ACCESS_REGISTER_RDI     (7 << 8)
+#define CR_ACCESS_REGISTER_R8      (8 << 8)
+#define CR_ACCESS_REGISTER_R9      (9 << 8)
+#define CR_ACCESS_REGISTER_R10     (10 << 8)
+#define CR_ACCESS_REGISTER_R11     (11 << 8)
+#define CR_ACCESS_REGISTER_R12     (12 << 8)
+#define CR_ACCESS_REGISTER_R13     (13 << 8)
+#define CR_ACCESS_REGISTER_R14     (14 << 8)
+#define CR_ACCESS_REGISTER_R15     (15 << 8)
+#define CR_ACCESS_LMSW             (0xffff << 16)
+
 #endif
