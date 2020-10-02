@@ -4,19 +4,22 @@
 #include <types.h>
 #include <bios/bios_os_loader.h>
 
+/* Paging related data */
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
 #define ARRAY_PAGE_SIZE (PAGE_SIZE / 8)
 #define COMPUTER_MEM_SIZE 16
-
 #define STACK_SIZE (4 * PAGE_SIZE)
 #define HEAP_SIZE (8 * PAGE_SIZE)
 
+/* CPU related data */
 #define MAX_CORES 8
 
+/* CR related data */
 #define CR4_VMX_ENABLED (1 << 13)
 #define CR0_NE_ENABLED (1 << 5)
 
+/* VMCS related data */
 #define VMCS_SELECTOR_UNUSABLE (1 << 16)
 
 /* HOST SELECTORS */
@@ -42,7 +45,7 @@ typedef struct _SINGLE_CPU_DATA
 {
     BYTE vmcs[PAGE_SIZE];
     BYTE vmxon[PAGE_SIZE];
-    BYTE msrBitmap[PAGE_SIZE];
+    BYTE msrBitmaps[PAGE_SIZE];
     BYTE stack[STACK_SIZE];
     QWORD pageMapLevel4s[ARRAY_PAGE_SIZE]; // cr3
     QWORD pageDirectoryPointerTables[ARRAY_PAGE_SIZE]; // 1 PML entry = 512GB, enough for the HV
@@ -73,5 +76,6 @@ VOID InitializeSingleHypervisor(IN PVOID data);
 DWORD AdjustControls(IN DWORD control, IN QWORD msr);
 VOID HandleVmExitEx();
 PCURRENT_GUEST_STATE GetVMMStruct();
+VOID HandleCrAccess(IN PREGISTERS regs, IN QWORD accessInformation);
 
 #endif
