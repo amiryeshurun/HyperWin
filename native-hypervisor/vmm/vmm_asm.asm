@@ -3,6 +3,9 @@
 %define COM2 0x2F8
 %define COM3 0x3E8
 %define COM4 0x2E8
+%define STATUS_VMLAUNCH_FAILED 8
+%define STATUS_SUCCESS 0
+
 
 %macro OutputSerial 1
     mov dx, COM3
@@ -19,17 +22,17 @@ global HandleVmExit
 global SetupCompleteBackToGuestState
 
 extern HandleVmExitEx
+extern DumpHostStack
 
 SetupCompleteBackToGuestState:
     mov rax, 0x0000681c
     vmwrite rax, rsp
     vmlaunch
-    pushf
-    pop rax
+    mov rax, STATUS_VMLAUNCH_FAILED
     ret ; An error occured
 
 VmmToVm:
-    OutputSerial 'H'
+    mov rax, STATUS_SUCCESS
     ret
 
 HandleVmExit:

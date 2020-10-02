@@ -48,7 +48,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_IDTR_LIMIT, idt.limit);
     __vmwrite(GUEST_LDTR_BASE, 0ULL);
     __vmwrite(GUEST_LDTR_LIMIT, 0xff);
-    __vmwrite(GUEST_LDTR_AR_BYTES, VMCS_SELECTOR_UNUSABLE);
+    __vmwrite(GUEST_LDTR_AR_BYTES, VMCS_SELECTOR_UNUSABLE); // <--- so much time was spent on this line...
     // To understand the AR fields, see section 24.4.1 on Intel DSM
     /// Note for the future: Try to clear reseved fields (in AR VMCS fields) if vmlaunch is failing
     // CS related data
@@ -137,10 +137,13 @@ VOID InitializeSingleHypervisor(IN PVOID data)
 	__vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT, MSR_IA32_VMX_EXIT_CTLS));
 	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
-    QWORD flags = SetupCompleteBackToGuestState();
-    // Should never arrive here
-    Print("FLAGS: %8, instruction error: %8\n", flags, vmread(VM_INSTRUCTION_ERROR));
-    ASSERT(FALSE);
+    if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
+    {
+        // Should never arrive here
+        Print("FLAGS: %8, instruction error: %8\n", __readflags(), vmread(VM_INSTRUCTION_ERROR));
+        ASSERT(FALSE);
+    }
+    Print("Done initialization on core #%d\n", cpuData->coreIdentifier);
 }
 
 DWORD AdjustControls(IN DWORD control, IN QWORD msr)

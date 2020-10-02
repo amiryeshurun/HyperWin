@@ -13,5 +13,6 @@
 #define STATUS_RSDT_INVALID_CHECKSUM 5
 #define STATUS_APIC_NOT_FOUND        6
 #define STATUS_NO_CORES_FOUND        7
+#define STATUS_VMLAUNCH_FAILED       8
 
 #endif
