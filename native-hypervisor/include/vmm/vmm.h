@@ -26,6 +26,9 @@
 #define HYPERVISOR_CS_SELECTOR 8
 #define HYPERVISOR_DS_SELECTOR 16
 
+/* VMCALL agreed values */
+#define VMCALL_SETUP_BASE_PROTECTION 0x11223344
+
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
 
@@ -39,6 +42,12 @@ typedef struct _SHARED_CPU_DATA
     E820_LIST_ENTRY allRam[E820_OUTPUT_MAX_ENTRIES];
     BYTE memoryRangesCount;
     BYTE numberOfCores;
+    QWORD hypervisorBase;
+    QWORD physicalHypervisorBase;
+    QWORD hypervisorBaseSize;
+    QWORD codeBase;
+    QWORD physicalCodeBase;
+    QWORD codeBaseSize;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
@@ -77,5 +86,8 @@ DWORD AdjustControls(IN DWORD control, IN QWORD msr);
 VOID HandleVmExitEx();
 PCURRENT_GUEST_STATE GetVMMStruct();
 VOID HandleCrAccess(IN PREGISTERS regs, IN QWORD accessInformation);
+STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength);
+STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
+BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
 
 #endif

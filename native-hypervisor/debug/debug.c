@@ -15,7 +15,7 @@ VOID PrintNullTerminatedBuffer(IN PCHAR buffer)
         __outbyte(DEBUG_PORT, *buffer);
 }
 
-static VOID PrintVaArg(IN PCHAR fmt, va_list args)
+VOID PrintVaArg(IN PCHAR fmt, va_list args)
 {
     CHAR buffer[BUFF_MAX_SIZE] = { 0 };
     QWORD bufferPosition = 0, fmtLength = StringLength(fmt);

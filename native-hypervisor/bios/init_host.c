@@ -6,10 +6,12 @@
 #include <debug.h>
 #include <x86_64.h>
 
+typedef VOID (*InitFunc)(PVOID);
+
 VOID Initialize()
 {
     SetupVirtualAddress(__readcr3());
-    InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
+    InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000ffffULL);
     LoadMBRToEntryPoint();
     CopyMemory((QWORD_PTR)REAL_MODE_CODE_START, (QWORD_PTR)SetupSystemAndHandleControlToBios,
         SetupSystemAndHandleControlToBiosEnd - SetupSystemAndHandleControlToBios);
@@ -26,10 +28,10 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
     QWORD allocationSize = 0;
-    allocationSize += ALIGN_UP(codeBase, PAGE_SIZE);
+    allocationSize += ALIGN_UP(codeLength, PAGE_SIZE);
     allocationSize += ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE);
     allocationSize += (ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE) * numberOfCores);
-    allocationSize += (ALIGN_UP(sizeof(CURRENT_GUEST_STATE) * numberOfCores, PAGE_SIZE));
+    allocationSize += (ALIGN_UP(sizeof(CURRENT_GUEST_STATE), PAGE_SIZE) * numberOfCores);
     BYTE_PTR physicalHypervisorBase;
     if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize, &physicalHypervisorBase))
     {
@@ -38,19 +40,22 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
-    //CopyMemory(hypervisorBase, codeBase, codeBase);
-    //UpdateInstructionPointer(hypervisorBase - codeBase);
-    //SetMemory(codeBase, 0, codeLength);
-    PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE);
+    PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE);
     sharedData->numberOfCores = numberOfCores;
+    sharedData->hypervisorBase = hypervisorBase;
+    sharedData->physicalHypervisorBase = physicalHypervisorBase;
+    sharedData->hypervisorBaseSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
+    sharedData->codeBase = PhysicalToVirtual(codeBase);
+    sharedData->physicalCodeBase = codeBase;
+    sharedData->codeBaseSize= ALIGN_UP(codeLength, PAGE_SIZE);
     for(BYTE i = 0; i < numberOfCores; i++)
     {
-        sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE) 
+        sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE) 
             + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) + i * ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE);
-        sharedData->currentState[i] = hypervisorBase + ALIGN_UP(codeBase, PAGE_SIZE) 
+        sharedData->currentState[i] = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE) 
             + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) + numberOfCores * ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE)
-            + i * sizeof(CURRENT_GUEST_STATE);
-        sharedData->currentState[i] = sharedData->cpuData[i];
+            + i * ALIGN_UP(sizeof(CURRENT_GUEST_STATE), PAGE_SIZE);
+        sharedData->currentState[i]->currentCPU = sharedData->cpuData[i];
         sharedData->cpuData[i]->sharedData = sharedData;
         sharedData->cpuData[i]->coreIdentifier = processorIdentifires[i];
     }

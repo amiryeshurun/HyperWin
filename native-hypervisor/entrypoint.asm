@@ -178,7 +178,6 @@ CompatibilityTo64:
     add rdi, 8
     add rax, LARGE_PAGE_SIZE
     loop .setup_pds_long_mode
-
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
     push 16
@@ -229,7 +228,7 @@ HandleControlToBios:
     mov ss, ax
     mov fs, ax
     mov gs, ax
-
-    jmp 0:MBR_ADDRESS
+    mov eax, 0x11223344
+    vmcall              ; HV will redirect execution to MBR
 HandleControlToBiosEnd:
 SetupSystemAndHandleControlToBiosEnd:
