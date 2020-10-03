@@ -3,6 +3,19 @@
 
 #include <types.h>
 
+/* Paging related data */
+#define PAGE_SIZE 0x1000
+#define LARGE_PAGE_SIZE 0x200000
+#define LARGE_PAGE_MASK 0xfffffULL
+
+/* CR related data */
+#define CR4_VMX_ENABLED (1 << 13)
+#define CR0_NE_ENABLED (1 << 5)
+#define CR4_OSXSAVE (1 << 18)
+
+/* CPUID related data */
+#define CPUID_XSAVE (1 << 26)
+
 typedef struct _GDT
 {
     WORD limit;
