@@ -3,10 +3,9 @@
 
 #include <types.h>
 #include <bios/bios_os_loader.h>
+#include <x86_64.h>
 
 /* Paging related data */
-#define PAGE_SIZE 0x1000
-#define LARGE_PAGE_SIZE 0x200000
 #define ARRAY_PAGE_SIZE (PAGE_SIZE / 8)
 #define COMPUTER_MEM_SIZE 16
 #define STACK_SIZE (4 * PAGE_SIZE)
@@ -14,10 +13,6 @@
 
 /* CPU related data */
 #define MAX_CORES 8
-
-/* CR related data */
-#define CR4_VMX_ENABLED (1 << 13)
-#define CR0_NE_ENABLED (1 << 5)
 
 /* VMCS related data */
 #define VMCS_SELECTOR_UNUSABLE (1 << 16)
@@ -31,6 +26,9 @@
 
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
+struct _CURRENT_GUEST_STATE;
+
+typedef STATUS (*VmExitHandler)(struct _CURRENT_GUEST_STATE*);
 
 typedef struct _SHARED_CPU_DATA
 {
@@ -67,6 +65,8 @@ typedef struct _SINGLE_CPU_DATA
     QWORD eptPageTables[ARRAY_PAGE_SIZE * ARRAY_PAGE_SIZE * COMPUTER_MEM_SIZE];
     BYTE coreIdentifier;
     QWORD gdt[0xff];
+    BOOL isHandledOnVmExit[100];
+    VmExitHandler vmExitHandlers[100];
     PSHARED_CPU_DATA sharedData;
 } SINGLE_CPU_DATA, *PSINGLE_CPU_DATA;
 
@@ -85,9 +85,10 @@ VOID InitializeSingleHypervisor(IN PVOID data);
 DWORD AdjustControls(IN DWORD control, IN QWORD msr);
 VOID HandleVmExitEx();
 PCURRENT_GUEST_STATE GetVMMStruct();
-VOID HandleCrAccess(IN PREGISTERS regs, IN QWORD accessInformation);
 STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength);
 STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
 BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
+VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmExitHandler handler);
+VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data);
 
 #endif

@@ -86,3 +86,26 @@ STATUS CopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length)
     }
     return STATUS_SUCCESS;
 }
+
+STATUS CopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length)
+{
+    QWORD hostVirtual;
+    for(QWORD offset = 0, increament = 0; TRUE; offset += increament)
+    {
+        if(TranslateGuestVirtualToHostVirtual(dest + offset, &hostVirtual) != STATUS_SUCCESS)
+            return STATUS_ADDRESS_NOT_VALID;
+        QWORD alignedLengthUntilNextPage = (dest + offset) % PAGE_SIZE ? 
+            ALIGN_UP(dest + offset, PAGE_SIZE) - dest : PAGE_SIZE;
+        if(length <= alignedLengthUntilNextPage)
+        {
+            CopyMemory(hostVirtual, src, length);
+            break;
+        }
+        // Copy the current page (part/whole)
+        CopyMemory(hostVirtual, src, alignedLengthUntilNextPage);
+        increament = alignedLengthUntilNextPage;
+        src += alignedLengthUntilNextPage;
+        length -= alignedLengthUntilNextPage;
+    }
+    return STATUS_SUCCESS;
+}

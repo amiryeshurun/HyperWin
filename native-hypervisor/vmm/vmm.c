@@ -8,6 +8,8 @@
 #include <vmm/control_fields.h>
 #include <x86_64.h>
 #include <vmm/exit_reasons.h>
+#include <win_kernel/memory_manager.h>
+#include <vmm/vmexit_handlers.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -137,6 +139,9 @@ VOID InitializeSingleHypervisor(IN PVOID data)
 	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
+    
+    // Register all handlers
+    RegisterVmExitHandlers(cpuData);
 
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
@@ -145,6 +150,21 @@ VOID InitializeSingleHypervisor(IN PVOID data)
         ASSERT(FALSE);
     }
     Print("Done initialization on core #%d\n", cpuData->coreIdentifier);
+}
+
+VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data)
+{
+    // VM-Exit handlers registeration
+    RegisterVmExitHandler(data, EXIT_REASON_MSR_READ, HandleMsrRead);
+    RegisterVmExitHandler(data, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
+    RegisterVmExitHandler(data, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
+    RegisterVmExitHandler(data, EXIT_REASON_XSETBV, EmulateXSETBV);
+    RegisterVmExitHandler(data, EXIT_REASON_CPUID, HandleCpuId);
+    RegisterVmExitHandler(data, EXIT_REASON_CR_ACCESS, HandleCrAccess);
+    RegisterVmExitHandler(data, EXIT_REASON_EPT_VIOLATION, HandleEptViolation);
+    RegisterVmExitHandler(data, EXIT_REASON_VMCALL, HandleVmCall);
+    RegisterVmExitHandler(data, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
+    RegisterVmExitHandler(data, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
 }
 
 DWORD AdjustControls(IN DWORD control, IN QWORD msr)
@@ -161,189 +181,27 @@ VOID HandleVmExitEx()
     QWORD exitQualification = vmread(EXIT_QUALIFICATION);
     if(exitReason & VM_ENTRY_FAILURE_MASK)
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
-    
+    exitReason &= 0xffff; // 0..15, Intel SDM 26.7
     PCURRENT_GUEST_STATE data = GetVMMStruct();
-    switch(exitReason & 0xffff) // 0..15, Intel SDM 26.7
+    if(data->currentCPU->isHandledOnVmExit[exitReason])
     {
-        case EXIT_REASON_VMCALL:
-            if(data->guestRegisters.rax == VMCALL_SETUP_BASE_PROTECTION)
-            {
-                ASSERT(SetupHypervisorCodeProtection(data->currentCPU->sharedData, 
-                    data->currentCPU->sharedData->physicalCodeBase, 
-                    data->currentCPU->sharedData->codeBaseSize) == STATUS_SUCCESS);
-                data->guestRegisters.rip = MBR_ADDRESS;
-            }
-            else
-            {
-                Print("A vmcall was executed for an unknown reason\n");
-                ASSERT(FALSE);
-            }
-            break;
-        case EXIT_REASON_CR_ACCESS: // moving to/from CR3 always causes a vm-exit on the first processor to support VMX
-            HandleCrAccess(&(data->guestRegisters), exitQualification);
-            data->guestRegisters.rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-            break;
-        case EXIT_REASON_EPT_VIOLATION:
-            if(CheckAccessToHiddenBase(data->currentCPU->sharedData, vmread(GUEST_PHYSICAL_ADDRESS)))
-                Print("!!! DETECTED ACCESS TO HYPERVISOR AREA !!!\n");
-            Print("EPT Violation occured at: (P)%8, (V)%8\n", 
-                vmread(GUEST_PHYSICAL_ADDRESS), data->guestRegisters.rip);
+        STATUS handleStatus;
+        if(handleStatus = data->currentCPU->vmExitHandlers[exitReason](data))
+        {
+            Print("Error during handling vm-exit. Exit reaon: %d, Error code: %d", exitReason, handleStatus);
             ASSERT(FALSE);
-            break;
-        case EXIT_REASON_INVALID_GUEST_STATE:
-            Print("INVALID GUEST STATE!\n");
-            ASSERT(FALSE);
-            break;
-        case EXIT_REASON_MSR_LOADING:
-            Print("INVALID MSR LOADING!\n");
-            ASSERT(FALSE);
-            break;
-        case EXIT_REASON_MCE_DURING_VMENTRY:
-            Print("Failure due to machine-check event!\n");
-            ASSERT(FALSE);
-            break;
-        default:
-            Print("No match found, exit reason %d\n", exitReason);
-            ASSERT(FALSE);
+        }
+    }
+    else
+    {
+        Print("Unhandled vm-exit occured. Exit reason is: %d\n", exitReason);
+        ASSERT(FALSE);
     }
 }
 
 PCURRENT_GUEST_STATE GetVMMStruct()
 {
     return (PCURRENT_GUEST_STATE)vmread(HOST_FS_BASE);
-}
-
-VOID HandleCrAccess(IN PREGISTERS regs, IN QWORD accessInformation)
-{
-    QWORD operation = accessInformation & CR_ACCESS_TYPE_MASK;
-    switch(accessInformation & CR_ACCESS_CR_NUMBER_MASK)
-    {
-        case 0:
-        {
-            if(operation == CR_ACCESS_TYPE_LMSW)
-                Print("An attempt to execute LMSW detected\n");
-            else if(operation == CR_ACCESS_TYPE_CLTS)
-                Print("An attempt to execute CLTS detected\n");
-            else
-                Print("An unknown instruction causing a CR ACCESS vm-exit detected\n");
-            ASSERT(FALSE);
-        }
-        case 3: // mov to/from CR3
-        {
-            if(operation == CR_ACCESS_TYPE_MOV_TO_CR)
-            {
-                PrintDebugLevelDebug("A mov to CR3 detected, checking source operand\n");
-                switch(accessInformation & CR_ACCESS_REGISTER_MASK)
-                {
-                    case CR_ACCESS_REGISTER_RAX:
-                        __vmwrite(GUEST_CR3, regs->rax);
-                        break;
-                    case CR_ACCESS_REGISTER_RBX:
-                        __vmwrite(GUEST_CR3, regs->rbx);
-                        break;
-                    case CR_ACCESS_REGISTER_RCX:
-                        __vmwrite(GUEST_CR3, regs->rcx);
-                        break;
-                    case CR_ACCESS_REGISTER_RDX:
-                        __vmwrite(GUEST_CR3, regs->rdx);
-                        break;
-                    case CR_ACCESS_REGISTER_RSP:
-                        __vmwrite(GUEST_CR3, regs->rsp);
-                        break;
-                    case CR_ACCESS_REGISTER_RBP:
-                        __vmwrite(GUEST_CR3, regs->rbp);
-                        break;
-                    case CR_ACCESS_REGISTER_RSI:
-                        __vmwrite(GUEST_CR3, regs->rsi);
-                        break;
-                    case CR_ACCESS_REGISTER_RDI:
-                        __vmwrite(GUEST_CR3, regs->rdi);
-                        break;
-                    case CR_ACCESS_REGISTER_R8:
-                        __vmwrite(GUEST_CR3, regs->r8);
-                        break;
-                    case CR_ACCESS_REGISTER_R9:
-                        __vmwrite(GUEST_CR3, regs->r9);
-                        break;
-                    case CR_ACCESS_REGISTER_R10:
-                        __vmwrite(GUEST_CR3, regs->r10);
-                        break;
-                    case CR_ACCESS_REGISTER_R11:
-                        __vmwrite(GUEST_CR3, regs->r11);
-                        break;
-                    case CR_ACCESS_REGISTER_R12:
-                        __vmwrite(GUEST_CR3, regs->r12);
-                        break;
-                    case CR_ACCESS_REGISTER_R13:
-                        __vmwrite(GUEST_CR3, regs->r13);
-                        break;
-                    case CR_ACCESS_REGISTER_R14:
-                        __vmwrite(GUEST_CR3, regs->r14);
-                        break;
-                    case CR_ACCESS_REGISTER_R15:
-                        __vmwrite(GUEST_CR3, regs->r15);
-                        break;
-                }
-                PrintDebugLevelDebug("CR3 was set with: %8\n", vmread(GUEST_CR3));
-            }
-            else if(operation == CR_ACCESS_TYPE_MOV_FROM_CR)
-            {
-                PrintDebugLevelDebug("An attempt to load CR3's value was detected, checking dest operand\n");
-                QWORD cr3Value = vmread(GUEST_CR3);
-                switch(accessInformation & CR_ACCESS_REGISTER_MASK)
-                {
-                    case CR_ACCESS_REGISTER_RAX:
-                        regs->rax = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RBX:
-                        regs->rbx = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RCX:
-                        regs->rcx = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RDX:
-                        regs->rdx = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RSP:
-                        regs->rsp = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RBP:
-                        regs->rbp = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RSI:
-                        regs->rsi = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_RDI:
-                        regs->rdi = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R8:
-                        regs->r8 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R9:
-                        regs->r9 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R10:
-                        regs->r10 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R11:
-                        regs->r11 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R12:
-                        regs->r12 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R13:
-                        regs->r13 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R14:
-                        regs->r14 = cr3Value;
-                        break;
-                    case CR_ACCESS_REGISTER_R15:
-                        regs->r15 = cr3Value;
-                        break;
-                }
-            }
-        }
-    }
 }
 
 STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength)
@@ -393,4 +251,10 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
             & EPT_ACCESS_MASK | access;
     PrintDebugLevelDebug("EPT policy updated\n");
     return STATUS_SUCCESS;
+}
+
+VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmExitHandler handler)
+{
+    data->isHandledOnVmExit[exitReason] = TRUE;
+    data->vmExitHandlers[exitReason] = handler;
 }

@@ -46,5 +46,6 @@ STATUS CopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length);
 STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR translatedAddress);
 QWORD TranslateGuestPhysicalToPhysicalAddress(IN QWORD address);
 QWORD TranslateGuestPhysicalToHostVirtual(IN QWORD address);
+STATUS CopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length);
 
 #endif

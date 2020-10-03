@@ -42,5 +42,10 @@
 #define VM_EXIT_ACK_INTR_ON_EXIT        0x00008000
 #define VM_EXIT_SAVE_GUEST_PAT          0x00040000
 #define VM_EXIT_LOAD_HOST_PAT           0x00080000
+#define VM_EXIT_SAVE_EFER               (1 << 20)
+#define VM_EXIT_LOAD_EFER               (1 << 21)
+
+// Exceptions
+#define INT_BREAKPOINT 3
 
 #endif
