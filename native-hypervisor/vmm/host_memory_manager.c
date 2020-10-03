@@ -46,3 +46,8 @@ QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData)
     
     return eptp;
 }
+
+QWORD CreateEPTEntry(IN QWORD physicalAddress, IN QWORD access)
+{
+    return physicalAddress | access | (EPT_POINTER_WB << 3);
+}

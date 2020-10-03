@@ -98,7 +98,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_SYSENTER_ESP, 0xffff);
     __vmwrite(GUEST_SYSENTER_CS, 8);
     __vmwrite(GUEST_DR7, __readdr7());
-
     // Initialize host area
     __vmwrite(HOST_CR0, __readcr0());
     __vmwrite(HOST_CR3, InitializeHypervisorPaging(cpuData));
@@ -138,6 +137,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
 	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
+
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
         // Should never arrive here
@@ -165,11 +165,27 @@ VOID HandleVmExitEx()
     PCURRENT_GUEST_STATE data = GetVMMStruct();
     switch(exitReason & 0xffff) // 0..15, Intel SDM 26.7
     {
+        case EXIT_REASON_VMCALL:
+            if(data->guestRegisters.rax == VMCALL_SETUP_BASE_PROTECTION)
+            {
+                ASSERT(SetupHypervisorCodeProtection(data->currentCPU->sharedData, 
+                    data->currentCPU->sharedData->physicalCodeBase, 
+                    data->currentCPU->sharedData->codeBaseSize) == STATUS_SUCCESS);
+                data->guestRegisters.rip = MBR_ADDRESS;
+            }
+            else
+            {
+                Print("A vmcall was executed for an unknown reason\n");
+                ASSERT(FALSE);
+            }
+            break;
         case EXIT_REASON_CR_ACCESS: // moving to/from CR3 always causes a vm-exit on the first processor to support VMX
             HandleCrAccess(&(data->guestRegisters), exitQualification);
             data->guestRegisters.rip += vmread(VM_EXIT_INSTRUCTION_LEN);
             break;
         case EXIT_REASON_EPT_VIOLATION:
+            if(CheckAccessToHiddenBase(data->currentCPU->sharedData, vmread(GUEST_PHYSICAL_ADDRESS)))
+                Print("!!! DETECTED ACCESS TO HYPERVISOR AREA !!!\n");
             Print("EPT Violation occured at: (P)%8, (V)%8\n", 
                 vmread(GUEST_PHYSICAL_ADDRESS), data->guestRegisters.rip);
             ASSERT(FALSE);
@@ -328,4 +344,53 @@ VOID HandleCrAccess(IN PREGISTERS regs, IN QWORD accessInformation)
             }
         }
     }
+}
+
+STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength)
+{
+    if(codeBase % PAGE_SIZE)
+        return STATUS_MEMORY_NOT_ALIGNED;
+    PrintDebugLevelDebug("Mapping %8, length %8 to new address %8...\n", 
+        codeBase, codeLength, data->physicalHypervisorBase);
+    QWORD codeSizeInPages = ALIGN_UP(codeLength, PAGE_SIZE) / PAGE_SIZE, 
+        hypervisorBaseSizeInPages = data->hypervisorBaseSize / PAGE_SIZE;
+    for(QWORD i = 0; i < data->numberOfCores; i++)
+    {
+        for(QWORD j = 0; j < codeSizeInPages; j++)
+            data->cpuData[i]->eptPageTables[codeBase / PAGE_SIZE + j] 
+                = CreateEPTEntry(data->physicalHypervisorBase + j * PAGE_SIZE, EPT_RWX);
+        ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase 
+            + ALIGN_UP(data->codeBaseSize, PAGE_SIZE), 
+            data->hypervisorBaseSize - ALIGN_UP(data->codeBaseSize, PAGE_SIZE), 0) == STATUS_SUCCESS);
+    }
+    PrintDebugLevelDebug("Done mapping\n");
+    return STATUS_SUCCESS;
+}
+
+BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress)
+{
+    return (accessedAddress >= data->physicalHypervisorBase) && (accessedAddress <= data->physicalHypervisorBase 
+        + data->hypervisorBaseSize) ? STATUS_ACCESS_TO_HIDDEN_BASE : STATUS_SUCCESS;
+}
+
+STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access)
+{
+    if(base % PAGE_SIZE || length % PAGE_SIZE)
+    {
+        PrintDebugLevelDebug("Could not update EPT policy. Memory not aligned: %8 %8\n", base, length);
+        return STATUS_MEMORY_NOT_ALIGNED;
+    }
+    if(access > 7)
+    {
+        PrintDebugLevelDebug("Could not update EPT policy. Invalid access rights: %d\n", access);
+        return STATUS_INVALID_ACCESS_RIGHTS;
+    }
+    PrintDebugLevelDebug("Updating EPT policy. Guest physical: %8, length: %8, access: %d...\n", 
+        base, length, access);
+    QWORD lengthInPages = length / PAGE_SIZE;
+    for(QWORD i = 0; i < lengthInPages; i++)
+        data->eptPageTables[base / PAGE_SIZE + i] = data->eptPageTables[base / PAGE_SIZE + i] 
+            & EPT_ACCESS_MASK | access;
+    PrintDebugLevelDebug("EPT policy updated\n");
+    return STATUS_SUCCESS;
 }

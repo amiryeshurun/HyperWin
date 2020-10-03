@@ -22,6 +22,7 @@
 #define EPT_RW (EPT_READ | EPT_WRITE)
 #define EPT_WX (EPT_WRITE | EPT_EXECUTE)
 #define EPT_RX (EPT_READ | EPT_EXECUTE)
+#define EPT_ACCESS_MASK (~(7ULL))
 
 typedef union _EXTENDED_PAGE_TABLE_POINTER {
     QWORD value;
@@ -82,5 +83,6 @@ QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);
 QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
 QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData);
+QWORD CreateEPTEntry(IN QWORD physicalAddress, IN QWORD access);
 
 #endif
