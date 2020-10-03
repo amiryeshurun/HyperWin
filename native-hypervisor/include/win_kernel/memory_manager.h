@@ -2,9 +2,10 @@
 #define __GUEST_MEMORY_MANAGER_H_
 
 #include <types.h>
+#include <error_codes.h>
 
-#define VIRTUAL_ADDRESS_MASK 0xffffffffffff
-#define ADDRESS_NOT_VALID 0
+#define VIRTUAL_ADDRESS_MASK 0xffffffffffffULL
+#define REMOVE_PAGE_BITS 0xfffffffff000ULL
 
 typedef union _QWORD_PAGE_TABLE_ENTRY 
 {
@@ -41,10 +42,9 @@ typedef union _VIRTUAL_ADDRESS_PARTITIONING
     QWORD address;
 }VIRTUAL_ADDRESS_PARTITIONING, PVIRTUAL_ADDRESS_PARTITIONING;
 
-QWORD CopyGuestMemory(OUT QWORD_PTR dest, IN QWORD src, IN DWORD length);
-QWORD TranslateGuestVirtualToGuestPhysical(IN QWORD address);
+STATUS CopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length);
+STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR translatedAddress);
 QWORD TranslateGuestPhysicalToPhysicalAddress(IN QWORD address);
-QWORD TranslatePhysicalToHostVirtual(IN QWORD address);
 QWORD TranslateGuestPhysicalToHostVirtual(IN QWORD address);
 
 #endif

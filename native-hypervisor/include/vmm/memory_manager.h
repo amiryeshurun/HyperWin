@@ -6,6 +6,8 @@
 #include <vmm/vmm.h>
 
 #define VIRTUAL_ADDRESS_OFFET 0x640000000000ULL
+#define VIRTUAL_ADDRESS_MASK 0xffffffffffffULL
+#define REMOVE_PAGE_BITS 0xfffffffff000ULL
 
 #define PAGE_PRESENT 1
 #define PAGE_RW (1 << 1)
