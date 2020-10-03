@@ -3,6 +3,7 @@ C_COMPILER 		 = gcc
 C_COMPILER_FLAGS = -I./native-hypervisor/include \
 				   -nostdlib \
 				   -c \
+				   -fPIC \
 				   -w \
 				   -fno-stack-protector \
 				   -mno-red-zone \
