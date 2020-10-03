@@ -6,7 +6,7 @@
 /* Paging related data */
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
-#define LARGE_PAGE_MASK 0xfffffULL
+#define LARGE_PAGE_MASK 0x1FFFFFULL
 
 /* CR related data */
 #define CR4_VMX_ENABLED (1 << 13)
