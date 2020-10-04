@@ -16,7 +16,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     PSINGLE_CPU_DATA cpuData = (PSINGLE_CPU_DATA)data;
     Print("Initializing hypervisor on core #%d\n", cpuData->coreIdentifier);
 
-    __writecr0((__readcr0() | CR0_NE_ENABLED  | __readmsr(MSR_IA32_VMX_CR0_FIXED0)) 
+    __writecr0((__readcr0() | CR0_NE_ENABLED | __readmsr(MSR_IA32_VMX_CR0_FIXED0)) 
                  & __readmsr(MSR_IA32_VMX_CR0_FIXED1));
     __writecr4((__readcr4() | CR4_VMX_ENABLED | __readmsr(MSR_IA32_VMX_CR4_FIXED0))
                  & __readmsr(MSR_IA32_VMX_CR4_FIXED1));
@@ -100,10 +100,13 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_SYSENTER_ESP, 0xffff);
     __vmwrite(GUEST_SYSENTER_CS, 8);
     __vmwrite(GUEST_DR7, __readdr7());
+    __vmwrite(CR0_GUEST_HOST_MASK, 0);
+    __vmwrite(CR4_GUEST_HOST_MASK, 0);
+    
     // Initialize host area
     __vmwrite(HOST_CR0, __readcr0());
     __vmwrite(HOST_CR3, InitializeHypervisorPaging(cpuData));
-    __vmwrite(HOST_CR4, __readcr4());
+    __vmwrite(HOST_CR4, __readcr4() | CR4_OSXSAVE | (1 << 9));
     __vmwrite(HOST_RIP, HandleVmExit);
     __vmwrite(HOST_RSP, cpuData->stack + sizeof(cpuData->stack)); // from high addresses to lower
     __vmwrite(HOST_FS_BASE, cpuData->sharedData->currentState[cpuData->coreIdentifier]);
@@ -165,6 +168,7 @@ VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data)
     RegisterVmExitHandler(data, EXIT_REASON_VMCALL, HandleVmCall);
     RegisterVmExitHandler(data, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
     RegisterVmExitHandler(data, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
+    RegisterVmExitHandler(data, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
 }
 
 DWORD AdjustControls(IN DWORD control, IN QWORD msr)

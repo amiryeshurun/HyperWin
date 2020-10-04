@@ -18,7 +18,7 @@
 #define DEBUG_LVL_WARNING 2
 #define DEBUG_LVL_INFO 1
 #define DEBUG_LVL DEBUG_LVL_DEBUG
-
+// #define DEBUG_ADDRESS_TRANSLATION
 
 VOID PrintBuffer(IN PCHAR buffer, IN QWORD length);
 VOID PrintNullTerminatedBuffer(IN PCHAR buffer);

@@ -14,5 +14,6 @@ STATUS HandleInvalidGuestState(IN PCURRENT_GUEST_STATE data);
 STATUS HandleInvalidMsrLoading(IN PCURRENT_GUEST_STATE data);
 STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data);
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data);
+STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data);
 
 #endif

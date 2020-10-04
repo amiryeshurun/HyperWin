@@ -155,7 +155,6 @@ STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data)
     PrintDebugLevelDebug("XSETBV detected, emulating the instruction.\n");
     // XSETBV ---> XCR[ECX] = EDX:EAX
     PREGISTERS regs = &(data->guestRegisters);
-    regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     QWORD eax, ebx, ecx, edx;
     __cpuid(1, 0, &eax, &ebx, &ecx, &edx);
 
@@ -212,15 +211,13 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs = &(data->guestRegisters);
     PrintDebugLevelDebug("CPUID detected, emulating the instruction: EAX: %8\n", regs->rax);
-    if(regs->rax == 0x0000000080000007ULL)
-    {
-        BYTE code[100];
-        CopyGuestMemory(code, regs->rip, 100);
-        Print("%.b\n", 100, code);
-    }
-    __cpuid(regs->rax, regs->rcx, &(regs->rax), &(regs->rbx), &(regs->rcx), &(regs->rdx));
+    QWORD eax, ebx, ecx, edx;
+    __cpuid((INT)regs->rax, (INT)regs->rcx, &eax, &ebx, &ecx, &edx);
+    regs->rax = (INT)eax;
+    regs->rbx = (INT)ebx;
+    regs->rcx = (INT)ecx;
+    regs->rdx = (INT)edx;
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-
     return STATUS_SUCCESS;
 }
 
@@ -252,4 +249,13 @@ STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data)
 {
     Print("Failure due to machine-check event!\n");
     return STATUS_MACHINE_CHECK_FAILURE;
+}
+
+STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data)
+{
+    Print("!!! TRIPLE FAULT !!!\n");
+    BYTE code[100];
+    ASSERT(CopyGuestMemory(code, data->guestRegisters.rip, 100) == STATUS_SUCCESS);
+    Print("%8 - %.b\n", data->guestRegisters.rip, 100, code);
+    return STATUS_TRIPLE_FAULT;
 }
