@@ -9,22 +9,39 @@
     page 381 */
 STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR translatedAddress)
 {
-    ASSERT(vmread(GUEST_CR4) & (1 << 5)); // PAE
+    ASSERT(vmread(GUEST_CR0) & CR0_PM_ENABLED); // Protected mode
+    ASSERT(vmread(GUEST_CR0) & CR0_PG_ENABLED); // Paging
+    ASSERT(vmread(GUEST_CR4) & CR4_PAE_ENABLED); // Physical address extension
+#ifdef DEBUG_ADDRESS_TRANSLATION
+    PrintDebugLevelDebug("Address: %8\n", address);
+#endif
     QWORD guestCR3 = vmread(GUEST_CR3);
     VIRTUAL_ADDRESS_PARTITIONING virtualAddress = (VIRTUAL_ADDRESS_PARTITIONING)(address & VIRTUAL_ADDRESS_MASK);
     PQWORD_PAGE_TABLE_ENTRY pml4Address = 
         (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((guestCR3 & VIRTUAL_ADDRESS_MASK)
              + virtualAddress.bitFields.pageMapLevel4Offset * sizeof(QWORD));
+#ifdef DEBUG_ADDRESS_TRANSLATION
+    PrintDebugLevelDebug("PML4: %8 %8 %8\n", (guestCR3 & VIRTUAL_ADDRESS_MASK)
+             + virtualAddress.bitFields.pageMapLevel4Offset * sizeof(QWORD), pml4Address, *(QWORD_PTR)pml4Address);
+#endif
     if(!pml4Address->bitFields.valid)
         return STATUS_ADDRESS_NOT_VALID;
     PQWORD_PAGE_TABLE_ENTRY pdtAddress = 
         (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((pml4Address->bitFields.address << 12)
             + virtualAddress.bitFields.pageDirectoryPointerTableOffset * sizeof(QWORD));
+#ifdef DEBUG_ADDRESS_TRANSLATION
+    PrintDebugLevelDebug("PDPT: %8 %8 %8\n", (pml4Address->bitFields.address << 12)
+            + virtualAddress.bitFields.pageDirectoryPointerTableOffset * sizeof(QWORD), pdtAddress, *(QWORD_PTR)pdtAddress);
+#endif
     if(!pdtAddress->bitFields.valid)
         return STATUS_ADDRESS_NOT_VALID;
     PQWORD_PAGE_TABLE_ENTRY pdAddress = 
         (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((pdtAddress->bitFields.address << 12)
             + virtualAddress.bitFields.pageDirectoryOffset * sizeof(QWORD));
+#ifdef DEBUG_ADDRESS_TRANSLATION
+    PrintDebugLevelDebug("PDT: %8 %8 %8\n", (pdtAddress->bitFields.address << 12)
+            + virtualAddress.bitFields.pageDirectoryOffset * sizeof(QWORD), pdAddress, *(QWORD_PTR)pdAddress);
+#endif
     if(!pdAddress->bitFields.valid)
         return STATUS_ADDRESS_NOT_VALID;
     QWORD guestPhysicalAddress;
@@ -36,10 +53,17 @@ STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR tran
         PQWORD_PAGE_TABLE_ENTRY ptAddress = 
             (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((pdAddress->bitFields.address << 12)
                 + virtualAddress.bitFields.pageTableOffset * sizeof(QWORD));
+#ifdef DEBUG_ADDRESS_TRANSLATION
+    PrintDebugLevelDebug("PT: %8 %8 %8\n", (pdAddress->bitFields.address << 12)
+                + virtualAddress.bitFields.pageTableOffset * sizeof(QWORD), ptAddress, *(QWORD_PTR)ptAddress);
+#endif
         if(!ptAddress->bitFields.valid)
             return STATUS_ADDRESS_NOT_VALID;
-        QWORD guestPhysicalAddress = (ptAddress->bitFields.address << 12) + virtualAddress.bitFields.pageOffset;
+        guestPhysicalAddress = (ptAddress->bitFields.address << 12) + virtualAddress.bitFields.pageOffset;
     }
+#ifdef DEBUG_ADDRESS_TRANSLATION
+    Print("Address was translated to guest physical: %8\n", guestPhysicalAddress);
+#endif
     *translatedAddress = guestPhysicalAddress;
     return STATUS_SUCCESS;
 }

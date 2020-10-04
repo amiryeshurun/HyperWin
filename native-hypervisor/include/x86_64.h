@@ -9,9 +9,13 @@
 #define LARGE_PAGE_MASK 0x1FFFFFULL
 
 /* CR related data */
-#define CR4_VMX_ENABLED (1 << 13)
 #define CR0_NE_ENABLED (1 << 5)
+#define CR0_PG_ENABLED (1 << 31)
+#define CR0_PM_ENABLED (1 << 0)
+
+#define CR4_VMX_ENABLED (1 << 13)
 #define CR4_OSXSAVE (1 << 18)
+#define CR4_PAE_ENABLED (1 << 5)
 
 /* CPUID related data */
 #define CPUID_XSAVE (1 << 26)
