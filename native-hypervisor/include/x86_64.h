@@ -6,7 +6,7 @@
 /* Paging related data */
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
-#define LARGE_PAGE_MASK 0x1FFFFFULL
+#define LARGE_PAGE_MASK 0x1fffffULL
 
 /* CR related data */
 #define CR0_NE_ENABLED (1 << 5)
@@ -19,6 +19,10 @@
 
 /* CPUID related data */
 #define CPUID_XSAVE (1 << 26)
+
+/* Useful opcodes */
+#define INT3_OPCODE 0xcc
+#define NOP_OPCODE 0x90
 
 typedef struct _GDT
 {

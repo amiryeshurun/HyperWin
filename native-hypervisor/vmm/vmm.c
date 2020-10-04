@@ -142,7 +142,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
 	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
-    
     // Register all handlers
     RegisterVmExitHandlers(cpuData);
 
@@ -158,6 +157,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
 VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data)
 {
     // VM-Exit handlers registeration
+    for(QWORD i = 0; i < 100; data->isHandledOnVmExit[i++] = FALSE);
     RegisterVmExitHandler(data, EXIT_REASON_MSR_READ, HandleMsrRead);
     RegisterVmExitHandler(data, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
     RegisterVmExitHandler(data, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
@@ -221,9 +221,8 @@ STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase
         for(QWORD j = 0; j < codeSizeInPages; j++)
             data->cpuData[i]->eptPageTables[codeBase / PAGE_SIZE + j] 
                 = CreateEPTEntry(data->physicalHypervisorBase + j * PAGE_SIZE, EPT_RWX);
-        ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase 
-            + ALIGN_UP(data->codeBaseSize, PAGE_SIZE), 
-            data->hypervisorBaseSize - ALIGN_UP(data->codeBaseSize, PAGE_SIZE), 0) == STATUS_SUCCESS);
+        ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase,
+            data->hypervisorBaseSize, 0) == STATUS_SUCCESS);
     }
     PrintDebugLevelDebug("Done mapping\n");
     return STATUS_SUCCESS;

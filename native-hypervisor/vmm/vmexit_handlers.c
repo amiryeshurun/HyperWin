@@ -189,20 +189,26 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data)
 
 STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data)
 {
-    PREGISTERS regs = &(data->guestRegisters);
-    if(regs->rcx & 0xffffffffULL != regs->rcx)
-        regs->rcx &= 0xffffffffULL;
-    regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+	PREGISTERS regs = &(data->guestRegisters);
+	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
 
+	QWORD msrNum = regs->rcx & 0xFFFFFFFFULL;
+	QWORD msrValue = __readmsr(msrNum);
+
+	regs->rax = (DWORD)msrValue;
+	regs->rdx = (DWORD)(msrValue >> 32);
+    
     return STATUS_SUCCESS;
 }
 
 STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data)
 {
-    PREGISTERS regs = &(data->guestRegisters);
-    if(regs->rcx & 0xffffffffULL != regs->rcx)
-        regs->rcx &= 0xffffffffULL;
-    regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+	PREGISTERS regs = &(data->guestRegisters);
+	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+
+	QWORD msrNum = regs->rcx & 0xFFFFFFFFULL;
+	QWORD msrValue = (regs->rax & 0xFFFFFFFFULL) | ((regs->rdx & 0xFFFFFFFFULL) << 32);
+	__writemsr(msrNum, msrValue);
 
     return STATUS_SUCCESS;
 }
@@ -210,13 +216,13 @@ STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data)
 STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs = &(data->guestRegisters);
-    PrintDebugLevelDebug("CPUID detected, emulating the instruction: EAX: %8\n", regs->rax);
+    PrintDebugLevelDebug("CPUID detected, emulating the instruction: EAX: %8 ECX: %8\n", regs->rax, regs->rcx);
     QWORD eax, ebx, ecx, edx;
     __cpuid((INT)regs->rax, (INT)regs->rcx, &eax, &ebx, &ecx, &edx);
-    regs->rax = (INT)eax;
-    regs->rbx = (INT)ebx;
-    regs->rcx = (INT)ecx;
-    regs->rdx = (INT)edx;
+    regs->rax = eax;
+    regs->rbx = ebx;
+    regs->rcx = ecx;
+    regs->rdx = edx;
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     return STATUS_SUCCESS;
 }
@@ -228,8 +234,8 @@ STATUS HandleEptViolation(IN PCURRENT_GUEST_STATE data)
         Print("!!! DETECTED ACCESS TO HYPERVISOR AREA !!!\n");
         return STATUS_ACCESS_TO_HIDDEN_BASE;
     }
-    Print("Unhandled EPT Violation occured at: (P)%8, (V)%8\n", 
-        vmread(GUEST_PHYSICAL_ADDRESS), data->guestRegisters.rip);
+    Print("Unhandled EPT Violation occured at: (P)%8, (RIP)%8\n", 
+        vmread(GUEST_PHYSICAL_ADDRESS), vmread(GUEST_CS_BASE) + data->guestRegisters.rip);
     return STATUS_UNHANDLED_EPT_VIOLATION;
 }
 
@@ -254,8 +260,5 @@ STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data)
 STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data)
 {
     Print("!!! TRIPLE FAULT !!!\n");
-    BYTE code[100];
-    ASSERT(CopyGuestMemory(code, data->guestRegisters.rip, 100) == STATUS_SUCCESS);
-    Print("%8 - %.b\n", data->guestRegisters.rip, 100, code);
     return STATUS_TRIPLE_FAULT;
 }
