@@ -12,7 +12,7 @@
 #define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 #define REAL_MODE_CODE_START 0x4200
 #define WINDOWS_DISK_INDEX 0x6010
-#define CODE_BEGIN_ADDRESS 0x1200000
+#define CODE_BEGIN_ADDRESS 0x3300000
 
 #define MBR_SIZE 512 
 
@@ -129,5 +129,6 @@ STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYT
 STATUS AllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address);
 VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count);
+STATUS HideCodeBase(IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength);
 
 #endif
