@@ -46,8 +46,8 @@ typedef struct _SHARED_CPU_DATA
     QWORD codeBase;
     QWORD physicalCodeBase;
     QWORD codeBaseSize;
-    QWORD e820Segment;
-    QWORD e820Offset;
+    QWORD int15Segment;
+    QWORD int15Offset;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA

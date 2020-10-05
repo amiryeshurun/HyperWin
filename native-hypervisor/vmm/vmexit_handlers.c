@@ -193,27 +193,40 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data)
     {
         if(regs->rax == 0xE820)
         {
+            Print("Arrived at E820 with EBX: %d, ECX: %d\n", regs->rbx, regs->rcx);
             BOOL carrySet = FALSE;
             if(regs->rbx >= data->currentCPU->sharedData->memoryRangesCount)
             {
-                __vmwrite(GUEST_RFLAGS, vmread(GUEST_RFLAGS) | RFLAGS_CARRY);
+                Print("RBX higher or equal\n");
                 carrySet = TRUE;
                 goto EmulateIRET;
             }
             regs->rax = E820_MAGIC;
             regs->rcx = (regs->rcx & ~(0xffULL)) | 20;
-            CopyMemory(vmread(GUEST_ES_BASE) + ((regs->rdi) & (~(0xffffULL))), 
+            Print("RAX: %8, RCX: %d\n", regs->rax, regs->rcx);
+            CopyMemory(vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL), 
                 &(data->currentCPU->sharedData->allRam[regs->rbx++]), sizeof(E820_LIST_ENTRY));
-            __vmwrite(GUEST_RFLAGS, vmread(GUEST_RFLAGS) & (~(RFLAGS_CARRY)));
+            carrySet = FALSE;
+            Print("%.b\n", sizeof(E820_LIST_ENTRY), vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL));
             if(regs->rbx == data->currentCPU->sharedData->memoryRangesCount)
                 regs->rbx = 0;
 EmulateIRET:
-
+            Print("Emulating IRET\n");
+            regs->rip = (DWORD)(*(DWORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp));
+            WORD csValue = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 2);
+            WORD flags = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 4);
+            if(carrySet) 
+                flags |= RFLAGS_CARRY;
+            else
+                flags &= ~(RFLAGS_CARRY);
+            __vmwrite(GUEST_CS_BASE, csValue << 4);
+            __vmwrite(GUEST_CS_SELECTOR, csValue);
+            regs->rsp += 6;
             return STATUS_SUCCESS;
         }
-        regs->rip = data->currentCPU->sharedData->e820Offset;
-        __vmwrite(GUEST_CS_BASE, (data->currentCPU->sharedData->e820Segment));
-        __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->e820Segment) >> 4);
+        regs->rip = data->currentCPU->sharedData->int15Offset;
+        __vmwrite(GUEST_CS_BASE, (data->currentCPU->sharedData->int15Segment));
+        __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->int15Segment) >> 4);
         return STATUS_SUCCESS;
     }
 

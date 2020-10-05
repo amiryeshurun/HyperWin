@@ -189,6 +189,7 @@ VOID HandleVmExitEx()
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
     PCURRENT_GUEST_STATE data = GetVMMStruct();
+    Print("in\n");
     if(data->currentCPU->isHandledOnVmExit[exitReason])
     {
         STATUS handleStatus;
@@ -203,6 +204,7 @@ VOID HandleVmExitEx()
         Print("Unhandled vm-exit occured. Exit reason is: %d\n", exitReason);
         ASSERT(FALSE);
     }
+    Print("out\n");
 }
 
 PCURRENT_GUEST_STATE GetVMMStruct()
@@ -272,8 +274,8 @@ STATUS SetupE820Hook(IN PSINGLE_CPU_DATA cpuData)
     BYTE vmcall[] = { 0x0f, 0x01, 0xc1 };
     CopyMemory(E820_VMCALL_GATE, vmcall, 3);
     ivtAddress[0x15] = E820_VMCALL_GATE;
-    cpuData->sharedData->e820Offset = offset;
-    cpuData->sharedData->e820Segment = (segment << 4);
+    cpuData->sharedData->int15Offset = offset;
+    cpuData->sharedData->int15Segment = (segment << 4);
     if(ivtAddress[0x15] != E820_VMCALL_GATE)
         return STATUS_E820_NOT_HOOKED;
     return STATUS_SUCCESS;
