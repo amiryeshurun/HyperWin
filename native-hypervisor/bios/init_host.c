@@ -38,6 +38,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         Print("Allocation of %8 bytes failed.\n", allocationSize);
         ASSERT(FALSE);
     }
+    ASSERT(HideCodeBase(memoryMap, &memoryRegionsCount, codeBase, codeLength) == STATUS_SUCCESS);
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
     PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE);
@@ -85,7 +86,7 @@ STATUS AllocateMemoryUsingMemoryMap
 {
     QWORD alignedAllocationSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
     INT upperIdx = NEG_INF; // high addresses are more rarely to be in use on the computer startup, use them
-    for(DWORD i = 0; i < memoryRegionsCount; i++)
+    for(QWORD i = 0; i < memoryRegionsCount; i++)
     {
         if(memoryMap[i].type != E820_USABLE_REGION)
             continue;
@@ -219,6 +220,52 @@ VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count)
     for(QWORD i = 0; i < count; i++)
         Print("######### %d\n"
                "Base address: %8\n"
-               "Length: %d\n"
+               "Length: %8\n"
                "Type: %d\n", i, start[i].baseAddress, start[i].length, start[i].type);
+}
+
+STATUS HideCodeBase
+    (IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength)
+{
+    QWORD codeRegionIdx = NEG_INF, count = *updatedCount;
+    for(QWORD i = 0; i < count; i++)
+    {
+        if(memoryMap[i].type == E820_USABLE_REGION && (codeBegin > memoryMap[i].baseAddress) 
+            && ((codeBegin + codeLength) < memoryMap[i].baseAddress + memoryMap[i].length))
+        {
+            if(codeRegionIdx == NEG_INF)
+            {
+                codeRegionIdx = i;
+                continue;
+            }
+            // In some cases, the memory map is unsorted. Keep searching...
+            if((codeBegin - memoryMap[codeRegionIdx].baseAddress) > (codeBegin - memoryMap[i].baseAddress))
+                codeRegionIdx = i;
+        }
+    }
+    if(codeRegionIdx == NEG_INF)
+        return STATUS_CODE_REGION_NOT_FOUND;
+    PrintDebugLevelDebug("The memory range for hypervisor code was found. Base: %8, Length %d\n", 
+        memoryMap[codeRegionIdx].baseAddress, memoryMap[codeRegionIdx].length);
+    if((codeBegin + codeLength) > (memoryMap[codeRegionIdx].baseAddress +  memoryMap[codeRegionIdx].length))
+        return STATUS_CODE_IN_DIFFERENT_REGIONS;
+    E820_LIST_ENTRY first = {
+        .baseAddress = memoryMap[codeRegionIdx].baseAddress,
+        .length = codeBegin - memoryMap[codeRegionIdx].baseAddress - PAGE_SIZE,
+        .type = E820_USABLE_REGION,
+        .extendedAttribute = memoryMap[codeRegionIdx].extendedAttribute
+        },
+        second = {
+        .baseAddress = codeBegin + ALIGN_UP(codeLength, PAGE_SIZE),
+        .length = ALIGN_DOWN(memoryMap[codeRegionIdx].length - codeLength - first.length - PAGE_SIZE
+            ,PAGE_SIZE),
+        .type = E820_USABLE_REGION,
+        .extendedAttribute = memoryMap[codeRegionIdx].extendedAttribute
+        };
+    for(QWORD i = count; i > codeRegionIdx; i--)
+        memoryMap[i] = memoryMap[i - 1];
+    memoryMap[codeRegionIdx] = first;
+    memoryMap[codeRegionIdx + 1] = second;
+    *updatedCount = count + 1;
+    return STATUS_SUCCESS;
 }

@@ -193,25 +193,20 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data)
     {
         if(regs->rax == 0xE820)
         {
-            Print("Arrived at E820 with EBX: %d, ECX: %d\n", regs->rbx, regs->rcx);
             BOOL carrySet = FALSE;
             if(regs->rbx >= data->currentCPU->sharedData->memoryRangesCount)
             {
-                Print("RBX higher or equal\n");
                 carrySet = TRUE;
                 goto EmulateIRET;
             }
             regs->rax = E820_MAGIC;
             regs->rcx = (regs->rcx & ~(0xffULL)) | 20;
-            Print("RAX: %8, RCX: %d\n", regs->rax, regs->rcx);
             CopyMemory(vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL), 
                 &(data->currentCPU->sharedData->allRam[regs->rbx++]), sizeof(E820_LIST_ENTRY));
             carrySet = FALSE;
-            Print("%.b\n", sizeof(E820_LIST_ENTRY), vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL));
             if(regs->rbx == data->currentCPU->sharedData->memoryRangesCount)
                 regs->rbx = 0;
 EmulateIRET:
-            Print("Emulating IRET\n");
             regs->rip = (DWORD)(*(DWORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp));
             WORD csValue = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 2);
             WORD flags = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 4);
