@@ -79,6 +79,8 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
     InitializeSingleHypervisor(sharedData->cpuData[0]);
+    // Hook E820
+    ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
 }
 
 STATUS AllocateMemoryUsingMemoryMap
