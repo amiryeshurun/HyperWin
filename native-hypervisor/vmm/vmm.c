@@ -145,6 +145,8 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     // Register all handlers
     RegisterVmExitHandlers(cpuData);
 
+    // Hook E820
+    ASSERT(SetupE820Hook(cpuData) == STATUS_SUCCESS);
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
         // Should never arrive here
@@ -260,4 +262,18 @@ VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmE
 {
     data->isHandledOnVmExit[exitReason] = TRUE;
     data->vmExitHandlers[exitReason] = handler;
+}
+
+STATUS SetupE820Hook(IN PSINGLE_CPU_DATA cpuData)
+{
+    DWORD_PTR ivtAddress = PhysicalToVirtual(0);
+    QWORD segment = ((((DWORD_PTR)(ivtAddress))[0x15]) >> 16) & 0xffffULL;
+    QWORD offset = ((DWORD_PTR)(ivtAddress))[0x15] & 0xffffULL;
+    BYTE vmcall[] = { 0x0f, 0x01, 0xc1 };
+    CopyMemory(0xfffc, vmcall, 3);
+    ((DWORD_PTR)(ivtAddress))[0x15] = (DWORD)0xfffc;
+    cpuData->sharedData->e820Offset = offset;
+    cpuData->sharedData->e820Segment = (segment << 4);
+    Print("%8 + %8\n", cpuData->sharedData->e820Segment, cpuData->sharedData->e820Offset);
+    return STATUS_SUCCESS;
 }

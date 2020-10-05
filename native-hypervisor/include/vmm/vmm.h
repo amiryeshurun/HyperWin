@@ -46,6 +46,8 @@ typedef struct _SHARED_CPU_DATA
     QWORD codeBase;
     QWORD physicalCodeBase;
     QWORD codeBaseSize;
+    QWORD e820Segment;
+    QWORD e820Offset;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
@@ -90,5 +92,6 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
 BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
 VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmExitHandler handler);
 VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data);
+STATUS SetupE820Hook(IN PSINGLE_CPU_DATA cpuData);
 
 #endif

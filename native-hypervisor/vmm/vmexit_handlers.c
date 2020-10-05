@@ -187,6 +187,18 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data)
         data->guestRegisters.rip = MBR_ADDRESS;
         return STATUS_SUCCESS;
     }
+    Print("%8\n", data->guestRegisters.rip);
+    if(data->guestRegisters.rip == 0xfffc)
+    {
+        if(data->guestRegisters.rax == 0xE820)
+        {
+            Print("%8 %8 %8 %8\n", data->guestRegisters.rax, data->guestRegisters.rbx, data->guestRegisters.rcx, data->guestRegisters.rdx);
+        }
+        data->guestRegisters.rip = data->currentCPU->sharedData->e820Offset;
+        __vmwrite(GUEST_CS_BASE, (data->currentCPU->sharedData->e820Segment));
+        __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->e820Segment)  >> 4);
+        return STATUS_SUCCESS;
+    }
 
     return STATUS_UNKNOWN_VMCALL;
 }
