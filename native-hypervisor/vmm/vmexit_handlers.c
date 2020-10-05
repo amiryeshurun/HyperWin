@@ -12,6 +12,10 @@
 
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
 {
+    // Disable CR3 access after the first time
+    __vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmread(CPU_BASED_VM_EXEC_CONTROL)
+         & ~(CPU_BASED_CR3_LOAD_EXITING) & ~(CPU_BASED_CR3_STORE_EXITING));
+    
     QWORD accessInformation = vmread(EXIT_QUALIFICATION), 
         operation = accessInformation & CR_ACCESS_TYPE_MASK;
     PREGISTERS regs = &(data->guestRegisters);
