@@ -222,7 +222,7 @@ STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase
     {
         for(QWORD j = 0; j < codeSizeInPages; j++)
             data->cpuData[i]->eptPageTables[codeBase / PAGE_SIZE + j] 
-                = CreateEPTEntry(data->physicalHypervisorBase + j * PAGE_SIZE, EPT_RWX);
+                = CreateEPTEntry(data->physicalHypervisorBase + j * PAGE_SIZE, 0);
         ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase,
             data->hypervisorBaseSize, 0) == STATUS_SUCCESS);
     }
@@ -267,13 +267,14 @@ VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmE
 STATUS SetupE820Hook(IN PSINGLE_CPU_DATA cpuData)
 {
     DWORD_PTR ivtAddress = PhysicalToVirtual(0);
-    QWORD segment = ((((DWORD_PTR)(ivtAddress))[0x15]) >> 16) & 0xffffULL;
-    QWORD offset = ((DWORD_PTR)(ivtAddress))[0x15] & 0xffffULL;
+    QWORD segment = (ivtAddress[0x15] >> 16) & 0xffffULL;
+    QWORD offset = ivtAddress[0x15] & 0xffffULL;
     BYTE vmcall[] = { 0x0f, 0x01, 0xc1 };
-    CopyMemory(0xfffc, vmcall, 3);
-    ((DWORD_PTR)(ivtAddress))[0x15] = (DWORD)0xfffc;
+    CopyMemory(E820_VMCALL_GATE, vmcall, 3);
+    ivtAddress[0x15] = E820_VMCALL_GATE;
     cpuData->sharedData->e820Offset = offset;
     cpuData->sharedData->e820Segment = (segment << 4);
-    Print("%8 + %8\n", cpuData->sharedData->e820Segment, cpuData->sharedData->e820Offset);
+    if(ivtAddress[0x15] != E820_VMCALL_GATE)
+        return STATUS_E820_NOT_HOOKED;
     return STATUS_SUCCESS;
 }

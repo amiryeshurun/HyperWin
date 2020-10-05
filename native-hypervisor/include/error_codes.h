@@ -26,5 +26,6 @@
 #define STATUS_INVALID_MSR_LOADING     19
 #define STATUS_MACHINE_CHECK_FAILURE   20
 #define STATUS_TRIPLE_FAULT            21
+#define STATUS_E820_NOT_HOOKED         22
 
 #endif

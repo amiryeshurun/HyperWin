@@ -24,6 +24,9 @@
 #define INT3_OPCODE 0xcc
 #define NOP_OPCODE 0x90
 
+/* Useful flags */
+#define RFLAGS_CARRY (1 << 0)
+
 typedef struct _GDT
 {
     WORD limit;

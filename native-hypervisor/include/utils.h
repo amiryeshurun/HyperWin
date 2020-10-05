@@ -11,7 +11,7 @@
 #define INF 0xffffffffffffffffULL
 #define NEG_INF (-0xffff)
 
-VOID CopyMemory(OUT QWORD_PTR dest, IN QWORD_PTR src, IN QWORD count);
+VOID CopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count);
 INT CompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length);
 CHAR ConvertHalfByteToHexChar(IN BYTE halfByte);
 QWORD pow(IN QWORD base, IN QWORD power);

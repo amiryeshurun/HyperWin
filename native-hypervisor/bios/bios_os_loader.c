@@ -13,8 +13,8 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
     BiosFunction functionEnd = functionsEnd[function];
     QWORD enterRealModeLength = EnterRealModeEnd - EnterRealMode;
     QWORD functionLength = functionEnd - functionBegin;
-    CopyMemory((QWORD_PTR)REAL_MODE_CODE_START, EnterRealMode, enterRealModeLength);
-    CopyMemory((QWORD_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
+    CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, EnterRealMode, enterRealModeLength);
+    CopyMemory((BYTE_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
                functionLength);
     AsmEnterRealModeRunFunction();

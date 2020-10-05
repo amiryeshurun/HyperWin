@@ -179,24 +179,41 @@ STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data)
 
 STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data)
 {    
-    if(data->guestRegisters.rax == VMCALL_SETUP_BASE_PROTECTION)
+    PREGISTERS regs = &(data->guestRegisters);
+
+    if(regs->rax == VMCALL_SETUP_BASE_PROTECTION)
     {
         ASSERT(SetupHypervisorCodeProtection(data->currentCPU->sharedData, 
             data->currentCPU->sharedData->physicalCodeBase, 
             data->currentCPU->sharedData->codeBaseSize) == STATUS_SUCCESS);
-        data->guestRegisters.rip = MBR_ADDRESS;
+        regs->rip = MBR_ADDRESS;
         return STATUS_SUCCESS;
     }
-    Print("%8\n", data->guestRegisters.rip);
-    if(data->guestRegisters.rip == 0xfffc)
+    else if(regs->rip == E820_VMCALL_GATE)
     {
-        if(data->guestRegisters.rax == 0xE820)
+        if(regs->rax == 0xE820)
         {
-            Print("%8 %8 %8 %8\n", data->guestRegisters.rax, data->guestRegisters.rbx, data->guestRegisters.rcx, data->guestRegisters.rdx);
+            BOOL carrySet = FALSE;
+            if(regs->rbx >= data->currentCPU->sharedData->memoryRangesCount)
+            {
+                __vmwrite(GUEST_RFLAGS, vmread(GUEST_RFLAGS) | RFLAGS_CARRY);
+                carrySet = TRUE;
+                goto EmulateIRET;
+            }
+            regs->rax = E820_MAGIC;
+            regs->rcx = (regs->rcx & ~(0xffULL)) | 20;
+            CopyMemory(vmread(GUEST_ES_BASE) + ((regs->rdi) & (~(0xffffULL))), 
+                &(data->currentCPU->sharedData->allRam[regs->rbx++]), sizeof(E820_LIST_ENTRY));
+            __vmwrite(GUEST_RFLAGS, vmread(GUEST_RFLAGS) & (~(RFLAGS_CARRY)));
+            if(regs->rbx == data->currentCPU->sharedData->memoryRangesCount)
+                regs->rbx = 0;
+EmulateIRET:
+
+            return STATUS_SUCCESS;
         }
-        data->guestRegisters.rip = data->currentCPU->sharedData->e820Offset;
+        regs->rip = data->currentCPU->sharedData->e820Offset;
         __vmwrite(GUEST_CS_BASE, (data->currentCPU->sharedData->e820Segment));
-        __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->e820Segment)  >> 4);
+        __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->e820Segment) >> 4);
         return STATUS_SUCCESS;
     }
 
