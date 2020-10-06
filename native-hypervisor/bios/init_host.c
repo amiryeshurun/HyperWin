@@ -28,7 +28,6 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
     QWORD allocationSize = 0;
-    allocationSize += ALIGN_UP(codeLength, PAGE_SIZE);
     allocationSize += ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE);
     allocationSize += (ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE) * numberOfCores);
     allocationSize += (ALIGN_UP(sizeof(CURRENT_GUEST_STATE), PAGE_SIZE) * numberOfCores);
@@ -41,20 +40,20 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     ASSERT(HideCodeBase(memoryMap, &memoryRegionsCount, codeBase, codeLength) == STATUS_SUCCESS);
     QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
-    PSHARED_CPU_DATA sharedData = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE);
+    PSHARED_CPU_DATA sharedData = hypervisorBase;
     sharedData->numberOfCores = numberOfCores;
     sharedData->hypervisorBase = hypervisorBase;
     sharedData->physicalHypervisorBase = physicalHypervisorBase;
     sharedData->hypervisorBaseSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
     sharedData->codeBase = PhysicalToVirtual(codeBase);
     sharedData->physicalCodeBase = codeBase;
-    sharedData->codeBaseSize= ALIGN_UP(codeLength, PAGE_SIZE);
+    sharedData->codeBaseSize = ALIGN_UP(codeLength, PAGE_SIZE);
     for(BYTE i = 0; i < numberOfCores; i++)
     {
-        sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE) 
-            + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) + i * ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE);
-        sharedData->currentState[i] = hypervisorBase + ALIGN_UP(codeLength, PAGE_SIZE) 
-            + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) + numberOfCores * ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE)
+        sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) 
+            + i * ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE);
+        sharedData->currentState[i] = hypervisorBase + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) 
+            + numberOfCores * ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE)
             + i * ALIGN_UP(sizeof(CURRENT_GUEST_STATE), PAGE_SIZE);
         sharedData->currentState[i]->currentCPU = sharedData->cpuData[i];
         sharedData->cpuData[i]->sharedData = sharedData;

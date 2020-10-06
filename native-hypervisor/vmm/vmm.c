@@ -218,9 +218,8 @@ STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase
         hypervisorBaseSizeInPages = data->hypervisorBaseSize / PAGE_SIZE;
     for(QWORD i = 0; i < data->numberOfCores; i++)
     {
-        for(QWORD j = 0; j < codeSizeInPages; j++)
-            data->cpuData[i]->eptPageTables[codeBase / PAGE_SIZE + j] 
-                = CreateEPTEntry(data->physicalHypervisorBase + j * PAGE_SIZE, 0);
+        ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalCodeBase, data->codeBaseSize,
+            0) == STATUS_SUCCESS);
         ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase,
             data->hypervisorBaseSize, 0) == STATUS_SUCCESS);
     }
