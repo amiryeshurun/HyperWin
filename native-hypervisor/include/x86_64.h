@@ -19,6 +19,8 @@
 
 /* CPUID related data */
 #define CPUID_XSAVE (1 << 26)
+#define CPUID_OSXSAVE (1 << 27)
+#define CPUID_XSTATE_LEAF 0xd
 
 /* Useful opcodes */
 #define INT3_OPCODE 0xcc
