@@ -13,7 +13,8 @@
 #define REAL_MODE_CODE_START 0x4200
 #define WINDOWS_DISK_INDEX 0x6010
 #define CODE_BEGIN_ADDRESS 0x3300000
-
+#define SLEEP_TIME_FIRST_2 0x4000
+#define SLEEP_TIME_SECOND_2 0x4002
 #define MBR_SIZE 512 
 
 /* RSDP related data */
@@ -48,7 +49,8 @@
 
 enum{
     DISK_READER = 0,
-    GET_MEMORY_MAP = 1
+    GET_MEMORY_MAP = 1,
+    SLEEP = 2
 };
 
 typedef struct _DISK_ADDRESS_PACKET 
@@ -119,6 +121,8 @@ extern VOID GetMemoryMap();
 extern VOID GetMemoryMapEnd();
 extern VOID SetupSystemAndHandleControlToBios();
 extern VOID SetupSystemAndHandleControlToBiosEnd();
+extern VOID SleepAsm();
+extern VOID SleepAsmEnd();
 
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
@@ -130,5 +134,7 @@ STATUS AllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address);
 VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count);
 STATUS HideCodeBase(IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength);
+STATUS DetectX2APICAvailability();
+VOID Sleep(IN DWORD seconds);
 
 #endif

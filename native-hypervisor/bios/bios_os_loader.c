@@ -4,8 +4,8 @@
 #include <intrinsics.h>
 #include <debug.h>
 
-BiosFunction functionsBegin[] = { DiskReader, GetMemoryMap };
-BiosFunction functionsEnd[] = { DiskReaderEnd, GetMemoryMapEnd };
+BiosFunction functionsBegin[] = { DiskReader, GetMemoryMap, SleepAsm };
+BiosFunction functionsEnd[] = { DiskReaderEnd, GetMemoryMapEnd, SleepAsmEnd };
 
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
 {
@@ -59,4 +59,12 @@ VOID LoadMBRToEntryPoint()
         }
     }
     // 0x7c00 now contains the MBR
+}
+
+VOID Sleep(IN DWORD seconds)
+{
+    DWORD timeInMs = seconds * 1000;
+    *(WORD_PTR)SLEEP_TIME_FIRST_2 = timeInMs >> 16;
+    *(WORD_PTR)SLEEP_TIME_SECOND_2 = timeInMs & 0xffff;
+    EnterRealModeRunFunction(SLEEP, NULL);
 }

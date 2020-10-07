@@ -1,6 +1,8 @@
 %define EFER_MSR 0xC0000080
 %define MBR_ADDRESS 0x7c00
 %define DAP_ADDRESS 0x4000
+%define SLEEP_TIME_FIRST_2 0x4000
+%define SLEEP_TIME_SECOND_2 0x4002
 %define FIRST_SECTOR_DEST 0x3000
 %define BOOTABLE_SIGNATURE 0x55aa
 %define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
@@ -39,6 +41,8 @@ global EnterRealMode
 global EnterRealModeEnd
 global GetMemoryMap
 global GetMemoryMapEnd
+global SleepAsm
+global SleepAsmEnd
 
 SEGMENT .text
 
@@ -216,3 +220,19 @@ GetMemoryMap:
     stc
     jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
 GetMemoryMapEnd:
+
+SleepAsm:
+    mov ax, 0
+    mov ss, ax
+    mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+    mov al, 0
+    mov ah, 86h
+    mov cx, [SLEEP_TIME_FIRST_2]
+    mov dx, [SLEEP_TIME_SECOND_2]
+    ; SLEEP!
+    int 0x15
+    jmp 0:(BackToLongMode - EnterRealMode + REAL_MODE_CODE_START)
+SleepAsmEnd:
