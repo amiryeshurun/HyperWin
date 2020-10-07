@@ -5,8 +5,7 @@
 #include <intrinsics.h>
 #include <debug.h>
 #include <x86_64.h>
-
-typedef VOID (*InitFunc)(PVOID);
+#include <bios/apic.h>
 
 VOID Initialize()
 {
@@ -24,6 +23,10 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     ASSERT(FindRSDT(&rsdtTable, &rsdtType) == STATUS_SUCCESS);
     ASSERT(LocateSystemDescriptorTable(rsdtTable, &apicTable, rsdtType, "APIC") == STATUS_SUCCESS);
     ASSERT(GetCoresData(apicTable, &numberOfCores, processorIdentifires) == STATUS_SUCCESS);
+    // Print("%d: ", numberOfCores);
+    // for(QWORD i = 0; i < numberOfCores; i++)
+    //     Print("%d ", processorIdentifires[i]);
+    // ActivateHypervisorOnProcessor(1, NULL);
     EnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
     WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
