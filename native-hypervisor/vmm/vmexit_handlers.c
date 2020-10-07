@@ -156,7 +156,9 @@ STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
 
 STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data)
 {
+#ifdef DEBUG_XSETBV
     PrintDebugLevelDebug("XSETBV detected, emulating the instruction.\n");
+#endif
     // XSETBV ---> XCR[ECX] = EDX:EAX
     PREGISTERS regs = &(data->guestRegisters);
     QWORD eax, ebx, ecx, edx;
@@ -257,9 +259,33 @@ STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data)
 STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs = &(data->guestRegisters);
-    PrintDebugLevelDebug("CPUID detected, emulating the instruction: EAX: %8 ECX: %8\n", regs->rax, regs->rcx);
-    QWORD eax, ebx, ecx, edx;
-    __cpuid((INT)regs->rax, (INT)regs->rcx, &eax, &ebx, &ecx, &edx);
+    QWORD eax, ebx, ecx, edx, leaf = regs->rax, subleaf = regs->rcx;
+    __cpuid(leaf, subleaf, &eax, &ebx, &ecx, &edx);
+    if (leaf == 1)
+    {
+        // According to Xen, this is the right way to handle XSAVE availability
+		if (vmread(GUEST_CR4) & CR4_OSXSAVE)
+			ecx |= (1 << CPUID_OSXSAVE);
+        else
+            ecx &= ~(1 << CPUID_OSXSAVE);
+	}
+	else if (leaf == CPUID_XSTATE_LEAF)
+	{
+        if(subleaf == 1)
+        {
+            /* 
+                Bit 1: Supports XSAVEC and the compacted form of XRSTOR if set. -> V
+                Bit 02: Supports XGETBV with ECX = 1 if set.                    -> X
+                Bit 03: Supports XSAVES/XRSTORS and IA32_XSS if set.            -> X
+
+                The rest are reserved. 
+            */
+            eax = 1;
+            ebx = 0;
+            ecx = 0;
+            edx = 0;
+        }
+	}
     regs->rax = eax;
     regs->rbx = ebx;
     regs->rcx = ecx;

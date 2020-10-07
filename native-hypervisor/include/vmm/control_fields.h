@@ -27,6 +27,7 @@
 #define CPU_BASED_CTL2_ENABLE_EPT           0x2
 #define CPU_BASED_CTL2_RDTSCP               0x8
 #define CPU_BASED_CTL2_ENABLE_VPID          0x20
+#define CPU_BASED_CTL2_ENABLE_INVPCID       (1 << 12)
 #define CPU_BASED_CTL2_UNRESTRICTED_GUEST   0x80
 #define CPU_BASED_CTL2_ENABLE_VMFUNC        0x2000
 
@@ -36,8 +37,9 @@
 #define VM_ENTRY_SMM                    0x00000400
 #define VM_ENTRY_DEACT_DUAL_MONITOR     0x00000800
 #define VM_ENTRY_LOAD_GUEST_PAT         0x00004000
-
+#define VM_ENTRY_LOAD_EFER              (1 << 15)
 // VM-exit controls
+#define VM_EXIT_LOAD_DEBUG_CTLS         (1 << 2)
 #define VM_EXIT_IA32E_MODE              0x00000200
 #define VM_EXIT_ACK_INTR_ON_EXIT        0x00008000
 #define VM_EXIT_SAVE_GUEST_PAT          0x00040000

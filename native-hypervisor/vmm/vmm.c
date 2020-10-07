@@ -124,7 +124,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(HOST_SYSENTER_EIP, 0xffffffff);
     __vmwrite(HOST_SYSENTER_ESP, 0xffffffff);
     __vmwrite(HOST_GDTR_BASE, cpuData->gdt);
-    
+
     // General
     __vmwrite(VMCS_LINK_POINTER, -1ULL);
     __vmwrite(TSC_OFFSET, 0);
@@ -136,12 +136,14 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
     __vmwrite(VM_ENTRY_INTR_INFO, 0);
     __vmwrite(CPU_BASED_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_ACTIVATE_MSR_BITMAP | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS, MSR_IA32_VMX_PROCBASED_CTLS));
-	__vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
+	__vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_CTL2_ENABLE_INVPCID | CPU_BASED_CTL2_RDTSCP  | CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
     __vmwrite(PIN_BASED_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PINBASED_CTLS));
-	__vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT, MSR_IA32_VMX_EXIT_CTLS));
-	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_IA32E_MODE | VM_ENTRY_LOAD_DEBUG_CTLS, MSR_IA32_VMX_ENTRY_CTLS));
+	__vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_SAVE_EFER | VM_EXIT_LOAD_EFER | VM_EXIT_IA32E_MODE, MSR_IA32_VMX_EXIT_CTLS));
+	__vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_LOAD_EFER | VM_ENTRY_IA32E_MODE, MSR_IA32_VMX_ENTRY_CTLS));
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
+    __vmwrite(VIRTUAL_PROCESSOR_ID, 1);
+    
     // Register all handlers
     RegisterVmExitHandlers(cpuData);
 
