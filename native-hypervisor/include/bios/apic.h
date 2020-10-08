@@ -5,12 +5,13 @@
 #include <error_codes.h>
 #include <vmm/vmm.h>
 
-#define APIC_FUNC_ADDRESS 0x7c00
+#define APIC_FUNC_ADDRESS 0x6000
+#define CPU_DATA_ADDRESS 0x4000
 
 /* APIC related data */
 #define LOCAL_APIC_VERSION_REGISTER_ADDRESS 0xfee00030
-#define APIC_SIPI_INTERRUPT (6 << 7)
-#define APIC_INIT_INTERRUPT (5 << 7)
+#define APIC_SIPI_INTERRUPT (6 << 8)
+#define APIC_INIT_INTERRUPT (5 << 8)
 #define APIC_DEST_MODE_PHYSICAL (0 << 10)
 #define APIC_DESTINAION_BIT_OFFSET 32
 
