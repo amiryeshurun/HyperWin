@@ -23,10 +23,6 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     ASSERT(FindRSDT(&rsdtTable, &rsdtType) == STATUS_SUCCESS);
     ASSERT(LocateSystemDescriptorTable(rsdtTable, &apicTable, rsdtType, "APIC") == STATUS_SUCCESS);
     ASSERT(GetCoresData(apicTable, &numberOfCores, processorIdentifires) == STATUS_SUCCESS);
-    // Print("%d: ", numberOfCores);
-    // for(QWORD i = 0; i < numberOfCores; i++)
-    //     Print("%d ", processorIdentifires[i]);
-    // ActivateHypervisorOnProcessor(1, NULL);
     EnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
     WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
@@ -80,6 +76,13 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
+    // Enable 2xAPIC
+    EnableX2APIC();
+    // Initialize hypervisor on all cores except the BSP
+    for(QWORD i = 1; i < numberOfCores; i++)
+        ASSERT(ActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
+            == STATUS_SUCCESS);
+    // Initialize hypervisor on BSP
     InitializeSingleHypervisor(sharedData->cpuData[0]);
     // Hook E820
     ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);

@@ -41,16 +41,22 @@ VOID EnableX2APIC()
     __writemsr(MSR_IA32_APIC_BASE, __readmsr(MSR_IA32_APIC_BASE) | (1 << 10) | (1 << 11));
 }
 
-VOID IssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode)
+VOID IssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode, IN QWORD lvl)
 {
-    __writemsr(MSR_IA32_X2APIC_ICR, (destenation << APIC_DESTINAION_BIT_OFFSET) | deliveryMode | vector);
+    QWORD ipi = (destenation << APIC_DESTINAION_BIT_OFFSET) | deliveryMode | vector | lvl;
+    __writemsr(MSR_IA32_X2APIC_ICR, ipi);
 }
 
 STATUS ActivateHypervisorOnProcessor(IN QWORD processorId, IN PSINGLE_CPU_DATA cpuData)
 {
-    DWORD_PTR ivt = PhysicalToVirtual(0);
-    ivt[242] = APIC_FUNC_ADDRESS; 
     CopyMemory(APIC_FUNC_ADDRESS, ApicStart, ApicEnd - ApicStart);
-    EnableX2APIC();
-    IssueIPI(processorId, 0, APIC_INIT_INTERRUPT);
+    IssueIPI(processorId, 0, APIC_INIT_INTERRUPT, APIC_LEVEL_DEASSERT);
+    Sleep(50);
+    *(QWORD_PTR)CPU_DATA_ADDRESS = cpuData;
+    *(QWORD_PTR)(CPU_DATA_ADDRESS + sizeof(QWORD)) = InitializeSingleHypervisor;
+    *(BYTE_PTR)SEMAPHORE_LOCATION = 0;
+    IssueIPI(processorId, APIC_FUNC_ADDRESS / PAGE_SIZE, APIC_SIPI_INTERRUPT, APIC_LEVEL_ASSERT);
+    Sleep(50);
+    for(QWORD i = 0; i < 0x11ffffffffffffffULL && (*(BYTE_PTR)SEMAPHORE_LOCATION == 0); i++);
+    return *(BYTE_PTR)SEMAPHORE_LOCATION == 0 ? STATUS_APIC_SIPI_FAILED : STATUS_SUCCESS;
 }

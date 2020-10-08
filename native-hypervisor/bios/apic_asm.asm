@@ -3,8 +3,9 @@
 %define COM3 0x3E8
 %define COM4 0x2E8
 %define EFER_MSR 0xC0000080
-%define CPU_DATA_ADDRESS 0x4000
-%define APIC_FUNC_ADDRESS 0x6000
+%define CPU_DATA_ADDRESS 0x7c00
+%define APIC_FUNC_ADDRESS 0x8000
+%define SEMAPHORE_LOCATION 0x4020
 
 %macro SetCr3BasePhysicalAddress 1
 	mov eax, %1
@@ -23,14 +24,14 @@
     out dx, al
 %endmacro
 
-SECTION .text
+extern InitializeSingleHypervisor
 
 global ApicStart
 global ApicEnd
 
-extern InitializeSingleHypervisor
-
 [BITS 16]
+SECTION .text
+
 ApicStart:
     ; Enter protected mode
     cli
@@ -75,7 +76,7 @@ ApicEnableLongMode:
 ApicLongMode:
     mov rsp, 0x770000
     mov rdi, qword [CPU_DATA_ADDRESS]
-    call InitializeSingleHypervisor
+    call qword [CPU_DATA_ADDRESS + 8]
     xor rax, rax
     xor rbx, rbx
     xor rcx, rcx
@@ -92,6 +93,7 @@ ApicLongMode:
     xor r13, r13
     xor r14, r14
     xor r15, r15
-    ; bye bye...
+    mov byte [SEMAPHORE_LOCATION], 1
+    ; good night processor...
     hlt
 ApicEnd:
