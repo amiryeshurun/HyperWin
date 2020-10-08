@@ -15,9 +15,3 @@ I am trying to write documentation for most of the parts of the hypervisor.
 ### The Host
 
 * [The Hypervisor Entrypoint](docs/host/entrypoint.md) - reffers to [host/entrypoint.asm](host/entrypoint.asm)
-
-### Windows
-
-* [Why?](docs/ntoskrnl/general.md) 
-* [Translating Handles to Objects](docs/ntoskrnl/handle_translation.md) - reffers to [ntoskrnl/Windows 7/handle_translation](ntoskrnl/Windows%207/handle_translation)
-* [System Calls Entrypoint on 32-bit](docs/ntoskrnl/syscall_entry.md) - reffers to [ntoskrnl/Windows 7/syscall_entry](ntoskrnl/Windows%207/syscall_entry)
