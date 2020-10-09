@@ -9,6 +9,7 @@
 #include <x86_64.h>
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
+#include <bios/apic.h>
 
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
 {
@@ -328,4 +329,19 @@ STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data)
 {
     Print("!!! TRIPLE FAULT !!!\n");
     return STATUS_TRIPLE_FAULT;
+}
+
+STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data)
+{
+    // Intel SDM, Volume 3C, Section 33.5
+    Print("INIT interrupt detected on core %d\n", data->currentCPU->coreIdentifier);
+    __vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_ACTIVE);
+    return STATUS_SUCCESS;
+}
+
+STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data)
+{
+    // See Intel SDM, Volume 3C, Section 25.2
+    Print("Guest software attempted to issue a SIPI without an INIT interrupt\n");
+    return STATUS_SIPI_WITHOUT_INIT;
 }

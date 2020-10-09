@@ -18,6 +18,12 @@
 #define APIC_LEVEL_DEASSERT (0 << 14)
 #define APIC_LEVEL_ASSERT (1 << 14)
 
+/* State values */
+#define CPU_STATE_ACTIVE 0
+#define CPU_STATE_HLT 1
+#define CPU_STATE_SHUTDOWN 2
+#define CPU_STATE_WAIT_FOR_SIPI 3
+
 extern VOID ApicStart();
 extern VOID ApicEnd();
 

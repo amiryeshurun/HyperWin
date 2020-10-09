@@ -31,5 +31,6 @@
 #define STATUS_CODE_REGION_NOT_FOUND     25
 #define STATUS_2XAPIC_NOT_AVAILABLE      26
 #define STATUS_APIC_SIPI_FAILED          27
+#define STATUS_SIPI_WITHOUT_INIT         28
 
 #endif

@@ -16,5 +16,6 @@ STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data);
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data);
 STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data);
 STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data);
+STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data);
 
 #endif
