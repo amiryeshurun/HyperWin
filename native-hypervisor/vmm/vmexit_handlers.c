@@ -342,6 +342,24 @@ STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data)
 STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data)
 {
     // See Intel SDM, Volume 3C, Section 25.2
-    Print("Guest software attempted to issue a SIPI without an INIT interrupt\n");
-    return STATUS_SIPI_WITHOUT_INIT;
+    QWORD codePage = vmread(EXIT_QUALIFICATION);
+    Print("SIPI interrupt detected on core %d, startup code resides at %8\n", codePage);
+    SetMemory(&(data->guestRegisters), 0, sizeof(REGISTERS));
+
+    __vmwrite(GUEST_CS_BASE, codePage << 12); // 12 right bits should be zero
+    __vmwrite(GUEST_CS_SELECTOR, codePage << 8); // SELECTOR = BASE / 16
+    __vmwrite(GUEST_SS_BASE, 0);
+    __vmwrite(GUEST_SS_SELECTOR, 0);
+    __vmwrite(GUEST_DS_BASE, 0);
+    __vmwrite(GUEST_DS_SELECTOR, 0);
+    __vmwrite(GUEST_ES_BASE, 0);
+    __vmwrite(GUEST_ES_SELECTOR, 0);
+    __vmwrite(GUEST_GS_BASE, 0);
+    __vmwrite(GUEST_GS_SELECTOR, 0);
+    __vmwrite(GUEST_FS_BASE, 0);
+    __vmwrite(GUEST_FS_SELECTOR, 0);
+    __vmwrite(GUEST_TR_BASE, 0);
+    __vmwrite(GUEST_TR_SELECTOR, 0);
+    
+    return STATUS_SUCCESS;
 }
