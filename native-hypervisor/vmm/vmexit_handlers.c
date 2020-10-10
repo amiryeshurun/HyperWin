@@ -335,7 +335,7 @@ STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data)
 {
     // Intel SDM, Volume 3C, Section 33.5
     Print("INIT interrupt detected on core %d\n", data->currentCPU->coreIdentifier);
-    __vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_ACTIVE);
+	__vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_WAIT_FOR_SIPI);    
     return STATUS_SUCCESS;
 }
 

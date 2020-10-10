@@ -29,8 +29,10 @@ extern VOID ApicEnd();
 
 STATUS DetectX2APICAvailability();
 VOID EnableX2APIC();
+VOID EnableAPIC();
 STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
-VOID IssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode, IN QWORD lvl);
+VOID X2APICIssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode, IN QWORD lvl);
 STATUS ActivateHypervisorOnProcessor(IN QWORD processorId, IN PSINGLE_CPU_DATA cpuData);
+VOID APICGetBaseAddress();
 
 #endif
