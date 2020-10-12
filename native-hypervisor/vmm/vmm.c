@@ -49,7 +49,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_GDTR_LIMIT, gdt.limit);
     __vmwrite(GUEST_IDTR_BASE, idt.address);
     __vmwrite(GUEST_IDTR_LIMIT, idt.limit);
-    __vmwrite(GUEST_LDTR_BASE, 0ULL);
+    __vmwrite(GUEST_LDTR_BASE, 0);
     __vmwrite(GUEST_LDTR_LIMIT, 0xff);
     __vmwrite(GUEST_LDTR_AR_BYTES, VMCS_SELECTOR_UNUSABLE); // <--- so much time was spent on this line...
     // To understand the AR fields, see section 24.4.1 on Intel DSM
