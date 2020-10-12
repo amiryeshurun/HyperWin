@@ -9,6 +9,7 @@
 #include <x86_64.h>
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
+#include <bios/apic.h>
 
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
 {
@@ -328,4 +329,62 @@ STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data)
 {
     Print("!!! TRIPLE FAULT !!!\n");
     return STATUS_TRIPLE_FAULT;
+}
+
+STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data)
+{
+    // Intel SDM, Volume 3C, Section 33.5
+    Print("INIT interrupt detected on core %d\n", data->currentCPU->coreIdentifier);
+	__vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_WAIT_FOR_SIPI);    
+    return STATUS_SUCCESS;
+}
+
+STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data)
+{
+    QWORD vector = vmread(EXIT_QUALIFICATION);
+    // See Intel SDM, Volume 3C, Section 25.2
+    Print("SIPI detected on core: %d. Page number: %d\n", data->currentCPU->coreIdentifier, vector);
+    PREGISTERS regs = &(data->guestRegisters);
+	SetMemory(regs, 0, sizeof(REGISTERS));
+    // PM & PG must be disabled
+	__vmwrite(GUEST_CR0, (__readmsr(MSR_IA32_VMX_CR0_FIXED0) & (~CR0_PM_ENABLED) 
+        & (~CR0_PG_ENABLED)) & __readmsr(MSR_IA32_VMX_CR0_FIXED1));
+	__vmwrite(GUEST_EFER, 0); // Disable long mode
+    __vmwrite(VM_ENTRY_CONTROLS, vmread(VM_ENTRY_CONTROLS) & (~VM_ENTRY_IA32E_MODE)); // ^^
+    __vmwrite(GUEST_CR4, (__readmsr(MSR_IA32_VMX_CR4_FIXED0) | CR4_VMX_ENABLED) 
+        & __readmsr(MSR_IA32_VMX_CR4_FIXED1));
+	__vmwrite(GUEST_CR3, 0);
+    // 0xffffffff limit causes an invalid guest state
+    // Change CS to point to the SIPI page (muliply exit qualification by 0x1000)
+	__vmwrite(GUEST_CS_SELECTOR, vector << 8);
+	__vmwrite(GUEST_CS_BASE, vector << 12);
+    __vmwrite(GUEST_CS_LIMIT, 0xffff);
+    __vmwrite(GUEST_CS_AR_BYTES, vmread(GUEST_CS_AR_BYTES) & 0xff);
+    __vmwrite(GUEST_ES_SELECTOR, 0);
+    __vmwrite(GUEST_ES_BASE, 0);
+    __vmwrite(GUEST_ES_LIMIT, 0xffff);
+    __vmwrite(GUEST_ES_AR_BYTES, vmread(GUEST_ES_AR_BYTES) & 0xff);
+	__vmwrite(GUEST_SS_SELECTOR, 0);
+    __vmwrite(GUEST_SS_BASE, 0);
+    __vmwrite(GUEST_SS_LIMIT, 0xffff);
+    __vmwrite(GUEST_SS_AR_BYTES, vmread(GUEST_SS_AR_BYTES) & 0xff);
+	__vmwrite(GUEST_DS_SELECTOR, 0);
+    __vmwrite(GUEST_DS_BASE, 0);
+    __vmwrite(GUEST_DS_LIMIT, 0xffff);
+    __vmwrite(GUEST_DS_AR_BYTES, vmread(GUEST_DS_AR_BYTES) & 0xff);
+	__vmwrite(GUEST_FS_SELECTOR, 0);
+    __vmwrite(GUEST_FS_BASE, 0);
+    __vmwrite(GUEST_FS_LIMIT, 0xffff);
+    __vmwrite(GUEST_FS_AR_BYTES, vmread(GUEST_FS_AR_BYTES) & 0xff);
+	__vmwrite(GUEST_GS_SELECTOR, 0);
+    __vmwrite(GUEST_GS_BASE, 0);
+    __vmwrite(GUEST_GS_LIMIT, 0xffff);
+    __vmwrite(GUEST_GS_AR_BYTES, vmread(GUEST_GS_AR_BYTES) & 0xff);
+	__vmwrite(GUEST_TR_SELECTOR, 0);
+    __vmwrite(GUEST_TR_BASE, 0);
+    __vmwrite(GUEST_TR_LIMIT, 0xffff);
+    __vmwrite(GUEST_TR_AR_BYTES, vmread(GUEST_TR_AR_BYTES) & 0xff);
+    // mark core as active
+	__vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_ACTIVE);
+    return STATUS_SUCCESS;
 }

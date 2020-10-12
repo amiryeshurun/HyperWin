@@ -5,8 +5,7 @@
 #include <intrinsics.h>
 #include <debug.h>
 #include <x86_64.h>
-
-typedef VOID (*InitFunc)(PVOID);
+#include <bios/apic.h>
 
 VOID Initialize()
 {
@@ -77,6 +76,13 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
+    // Enable 2xAPIC
+    EnableX2APIC();
+    // Initialize hypervisor on all cores except the BSP
+    for(QWORD i = 1; i < numberOfCores; i++)
+        ASSERT(ActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
+            == STATUS_SUCCESS);
+    // Initialize hypervisor on BSP
     InitializeSingleHypervisor(sharedData->cpuData[0]);
     // Hook E820
     ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
@@ -102,117 +108,6 @@ STATUS AllocateMemoryUsingMemoryMap
     QWORD unalignedCountLength = memoryMap[upperIdx].length % PAGE_SIZE;
     memoryMap[upperIdx].length -= (alignedAllocationSize + unalignedCountBase + unalignedCountLength);
     *address = memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
-    return STATUS_SUCCESS;
-}
-
-STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
-{
-    CHAR pattern[] = "RSD PTR ";
-    BYTE_PTR ebdaAddress = (*(WORD_PTR)EBDA_POINTER_ADDRESS) >> 4;
-    BYTE_PTR rsdpBaseAddress;
-    
-    for(QWORD i = 0; i < 0x1024; i += 16)
-    {
-        if(!CompareMemory(ebdaAddress + i, pattern, 8))
-        {
-            rsdpBaseAddress = (ebdaAddress + i);
-            goto RSDPFound;
-        }
-    }
-
-    for(QWORD start = 0xE0000; start < 0xFFFFF; start += 16)
-    {
-        if(!CompareMemory(start, pattern, 8))
-        {
-            rsdpBaseAddress = start;
-            goto RSDPFound;
-        }
-    }
-    
-    return STATUS_FAILURE;
-
-RSDPFound:
-    NOP
-    QWORD sum = 0;
-    for(BYTE i = 0; i < RSDP_STRUCTURE_SIZE; i++)
-            sum += rsdpBaseAddress[i];
-    if(sum & 0xff) // checksum failed
-        return STATUS_RSDP_INVALID_CHECKSUM;
-    if(rsdpBaseAddress[RSDP_REVISION_OFFSET] == 1) // ACPI Vesrion 1.0
-    {   
-        *type = 1;
-        *address = rsdpBaseAddress + RSDP_ADDRESS_OFFSET;
-        return STATUS_SUCCESS;
-    }
-    // ACPI Vesrion 2.0 and above
-    for(BYTE i = 0; i < RSDP_EXTENSION_SIZE; i++)
-        sum += (rsdpBaseAddress + RSDP_STRUCTURE_SIZE)[i];
-    if(sum & 0xff)
-        return STATUS_RSDP_INVALID_CHECKSUM;
-    *type = 2;
-    *address = *(QWORD_PTR)(rsdpBaseAddress + RSDP_STRUCTURE_SIZE + 4); // Xsdt
-    return STATUS_SUCCESS;
-}
-
-STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature)
-{
-    QWORD sum = 0;
-    for(QWORD i = 0; i < *(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET); i++)
-        sum += rsdt[i];
-    if(sum % 0x100)
-        return STATUS_RSDT_INVALID_CHECKSUM;
-    QWORD entriesCount;
-    if(type == 1) // ACPI Version 1.0
-    {
-        entriesCount = ((*(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET)) - ACPI_SDT_HEADER_SIZE) / 4;
-        DWORD_PTR sectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
-
-        for(QWORD i = 0; i < entriesCount; i++)
-        {
-            if(!CompareMemory(signature, sectionsArrayBase[i], 4))
-            {
-                *table = sectionsArrayBase[i];
-                return STATUS_SUCCESS;
-            }
-        }
-
-    }
-    else // Version >= 2.0
-    {
-        entriesCount = ((*(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET)) - ACPI_SDT_HEADER_SIZE) / 8;
-        QWORD_PTR sectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
-        for(QWORD i = 0; i < entriesCount; i++)
-        {
-            if(!CompareMemory(signature, sectionsArrayBase[i], 4))
-            {
-                *table = sectionsArrayBase[i];
-                return STATUS_SUCCESS;
-            }
-        }
-    }
-
-    return STATUS_APIC_NOT_FOUND;
-}
-
-STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers)
-{
-    QWORD tableLength = *(DWORD_PTR)(apicTable + RSDT_LENGTH_OFFSET);
-    *processorsCount = 0;
-    for(QWORD offset = 0x2C; offset < tableLength;)
-    {
-        switch(*(BYTE_PTR)(apicTable + offset))
-        {
-            case PROCESSOR_LOCAL_APIC:
-                processorsIdentifiers[(*processorsCount)++] = *((BYTE_PTR)apicTable + offset + 2);
-                break;
-            /* reserved for future usage */
-        }
-        offset += *((BYTE_PTR)apicTable + offset + 1);
-    }
-
-    if(!(*processorsCount))
-        return STATUS_NO_CORES_FOUND;
-    
     return STATUS_SUCCESS;
 }
 

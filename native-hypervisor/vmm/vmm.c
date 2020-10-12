@@ -10,6 +10,7 @@
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
 #include <vmm/vmexit_handlers.h>
+#include <bios/apic.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -48,7 +49,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_GDTR_LIMIT, gdt.limit);
     __vmwrite(GUEST_IDTR_BASE, idt.address);
     __vmwrite(GUEST_IDTR_LIMIT, idt.limit);
-    __vmwrite(GUEST_LDTR_BASE, 0ULL);
+    __vmwrite(GUEST_LDTR_BASE, 0);
     __vmwrite(GUEST_LDTR_LIMIT, 0xff);
     __vmwrite(GUEST_LDTR_AR_BYTES, VMCS_SELECTOR_UNUSABLE); // <--- so much time was spent on this line...
     // To understand the AR fields, see section 24.4.1 on Intel DSM
@@ -95,7 +96,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_IA32_DEBUGCTL, __readmsr(MSR_IA32_DEBUGCTL) & 0xffffffff);
 	__vmwrite(GUEST_IA32_DEBUGCTL_HIGH, __readmsr(MSR_IA32_DEBUGCTL) >> 32);
     __vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
-	__vmwrite(GUEST_ACTIVITY_STATE, 0);
+	__vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_ACTIVE);
     __vmwrite(GUEST_SYSENTER_EIP, 0xffff);
     __vmwrite(GUEST_SYSENTER_ESP, 0xffff);
     __vmwrite(GUEST_SYSENTER_CS, 8);
@@ -153,7 +154,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
         Print("FLAGS: %8, instruction error: %8\n", __readflags(), vmread(VM_INSTRUCTION_ERROR));
         ASSERT(FALSE);
     }
-    Print("Done initialization on core #%d\n", cpuData->coreIdentifier);
+    Print("Initialization completed on core #%d\n", cpuData->coreIdentifier);
 }
 
 VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data)
@@ -171,6 +172,8 @@ VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data)
     RegisterVmExitHandler(data, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
     RegisterVmExitHandler(data, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
     RegisterVmExitHandler(data, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
+    RegisterVmExitHandler(data, EXIT_REASON_INIT, HandleApicInit);
+    RegisterVmExitHandler(data, EXIT_REASON_SIPI, HandleApicSipi);
 }
 
 DWORD AdjustControls(IN DWORD control, IN QWORD msr)
@@ -189,6 +192,7 @@ VOID HandleVmExitEx()
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
     PCURRENT_GUEST_STATE data = GetVMMStruct();
+    Print("Core: %d\n", data->currentCPU->coreIdentifier);
     if(data->currentCPU->isHandledOnVmExit[exitReason])
     {
         STATUS handleStatus;
