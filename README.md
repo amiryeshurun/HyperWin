@@ -5,13 +5,3 @@ The goal of this project is to create a "small" hypervisor for the Windows opera
 This hypervisor is not written for any specific usage. My main motivation is to learn about the virtualization technology on x86-64 Intel processors, about Windows internals and BIOS programming.
 
 ## Documentation
-
-I am trying to write documentation for most of the parts of the hypervisor.  
-
-### The Guest
-
-* [Memory Managment](docs/guest/memory_manager.md) - reffers to [include/guest/memory_manager.h](include/guest/memory_manager.h)
-
-### The Host
-
-* [The Hypervisor Entrypoint](docs/host/entrypoint.md) - reffers to [host/entrypoint.asm](host/entrypoint.asm)
