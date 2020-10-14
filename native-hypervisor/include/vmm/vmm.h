@@ -23,6 +23,7 @@
 
 /* VMCALL agreed values */
 #define VMCALL_SETUP_BASE_PROTECTION 0x11223344
+#define VMCALL_COMMUNICATION_BLOCK 0x487970657257696e
 
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
@@ -48,6 +49,8 @@ typedef struct _SHARED_CPU_DATA
     QWORD codeBaseSize;
     QWORD int15Segment;
     QWORD int15Offset;
+    QWORD physicalCommunicationBase;
+    QWORD virtualCommunicationBase;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA

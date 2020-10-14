@@ -227,6 +227,11 @@ EmulateIRET:
         __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->int15Segment) >> 4);
         return STATUS_SUCCESS;
     }
+    else if(regs->rax == VMCALL_COMMUNICATION_BLOCK)
+    {
+        Print("Got a message from guest: %.b\n", 200, data->currentCPU->sharedData->virtualCommunicationBase);
+        return STATUS_SUCCESS;
+    } 
 
     return STATUS_UNKNOWN_VMCALL;
 }
@@ -261,6 +266,14 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs = &(data->guestRegisters);
     QWORD eax, ebx, ecx, edx, leaf = regs->rax, subleaf = regs->rcx;
+    if(leaf == CPUID_GET_COMMUNICATION_BASE)
+    {
+        Print("Received a request for communication base address\n");
+        QWORD physicalCommunication = data->currentCPU->sharedData->physicalCommunicationBase;
+        regs->rdx = physicalCommunication >> 32;
+        regs->rax = physicalCommunication & 0xffffffffULL;
+        return STATUS_SUCCESS;
+    }
     __cpuid(leaf, subleaf, &eax, &ebx, &ecx, &edx);
     if (leaf == 1)
     {
