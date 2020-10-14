@@ -192,7 +192,6 @@ VOID HandleVmExitEx()
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
     PCURRENT_GUEST_STATE data = GetVMMStruct();
-    Print("Core: %d\n", data->currentCPU->coreIdentifier);
     if(data->currentCPU->isHandledOnVmExit[exitReason])
     {
         STATUS handleStatus;
