@@ -278,8 +278,8 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     if (leaf == 1)
     {
         // According to Xen, this is the right way to handle XSAVE availability
-	if (vmread(GUEST_CR4) & CR4_OSXSAVE)
-	    ecx |= (1 << CPUID_OSXSAVE);
+	    if (vmread(GUEST_CR4) & CR4_OSXSAVE)
+	        ecx |= (1 << CPUID_OSXSAVE);
         else
             ecx &= ~(1 << CPUID_OSXSAVE);
     }
