@@ -5,5 +5,3 @@ The goal of this project is to create a "small" hypervisor for the Windows opera
 This hypervisor is not written for any specific usage. My main motivation is to learn about the virtualization technology on x86-64 Intel processors, about Windows internals and BIOS programming.
 
 ## Documentation
-
-Test
