@@ -12,7 +12,7 @@ typedef struct _GENERIC_COM_STRUCT
         {
             BOOL isMessageAvailable;
             QWORD messageLength;
-            BYTE_PTR messageAddress;
+            BYTE message[PAGE_SIZE];
         } initArgs;
     } argumentsUnion;
 } GENERIC_COM_STRUCT, *PGENERIC_COM_STRUCT;

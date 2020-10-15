@@ -6,7 +6,7 @@
 #include <vmm/memory_manager.h>
 #include <debug.h>
 
-STATUS HandleVmcallCommunication(IN PCURRENT_GUEST_STATE data)
+STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs = &(data->guestRegisters);
     OPERATION operation;
@@ -22,7 +22,7 @@ STATUS HandleVmcallCommunication(IN PCURRENT_GUEST_STATE data)
             if(args->argumentsUnion.initArgs.isMessageAvailable)
             {
                 Print("A message from guest: %.b\n", args->argumentsUnion.initArgs.messageLength, 
-                    PhysicalToVirtual(args->argumentsUnion.initArgs.messageAddress));
+                    args->argumentsUnion.initArgs.message);
             }
             else
                 Print("Guest initialization without any message\n");

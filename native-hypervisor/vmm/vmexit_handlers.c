@@ -232,7 +232,7 @@ EmulateIRET:
     else if(regs->rax == VMCALL_COMMUNICATION_BLOCK)
     {
         regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-        return HandleVmcallCommunication(data);
+        return HandleVmCallCommunication(data);
     } 
 
     return STATUS_UNKNOWN_VMCALL;
