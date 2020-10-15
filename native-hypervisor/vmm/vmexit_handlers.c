@@ -10,6 +10,8 @@
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
 #include <bios/apic.h>
+#include <guest_communication/vmcall_values.h>
+#include <guest_communication/vmcall_handlers.h>
 
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
 {
@@ -229,8 +231,8 @@ EmulateIRET:
     }
     else if(regs->rax == VMCALL_COMMUNICATION_BLOCK)
     {
-        Print("Got a message from guest: %.b\n", 200, data->currentCPU->sharedData->virtualCommunicationBase);
-        return STATUS_SUCCESS;
+        regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+        return HandleVmcallCommunication(data);
     } 
 
     return STATUS_UNKNOWN_VMCALL;
@@ -266,12 +268,15 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs = &(data->guestRegisters);
     QWORD eax, ebx, ecx, edx, leaf = regs->rax, subleaf = regs->rcx;
+    regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     if(leaf == CPUID_GET_COMMUNICATION_BASE)
     {
-        Print("Received a request for communication base address\n");
         QWORD physicalCommunication = data->currentCPU->sharedData->physicalCommunicationBase;
+        Print("Received a request for communication base address: %8\n", 
+            data->currentCPU->sharedData->physicalCommunicationBase);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
+
         return STATUS_SUCCESS;
     }
     __cpuid(leaf, subleaf, &eax, &ebx, &ecx, &edx);
@@ -303,8 +308,7 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     regs->rax = eax;
     regs->rbx = ebx;
     regs->rcx = ecx;
-    regs->rdx = edx;
-    regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+    regs->rdx = edx;    
     return STATUS_SUCCESS;
 }
 
