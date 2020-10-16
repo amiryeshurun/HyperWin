@@ -12,7 +12,7 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     OPERATION operation;
     PGENERIC_COM_STRUCT args;
 
-    if(ParseCommunicationBlock(data->currentCPU->sharedData->virtualCommunicationBase, &operation, &args))
+    if(ParseCommunicationBlock(data->currentCPU->sharedData->vurtialReadPipe, &operation, &args))
         return STATUS_COMMUNICATION_PARSING_FAILED;
 
     switch(operation)
@@ -25,7 +25,7 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
                     args->argumentsUnion.initArgs.message);
             }
             else
-                Print("Guest initialization without any message\n");
+                Print("Guest sent INIT without any message\n");
             break;
         }
     }

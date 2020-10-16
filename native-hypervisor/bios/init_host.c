@@ -36,8 +36,14 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         Print("Allocation of %8 bytes failed.\n", allocationSize);
         ASSERT(FALSE);
     }
-    BYTE_PTR physicalCommunicationBase;
-    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalCommunicationBase))
+    BYTE_PTR physicalReadPipe;
+    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalReadPipe))
+    {
+        Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
+        ASSERT(FALSE);
+    }
+    BYTE_PTR physicalWritePipe;
+    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalWritePipe))
     {
         Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
         ASSERT(FALSE);
@@ -54,9 +60,12 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->physicalCodeBase = codeBase;
     sharedData->codeBaseSize = ALIGN_UP(codeLength, PAGE_SIZE);
     // Save communication block area in global memory
-    SetMemory(PhysicalToVirtual(physicalCommunicationBase), 0, LARGE_PAGE_SIZE);
-    sharedData->physicalCommunicationBase = physicalCommunicationBase;
-    sharedData->virtualCommunicationBase = PhysicalToVirtual(physicalCommunicationBase);
+    SetMemory(PhysicalToVirtual(physicalReadPipe), 0, LARGE_PAGE_SIZE);
+    sharedData->physicalReadPipe = physicalReadPipe;
+    sharedData->vurtialReadPipe = PhysicalToVirtual(physicalReadPipe);
+    SetMemory(PhysicalToVirtual(physicalWritePipe), 0 , LARGE_PAGE_SIZE);
+    sharedData->physicalWritePipe = physicalWritePipe;
+    sharedData->virtualWritePipe = PhysicalToVirtual(physicalWritePipe);
     for(BYTE i = 0; i < numberOfCores; i++)
     {
         sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) 

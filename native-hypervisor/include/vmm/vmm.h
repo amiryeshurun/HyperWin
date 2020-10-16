@@ -40,16 +40,18 @@ typedef struct _SHARED_CPU_DATA
     E820_LIST_ENTRY allRam[E820_OUTPUT_MAX_ENTRIES];
     BYTE memoryRangesCount;
     BYTE numberOfCores;
-    QWORD hypervisorBase;
+    BYTE_PTR hypervisorBase;
     QWORD physicalHypervisorBase;
     QWORD hypervisorBaseSize;
-    QWORD codeBase;
+    BYTE_PTR codeBase;
     QWORD physicalCodeBase;
     QWORD codeBaseSize;
     QWORD int15Segment;
     QWORD int15Offset;
-    QWORD physicalCommunicationBase;
-    QWORD virtualCommunicationBase;
+    QWORD physicalReadPipe;
+    BYTE_PTR vurtialReadPipe;
+    QWORD physicalWritePipe;
+    BYTE_PTR virtualWritePipe;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA

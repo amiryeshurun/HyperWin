@@ -271,9 +271,9 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     if(leaf == CPUID_GET_COMMUNICATION_BASE)
     {
-        QWORD physicalCommunication = data->currentCPU->sharedData->physicalCommunicationBase;
+        QWORD physicalCommunication = data->currentCPU->sharedData->physicalReadPipe;
         Print("Received a request for communication base address: %8\n", 
-            data->currentCPU->sharedData->physicalCommunicationBase);
+            data->currentCPU->sharedData->physicalReadPipe);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
 
