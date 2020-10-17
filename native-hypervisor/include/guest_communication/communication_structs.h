@@ -14,6 +14,11 @@ typedef struct _GENERIC_COM_STRUCT
             QWORD messageLength;
             BYTE message[PAGE_SIZE];
         } initArgs;
+        struct _CLEANUP
+        {
+            QWORD readOffset;
+            QWORD readLength;
+        } cleanup;
     } argumentsUnion;
 } GENERIC_COM_STRUCT, *PGENERIC_COM_STRUCT;
 

@@ -6,6 +6,7 @@
 #include <vmm/vmm.h>
 #include <guest_communication/communication_structs.h>
 
-STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress, OUT POPERATION operation, OUT PGENERIC_COM_STRUCT* arguments);
+STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress,
+    IN QWORD offsetWithinPipe, OUT POPERATION operation, OUT PGENERIC_COM_STRUCT* arguments);
 
 #endif
