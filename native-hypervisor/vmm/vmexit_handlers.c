@@ -269,15 +269,23 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     PREGISTERS regs = &(data->guestRegisters);
     QWORD eax, ebx, ecx, edx, leaf = regs->rax, subleaf = regs->rcx;
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-    if(leaf == CPUID_GET_COMMUNICATION_BASE)
+    if(leaf == CPUID_GET_READ_PIPE)
     {
         QWORD physicalCommunication = data->currentCPU->sharedData->physicalReadPipe;
-        Print("Received a request for communication base address: %8\n", 
+        Print("Received a request for read pipe base address: %8\n", 
             data->currentCPU->sharedData->physicalReadPipe);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
 
         return STATUS_SUCCESS;
+    }
+    else if(leaf == CPUID_GET_WRITE_PIPE)
+    {
+        QWORD physicalCommunication = data->currentCPU->sharedData->physicalWritePipe;
+        Print("Received a request for write pipe base address: %8\n", 
+            data->currentCPU->sharedData->physicalWritePipe);
+        regs->rdx = physicalCommunication >> 32;
+        regs->rax = physicalCommunication & 0xffffffffULL;
     }
     __cpuid(leaf, subleaf, &eax, &ebx, &ecx, &edx);
     if (leaf == 1)
