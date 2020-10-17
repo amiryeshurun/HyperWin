@@ -11,8 +11,9 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     PREGISTERS regs = &(data->guestRegisters);
     OPERATION operation;
     PGENERIC_COM_STRUCT args;
-
-    if(ParseCommunicationBlock(data->currentCPU->sharedData->vurtialReadPipe, &operation, &args))
+    QWORD offsetWithinPipe = regs->rbx;
+    
+    if(ParseCommunicationBlock(data->currentCPU->sharedData->vurtialReadPipe, offsetWithinPipe, &operation, &args))
         return STATUS_COMMUNICATION_PARSING_FAILED;
 
     switch(operation)
@@ -26,6 +27,8 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
             }
             else
                 Print("Guest sent INIT without any message\n");
+            args->argumentsUnion.cleanup.readOffset = OPERATION_COMPLETED;
+            regs->rax = STATUS_SUCCESS;
             break;
         }
     }

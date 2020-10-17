@@ -52,6 +52,7 @@ typedef struct _SHARED_CPU_DATA
     BYTE_PTR vurtialReadPipe;
     QWORD physicalWritePipe;
     BYTE_PTR virtualWritePipe;
+    QWORD writePipeOffset;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
