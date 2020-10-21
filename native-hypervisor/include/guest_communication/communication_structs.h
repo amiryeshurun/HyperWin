@@ -16,10 +16,21 @@ typedef struct _GENERIC_COM_STRUCT
         } initArgs;
         struct _CLEANUP
         {
-            QWORD readOffset;
+            union
+            {
+                QWORD readOffset;
+                QWORD status;
+            };
             QWORD readLength;
         } cleanup;
     } argumentsUnion;
 } GENERIC_COM_STRUCT, *PGENERIC_COM_STRUCT;
+
+typedef struct _COMMUNICATION_PIPE
+{
+    QWORD physicalAddress;
+    BYTE_PTR virtualAddress;
+    QWORD currentOffset;
+} COMMUNICATION_PIPE, *PCOMMUNICATION_PIPE;
 
 #endif

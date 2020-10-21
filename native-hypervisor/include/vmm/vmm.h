@@ -4,6 +4,7 @@
 #include <types.h>
 #include <bios/bios_os_loader.h>
 #include <x86_64.h>
+#include <guest_communication/communication_structs.h>
 
 /* Paging related data */
 #define ARRAY_PAGE_SIZE (PAGE_SIZE / 8)
@@ -48,11 +49,8 @@ typedef struct _SHARED_CPU_DATA
     QWORD codeBaseSize;
     QWORD int15Segment;
     QWORD int15Offset;
-    QWORD physicalReadPipe;
-    BYTE_PTR vurtialReadPipe;
-    QWORD physicalWritePipe;
-    BYTE_PTR virtualWritePipe;
-    QWORD writePipeOffset;
+    COMMUNICATION_PIPE readPipe;
+    COMMUNICATION_PIPE writePipe;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
