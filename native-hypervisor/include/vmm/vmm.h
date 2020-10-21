@@ -10,7 +10,6 @@
 #define ARRAY_PAGE_SIZE (PAGE_SIZE / 8)
 #define COMPUTER_MEM_SIZE 16
 #define STACK_SIZE (4 * PAGE_SIZE)
-#define HEAP_SIZE (8 * PAGE_SIZE)
 
 /* CPU related data */
 #define MAX_CORES 8
@@ -29,11 +28,10 @@ struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
 struct _CURRENT_GUEST_STATE;
 
-typedef STATUS (*VmExitHandler)(struct _CURRENT_GUEST_STATE*);
+typedef STATUS (*VMEXIT_HANDLER)(struct _CURRENT_GUEST_STATE*);
 
 typedef struct _SHARED_CPU_DATA
 {
-    BYTE heap[HEAP_SIZE];
     struct _SINGLE_CPU_DATA* cpuData[MAX_CORES];
     struct _CURRENT_GUEST_STATE* currentState[MAX_CORES];
     E820_LIST_ENTRY validRam[E820_OUTPUT_MAX_ENTRIES];
@@ -71,7 +69,7 @@ typedef struct _SINGLE_CPU_DATA
     BYTE coreIdentifier;
     QWORD gdt[0xff];
     BOOL isHandledOnVmExit[100];
-    VmExitHandler vmExitHandlers[100];
+    VMEXIT_HANDLER vmExitHandlers[100];
     PSHARED_CPU_DATA sharedData;
 } SINGLE_CPU_DATA, *PSINGLE_CPU_DATA;
 
