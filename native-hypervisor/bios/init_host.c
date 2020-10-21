@@ -6,6 +6,7 @@
 #include <debug.h>
 #include <x86_64.h>
 #include <bios/apic.h>
+#include <guest_communication/communication_block.h>
 
 VOID Initialize()
 {
@@ -59,13 +60,12 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->codeBase = PhysicalToVirtual(codeBase);
     sharedData->physicalCodeBase = codeBase;
     sharedData->codeBaseSize = ALIGN_UP(codeLength, PAGE_SIZE);
-    // Save communication block area in global memory
+    // Save communication block area in global memory & initialize
     SetMemory(PhysicalToVirtual(physicalReadPipe), 0, LARGE_PAGE_SIZE);
-    sharedData->physicalReadPipe = physicalReadPipe;
-    sharedData->vurtialReadPipe = PhysicalToVirtual(physicalReadPipe);
+    InitPipe(&(sharedData->readPipe), physicalReadPipe, PhysicalToVirtual(physicalReadPipe), 0);
     SetMemory(PhysicalToVirtual(physicalWritePipe), 0 , LARGE_PAGE_SIZE);
-    sharedData->physicalWritePipe = physicalWritePipe;
-    sharedData->virtualWritePipe = PhysicalToVirtual(physicalWritePipe);
+    InitPipe(&(sharedData->writePipe), physicalWritePipe, PhysicalToVirtual(physicalWritePipe), 0);
+    // Initialize cores data
     for(BYTE i = 0; i < numberOfCores; i++)
     {
         sharedData->cpuData[i] = hypervisorBase + ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE) 

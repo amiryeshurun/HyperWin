@@ -13,22 +13,14 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     PGENERIC_COM_STRUCT args;
     QWORD offsetWithinPipe = regs->rbx;
     
-    if(ParseCommunicationBlock(data->currentCPU->sharedData->vurtialReadPipe, offsetWithinPipe, &operation, &args))
+    if(ParseCommunicationBlock(data->currentCPU->sharedData->readPipe.virtualAddress, offsetWithinPipe, &operation, &args))
         return STATUS_COMMUNICATION_PARSING_FAILED;
 
     switch(operation)
     {
         case OPERATION_INIT:
         {
-            if(args->argumentsUnion.initArgs.isMessageAvailable)
-            {
-                Print("A message from guest: %.b\n", args->argumentsUnion.initArgs.messageLength, 
-                    args->argumentsUnion.initArgs.message);
-            }
-            else
-                Print("Guest sent INIT without any message\n");
-            args->argumentsUnion.cleanup.readOffset = OPERATION_COMPLETED;
-            regs->rax = STATUS_SUCCESS;
+            regs->rax = HandleCommunicationInit(args);
             break;
         }
     }

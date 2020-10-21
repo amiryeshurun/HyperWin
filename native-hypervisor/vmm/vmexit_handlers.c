@@ -18,7 +18,6 @@ STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
     // Disable CR3 access after the first time
     __vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmread(CPU_BASED_VM_EXEC_CONTROL)
          & ~(CPU_BASED_CR3_LOAD_EXITING) & ~(CPU_BASED_CR3_STORE_EXITING));
-    
     QWORD accessInformation = vmread(EXIT_QUALIFICATION), 
         operation = accessInformation & CR_ACCESS_TYPE_MASK;
     PREGISTERS regs = &(data->guestRegisters);
@@ -271,9 +270,8 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     if(leaf == CPUID_GET_READ_PIPE)
     {
-        QWORD physicalCommunication = data->currentCPU->sharedData->physicalReadPipe;
-        Print("Received a request for read pipe base address: %8\n", 
-            data->currentCPU->sharedData->physicalReadPipe);
+        QWORD physicalCommunication = data->currentCPU->sharedData->readPipe.physicalAddress;
+        Print("Received a request for read pipe base address: %8\n", physicalCommunication);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
 
@@ -281,11 +279,12 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     }
     else if(leaf == CPUID_GET_WRITE_PIPE)
     {
-        QWORD physicalCommunication = data->currentCPU->sharedData->physicalWritePipe;
-        Print("Received a request for write pipe base address: %8\n", 
-            data->currentCPU->sharedData->physicalWritePipe);
+        QWORD physicalCommunication = data->currentCPU->sharedData->writePipe.physicalAddress;
+        Print("Received a request for write pipe base address: %8\n", physicalCommunication);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
+
+        return STATUS_SUCCESS;
     }
     __cpuid(leaf, subleaf, &eax, &ebx, &ecx, &edx);
     if (leaf == 1)
