@@ -7,6 +7,7 @@
 #include <x86_64.h>
 #include <bios/apic.h>
 #include <guest_communication/communication_block.h>
+#include <utils/allocation.h>
 
 VOID Initialize()
 {
@@ -105,6 +106,26 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     InitializeSingleHypervisor(sharedData->cpuData[0]);
     // Hook E820
     ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
+    HeapInit(&(sharedData->heap), HEAP_SIZE, 2, HeapAllocate, HeapDeallocate, HeapDefragment);
+    Print("Begin:\n");
+    HeapDump(&(sharedData->heap));
+    BYTE_PTR m1, m2, m3;
+    sharedData->heap.allocate(&(sharedData->heap), 0x10, &m1);
+    Print("First:\n");
+    HeapDump(&(sharedData->heap));
+    sharedData->heap.allocate(&(sharedData->heap), 0x8, &m2);
+    Print("Second:\n");
+    HeapDump(&(sharedData->heap));
+    sharedData->heap.allocate(&(sharedData->heap), 0x10, &m3);
+    Print("Third:\n");
+    HeapDump(&(sharedData->heap));
+    sharedData->heap.deallocate(&(sharedData->heap), m3);
+    Print("Free1:\n");
+    HeapDump(&(sharedData->heap));
+    sharedData->heap.deallocate(&(sharedData->heap), m2);
+    Print("Free2:\n");
+    HeapDump(&(sharedData->heap));
+    ASSERT(FALSE);
 }
 
 STATUS AllocateMemoryUsingMemoryMap

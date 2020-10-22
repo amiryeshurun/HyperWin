@@ -47,13 +47,28 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
                             BYTE_PTR byteArr = (BYTE_PTR)va_arg(args, QWORD);
                             for(QWORD j = 0; j < length; j++)
                             {
-                                BYTE currByte = *(byteArr + j);
+                                BYTE currByte = byteArr[j];
 
                                 buffer[bufferPosition++] = ConvertHalfByteToHexChar(currByte >> 4);
                                 buffer[bufferPosition++] = ConvertHalfByteToHexChar(currByte & 0xf);
                                 buffer[bufferPosition++] = ' ';
                             }
                             break;
+                        }
+                        case 'q':
+                        {
+                            QWORD length = va_arg(args, QWORD);
+                            QWORD_PTR qwordArr = (QWORD_PTR)va_arg(args, QWORD);
+                            for(QWORD j = 0; j < length; j++)
+                            {
+                                CHAR currq = 15;
+                                QWORD currQword = qwordArr[j], mask = 0xf << (currq * 4);
+                                for(; currq >= 0; currq--, mask >>= 4)
+                                {
+                                    buffer[bufferPosition++] = ConvertHalfByteToHexChar((currQword & mask) >> (currq * 4));
+                                }
+                                buffer[bufferPosition++] = ' ';
+                            }
                         }
                     }
                     i += 2;
@@ -65,9 +80,7 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
                     CHAR currq = 2 * numberOfBytes - 1;
                     QWORD num = va_arg(args, QWORD), mask = 0xf << (currq * 4);
                     for(; currq >= 0; currq--, mask >>= 4)
-                    {
                         buffer[bufferPosition++] = ConvertHalfByteToHexChar((num & mask) >> (currq * 4));
-                    }
                     i++;
                 }
             }

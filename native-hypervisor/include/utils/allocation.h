@@ -30,9 +30,17 @@ typedef struct _HEAP
     BYTE heap[HEAP_SIZE];
     QWORD freesCount;
     QWORD freesCycle;
+    QWORD length;
     ALLOCATION_FUNCTION allocate;
     DEALLOCATION_FUNCTION deallocate;
     DEFRAGMENT_HEAP defragment;
 } HEAP, *PHEAP;
+
+VOID HeapInit(IN PHEAP heap, IN QWORD length, IN QWORD freesCycle, IN ALLOCATION_FUNCTION allocFunc,
+    IN DEALLOCATION_FUNCTION deallocFunc, IN DEFRAGMENT_HEAP defragFunc);
+STATUS HeapAllocate(IN PHEAP heap, IN QWORD size, OUT BYTE_PTR* ptr);
+STATUS HeapDeallocate(IN PHEAP heap, IN BYTE_PTR ptr);
+STATUS HeapDefragment(IN PHEAP heap);
+VOID HeapDump(IN PHEAP heap);
 
 #endif
