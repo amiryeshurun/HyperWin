@@ -33,28 +33,31 @@ DEBUG_C_SOURCE_FILES       = $(addprefix debug/, $(shell find native-hypervisor/
 UTILS_C_SOURCE_FILES       = $(addprefix utils/, $(shell find native-hypervisor/utils/ -maxdepth 1 -name '*.c' -printf '%f '))
 VMM_C_SOURCE_FILES         = $(addprefix vmm/, $(shell find native-hypervisor/vmm/ -maxdepth 1 -name '*.c' -printf '%f '))
 WIN_KERNEL_C_SOURCE_FILES  = $(addprefix win_kernel/, $(shell find native-hypervisor/win_kernel/ -maxdepth 1 -name '*.c' -printf '%f '))
+MDULES_C_SOURCE_FILES      = $(addprefix vmx_modules/, $(shell find native-hypervisor/vmx_modules/ -maxdepth 1 -name '*.c' -printf '%f '))
 GUEST_COM_C_SOURCE_FILES   = $(addprefix guest_communication/, $(shell find native-hypervisor/guest_communication/ -maxdepth 1 -name '*.c' -printf '%f '))
 BIOS_ASM_SOURCE_FILES      = $(addprefix bios/, $(shell find native-hypervisor/bios/ -maxdepth 1 -name '*.asm' -printf '%f '))
 UTILS_ASM_SOURCE_FILES     = $(addprefix utils/, $(shell find native-hypervisor/utils/ -maxdepth 1 -name '*.asm' -printf '%f '))
 VMM_ASM_SOURCE_FILES       = $(addprefix vmm/, $(shell find native-hypervisor/vmm/ -maxdepth 1 -name '*.asm' -printf '%f '))
 GUEST_COM_ASM_SOURCE_FILES = $(addprefix guest_communication/, $(shell find native-hypervisor/guest_communication/ -maxdepth 1 -name '*.asm' -printf '%f '))
+MODULES_ASM_SOURCE_FILES   = $(addprefix vmx_modules/, $(shell find native-hypervisor/vmx_modules/ -maxdepth 1 -name '*.asm' -printf '%f '))
 
 OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(ENTRYPOINT_ASM:.asm=.o))             \
 					  $(addprefix $(OBJDIR)/, $(BIOS_ASM_SOURCE_FILES:.asm=.o))	     \
 					  $(addprefix $(OBJDIR)/, $(UTILS_ASM_SOURCE_FILES:.asm=.o))     \
 					  $(addprefix $(OBJDIR)/, $(VMM_ASM_SOURCE_FILES:.asm=.o))       \
 					  $(addprefix $(OBJDIR)/, $(GUEST_COM_ASM_SOURCE_FILES:.asm=.o)) \
+					  $(addprefix $(OBJDIR)/, $(MODULES_ASM_SOURCE_FILES:.asm=.o)) \
 					  $(addprefix $(OBJDIR)/, $(BIOS_C_SOURCE_FILES:.c=.o))  	     \
 					  $(addprefix $(OBJDIR)/, $(DEBUG_C_SOURCE_FILES:.c=.o)) 	     \
 					  $(addprefix $(OBJDIR)/, $(UTILS_C_SOURCE_FILES:.c=.o))         \
 					  $(addprefix $(OBJDIR)/, $(VMM_C_SOURCE_FILES:.c=.o))           \
 					  $(addprefix $(OBJDIR)/, $(WIN_KERNEL_C_SOURCE_FILES:.c=.o))    \
 					  $(addprefix $(OBJDIR)/, $(GUEST_COM_C_SOURCE_FILES:.c=.o))     \
+					  $(addprefix $(OBJDIR)/, $(MDULES_C_SOURCE_FILES:.c=.o))     \
 
 .PHONY: clean
 
-all: clean \
-	$(OBJDIR)/hypervisor.iso
+all: $(OBJDIR)/hypervisor.iso
 
 $(OBJDIR)/%.o : $(SRC_DIR)/%.c
 	$(C_COMPILER) $(C_COMPILER_FLAGS) $< -o $@
