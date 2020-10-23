@@ -2,6 +2,7 @@
 #define __VMEXIT_HANDLERS_H_
 
 #include <vmm/vmm.h>
+#include <vmx_modules/module.h>
 
 /* VM-Exit handlers */
 STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data);
