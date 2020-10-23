@@ -247,6 +247,14 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
     return STATUS_SUCCESS;
 }
 
+STATUS UpdateMsrAccessPolicy(IN PSHARED_CPU_DATA sharedData, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
+{
+    for(QWORD i = 0; i < sharedData->numberOfCores; i++)
+    {
+        
+    }
+}
+
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 {
     DWORD_PTR ivtAddress = PhysicalToVirtual(0);
@@ -267,12 +275,9 @@ VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
     // Init modules data
     sharedData->modules = NULL;
     sharedData->modulesCount = 0;
-    InitModule(&sharedData->defaultModule);
+    InitModule(sharedData, &sharedData->defaultModule, NULL);
     // Default module
-    PCHAR defaultModuleName = "Default Module";
-    sharedData->heap.allocate(&sharedData->heap, (StringLength(defaultModuleName) + 1) * sizeof(CHAR),
-        &(sharedData->defaultModule.moduleName));
-    CopyMemory(sharedData->defaultModule.moduleName, defaultModuleName, StringLength(defaultModuleName) + 1);
+    SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
@@ -288,4 +293,9 @@ VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
     Print("Successfully registered defualt module\n");
     // Dynamic modules
+    // KPP Module
+    PMODULE kppModule;
+    sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
+    InitModule(sharedData, kppModule, NULL);
+    RegisterModule(sharedData, kppModule);
 }

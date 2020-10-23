@@ -1,11 +1,14 @@
 #include <vmm/vmm.h>
 #include <vmx_modules/module.h>
+#include <debug.h>
 
-VOID InitModule(IN PMODULE module)
+VOID InitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer)
 {
     for(QWORD i = 0; i < VMEXIT_HANDLERS_MAX; module->isHandledOnVmExit[i] = FALSE,
         module->vmExitHandlers[i] = NULL, i++);
     module->moduleName = NULL;
+    if(moduleInitializer)
+        ASSERT(moduleInitializer(sharedData, module) == STATUS_SUCCESS);
 }
 
 VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
@@ -14,8 +17,20 @@ VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HAN
     module->vmExitHandlers[exitReason] = handler;
 }
 
-VOID RegisterModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module)
+VOID RegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
 {
-    // PMODULE* newArr = 
+    PMODULE* newArr;
+    sharedData->heap.allocate(&sharedData->heap, ++(sharedData->modulesCount) * sizeof(PMODULE), &newArr);
+    CopyMemory(newArr, sharedData->modules, (sharedData->modulesCount - 1) * sizeof(PMODULE));
+    newArr[sharedData->modulesCount - 1] = module;
+    if(sharedData->modules)
+        sharedData->heap.deallocate(&sharedData->heap, sharedData->modules);
+    sharedData->modules = newArr;
 }
 
+VOID SetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHAR moduleName)
+{
+    sharedData->heap.allocate(&sharedData->heap, (StringLength(moduleName) + 1) * sizeof(CHAR),
+        &(module->moduleName));
+    CopyMemory(module->moduleName, moduleName, StringLength(moduleName) + 1);
+}
