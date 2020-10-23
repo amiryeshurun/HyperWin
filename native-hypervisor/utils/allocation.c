@@ -24,6 +24,12 @@ STATUS HeapAllocate(IN PHEAP heap, IN QWORD size, OUT BYTE_PTR* ptr)
         return STATUS_HEAP_FULL;
     QWORD currentEntryLength = heapEntry->length;
     BYTE_PTR currentNext = heapEntry->next;
+    if(currentEntryLength == size + sizeof(HEAP_ENTRY))
+    {
+        heapEntry->status = HEAP_ALLOCATED;
+        *ptr = heapEntry->base + sizeof(HEAP_ENTRY);
+        return STATUS_SUCCESS;
+    }
     heapEntry->length = size + sizeof(HEAP_ENTRY);
     heapEntry->next = heapEntry->base + heapEntry->length;
     heapEntry->status = HEAP_ALLOCATED;
@@ -59,7 +65,7 @@ STATUS HeapDefragment(IN PHEAP heap)
         QWORD totalLength = 0;
         for(;end->next && end->status == HEAP_FREE && end->next->status == HEAP_FREE; totalLength += end->length, 
             end = end->next);
-        if(!end->next && end->status == HEAP_FREE)
+        if(end->status == HEAP_FREE)
             totalLength += end->length;
         if(start == end) // only one free entry OR the entry was not free
         {
@@ -75,6 +81,7 @@ STATUS HeapDefragment(IN PHEAP heap)
 VOID HeapDump(IN PHEAP heap)
 {
     PHEAP_ENTRY curr = heap->heap;
+    Print("Dump start:\n");
     while(curr)
     {
         Print("Entry Start #############\nStart: %8\nLength: %8\nStatus: %8\nNext: %8\n#############\n", curr->base, curr->length,

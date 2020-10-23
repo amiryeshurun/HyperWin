@@ -64,9 +64,7 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
                                 CHAR currq = 15;
                                 QWORD currQword = qwordArr[j], mask = 0xf << (currq * 4);
                                 for(; currq >= 0; currq--, mask >>= 4)
-                                {
                                     buffer[bufferPosition++] = ConvertHalfByteToHexChar((currQword & mask) >> (currq * 4));
-                                }
                                 buffer[bufferPosition++] = ' ';
                             }
                         }
