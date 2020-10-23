@@ -178,7 +178,6 @@ VOID HandleVmExitEx()
         if(shared->modules[i]->isHandledOnVmExit[exitReason])
             if(shared->modules[i]->vmExitHandlers[exitReason](data) == STATUS_SUCCESS)
                 return;
-    Print("EXIT: %d\n", exitReason);
 DefaultHandler:
     if(shared->defaultModule.isHandledOnVmExit[exitReason])
     {
