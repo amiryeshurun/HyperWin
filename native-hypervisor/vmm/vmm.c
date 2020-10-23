@@ -9,8 +9,8 @@
 #include <x86_64.h>
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
-#include <vmm/vmexit_handlers.h>
 #include <bios/apic.h>
+#include <vmx_modules/default_module.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -144,9 +144,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
     __vmwrite(VIRTUAL_PROCESSOR_ID, 1);
-    
-    // Register all handlers
-    RegisterVmExitHandlers(cpuData);
 
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
@@ -155,25 +152,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
         ASSERT(FALSE);
     }
     Print("Initialization completed on core #%d\n", cpuData->coreIdentifier);
-}
-
-VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data)
-{
-    // VM-Exit handlers registeration
-    for(QWORD i = 0; i < 100; data->isHandledOnVmExit[i++] = FALSE);
-    RegisterVmExitHandler(data, EXIT_REASON_MSR_READ, HandleMsrRead);
-    RegisterVmExitHandler(data, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
-    RegisterVmExitHandler(data, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
-    RegisterVmExitHandler(data, EXIT_REASON_XSETBV, EmulateXSETBV);
-    RegisterVmExitHandler(data, EXIT_REASON_CPUID, HandleCpuId);
-    RegisterVmExitHandler(data, EXIT_REASON_CR_ACCESS, HandleCrAccess);
-    RegisterVmExitHandler(data, EXIT_REASON_EPT_VIOLATION, HandleEptViolation);
-    RegisterVmExitHandler(data, EXIT_REASON_VMCALL, HandleVmCall);
-    RegisterVmExitHandler(data, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
-    RegisterVmExitHandler(data, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
-    RegisterVmExitHandler(data, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
-    RegisterVmExitHandler(data, EXIT_REASON_INIT, HandleApicInit);
-    RegisterVmExitHandler(data, EXIT_REASON_SIPI, HandleApicSipi);
 }
 
 DWORD AdjustControls(IN DWORD control, IN QWORD msr)
@@ -189,13 +167,23 @@ VOID HandleVmExitEx()
     QWORD exitReason = vmread(VM_EXIT_REASON);
     QWORD exitQualification = vmread(EXIT_QUALIFICATION);
     if(exitReason & VM_ENTRY_FAILURE_MASK)
+    {
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
+        goto DefaultHandler;
+    }
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
     PCURRENT_GUEST_STATE data = GetVMMStruct();
-    if(data->currentCPU->isHandledOnVmExit[exitReason])
+    PSHARED_CPU_DATA shared = data->currentCPU->sharedData;
+    for(QWORD i = 0; i < shared->modulesCount; i++)
+        if(shared->modules[i]->isHandledOnVmExit[exitReason])
+            if(shared->modules[i]->vmExitHandlers[exitReason](data) == STATUS_SUCCESS)
+                return;
+    Print("EXIT: %d\n", exitReason);
+DefaultHandler:
+    if(shared->defaultModule.isHandledOnVmExit[exitReason])
     {
         STATUS handleStatus;
-        if(handleStatus = data->currentCPU->vmExitHandlers[exitReason](data))
+        if(handleStatus = shared->defaultModule.vmExitHandlers[exitReason](data))
         {
             Print("Error during handling vm-exit. Exit reaon: %d, Error code: %d", exitReason, handleStatus);
             ASSERT(FALSE);
@@ -260,12 +248,6 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
     return STATUS_SUCCESS;
 }
 
-VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
-{
-    data->isHandledOnVmExit[exitReason] = TRUE;
-    data->vmExitHandlers[exitReason] = handler;
-}
-
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 {
     DWORD_PTR ivtAddress = PhysicalToVirtual(0);
@@ -279,4 +261,32 @@ STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
     if(ivtAddress[0x15] != E820_VMCALL_GATE)
         return STATUS_E820_NOT_HOOKED;
     return STATUS_SUCCESS;
+}
+
+VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
+{
+    // Init modules data
+    sharedData->modules = NULL;
+    sharedData->modulesCount = 0;
+    InitModule(&sharedData->defaultModule);
+    // Default module
+    PCHAR defaultModuleName = "Default Module";
+    sharedData->heap.allocate(&sharedData->heap, (StringLength(defaultModuleName) + 1) * sizeof(CHAR),
+        &(sharedData->defaultModule.moduleName));
+    CopyMemory(sharedData->defaultModule.moduleName, defaultModuleName, StringLength(defaultModuleName) + 1);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, EmulateXSETBV);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, HandleCpuId);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, HandleCrAccess);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, HandleEptViolation);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, HandleVmCall);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, HandleApicInit);
+    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
+    Print("Successfully registered defualt module\n");
+    // Dynamic modules
 }

@@ -1,4 +1,4 @@
-#include <vmm/vmexit_handlers.h>
+#include <vmx_modules/default_module.h>
 #include <debug.h>
 #include <intrinsics.h>
 #include <vmm/msr.h>
