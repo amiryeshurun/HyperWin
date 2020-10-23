@@ -2,7 +2,7 @@
 #define __BIOS_OS_LOADER_H_
 
 #include <types.h>
-#include <utils.h>
+#include <utils/utils.h>
 #include <error_codes.h>
 
 #define MBR_ADDRESS 0x7C00

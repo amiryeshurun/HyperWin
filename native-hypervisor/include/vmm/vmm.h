@@ -5,12 +5,12 @@
 #include <bios/bios_os_loader.h>
 #include <x86_64.h>
 #include <guest_communication/communication_structs.h>
+#include <utils/allocation.h>
 
 /* Paging related data */
 #define ARRAY_PAGE_SIZE (PAGE_SIZE / 8)
 #define COMPUTER_MEM_SIZE 16
 #define STACK_SIZE (4 * PAGE_SIZE)
-#define HEAP_SIZE (8 * PAGE_SIZE)
 
 /* CPU related data */
 #define MAX_CORES 8
@@ -29,11 +29,11 @@ struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
 struct _CURRENT_GUEST_STATE;
 
-typedef STATUS (*VmExitHandler)(struct _CURRENT_GUEST_STATE*);
+typedef STATUS (*VMEXIT_HANDLER)(struct _CURRENT_GUEST_STATE*);
 
 typedef struct _SHARED_CPU_DATA
 {
-    BYTE heap[HEAP_SIZE];
+    HEAP heap;
     struct _SINGLE_CPU_DATA* cpuData[MAX_CORES];
     struct _CURRENT_GUEST_STATE* currentState[MAX_CORES];
     E820_LIST_ENTRY validRam[E820_OUTPUT_MAX_ENTRIES];
@@ -71,7 +71,7 @@ typedef struct _SINGLE_CPU_DATA
     BYTE coreIdentifier;
     QWORD gdt[0xff];
     BOOL isHandledOnVmExit[100];
-    VmExitHandler vmExitHandlers[100];
+    VMEXIT_HANDLER vmExitHandlers[100];
     PSHARED_CPU_DATA sharedData;
 } SINGLE_CPU_DATA, *PSINGLE_CPU_DATA;
 
@@ -93,7 +93,7 @@ PCURRENT_GUEST_STATE GetVMMStruct();
 STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength);
 STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
 BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
-VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmExitHandler handler);
+VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VMEXIT_HANDLER handler);
 VOID RegisterVmExitHandlers(IN PSINGLE_CPU_DATA data);
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData);
 

@@ -260,7 +260,7 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
     return STATUS_SUCCESS;
 }
 
-VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VmExitHandler handler)
+VOID RegisterVmExitHandler(IN PSINGLE_CPU_DATA data, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
 {
     data->isHandledOnVmExit[exitReason] = TRUE;
     data->vmExitHandlers[exitReason] = handler;

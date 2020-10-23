@@ -33,5 +33,8 @@
 #define STATUS_APIC_SIPI_FAILED             27
 #define STATUS_SIPI_WITHOUT_INIT            28
 #define STATUS_COMMUNICATION_PARSING_FAILED 29
+#define STATUS_HEAP_FULL                    30
+#define STATUS_UNALLOCATED_MEMORY           31
+#define STATUS_DEFRAGMENTATION_FAILED       32
 
 #endif

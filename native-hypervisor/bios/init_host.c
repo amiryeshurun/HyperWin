@@ -1,4 +1,4 @@
-#include <utils.h>
+#include <utils/utils.h>
 #include <bios/bios_os_loader.h>
 #include <vmm/vmm.h>
 #include <vmm/memory_manager.h>
@@ -7,6 +7,7 @@
 #include <x86_64.h>
 #include <bios/apic.h>
 #include <guest_communication/communication_block.h>
+#include <utils/allocation.h>
 
 VOID Initialize()
 {
@@ -105,6 +106,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     InitializeSingleHypervisor(sharedData->cpuData[0]);
     // Hook E820
     ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
+    HeapInit(&(sharedData->heap), HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
 }
 
 STATUS AllocateMemoryUsingMemoryMap

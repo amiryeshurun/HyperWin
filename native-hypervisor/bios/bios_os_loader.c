@@ -1,6 +1,6 @@
 #include <bios/bios_os_loader.h>
 #include <vmm/vmm.h>
-#include <utils.h>
+#include <utils/utils.h>
 #include <intrinsics.h>
 #include <debug.h>
 
