@@ -1,7 +1,7 @@
 #include <utils/utils.h>
 #include <intrinsics.h>
 #include <debug.h>
-
+#include <vmm/msr.h>
 
 VOID CopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count)
 {
@@ -122,4 +122,12 @@ VOID DumpHostStack(IN QWORD_PTR stackAddress)
         Print("%8 ", *(stackAddress + offset));
     }
     Print("\n");
+}
+
+BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange)
+{
+    BOOL result = (msrNumber >= 0 && msrNumber <= 0x1fff) || (msrNumber >= 0xc0000000 && msrNumber <= 0xc0001fff);
+    if(result)
+        *msrRange = (msrNumber >= 0 && msrNumber <= 0x1fff) ? MSR_RANGE_FIRST : MSR_RANGE_SECOND;
+    return result;
 }

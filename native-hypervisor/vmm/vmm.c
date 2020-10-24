@@ -11,6 +11,7 @@
 #include <win_kernel/memory_manager.h>
 #include <bios/apic.h>
 #include <vmx_modules/default_module.h>
+#include <vmx_modules/syscalls_module.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -144,7 +145,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
     __vmwrite(VIRTUAL_PROCESSOR_ID, 1);
-
+    
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
         // Should never arrive here
@@ -251,9 +252,22 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
 
 STATUS UpdateMsrAccessPolicy(IN PSHARED_CPU_DATA sharedData, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
 {
+    BYTE range;
+    if(!IsMsrValid(msrNumber, &range))
+        return STATUS_INVALID_MSR;
+    QWORD msrReadIdx = (range == MSR_RANGE_FIRST) ? msrNumber : msrNumber - 0xc0000000 + 1024, 
+        msrWriteIdx = (range == MSR_RANGE_FIRST) ? msrNumber + 2048 : msrNumber - 0xc0000000 + 3072;
     for(QWORD i = 0; i < sharedData->numberOfCores; i++)
     {
-        
+        BYTE_PTR bitmap = sharedData->cpuData[i]->msrBitmaps;
+        if(read)
+            bitmap[msrReadIdx / 8] |= (1 << (msrReadIdx % 8));
+        else
+            bitmap[msrReadIdx / 8] &= ~(1 << (msrReadIdx % 8));
+        if(write)
+             bitmap[msrWriteIdx / 8] |= (1 << (msrReadIdx % 8));
+        else
+            bitmap[msrWriteIdx / 8] &= ~(1 << (msrReadIdx % 8));
     }
 }
 
@@ -296,8 +310,11 @@ VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
     Print("Successfully registered defualt module\n");
     // Dynamic modules
     // KPP Module
-    PMODULE kppModule;
-    sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
-    InitModule(sharedData, kppModule, NULL);
-    RegisterModule(sharedData, kppModule);
+    PMODULE syscallsModule;
+    sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
+    InitModule(sharedData, syscallsModule, SyscallsModuleInitialize);
+    SetModuleName(sharedData, syscallsModule, "Syscalls Module");
+    RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
+    RegisterModule(sharedData, syscallsModule);
+    Print("Successfully registered syscalls module\n");
 }
