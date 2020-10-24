@@ -19,5 +19,6 @@ QWORD NumberOfDigits(IN QWORD number);
 QWORD StringLength(IN PCHAR str);
 VOID SetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length);
 VOID DumpHostStack(IN QWORD_PTR stackAddress);
+BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange);
 
 #endif

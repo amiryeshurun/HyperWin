@@ -36,5 +36,6 @@
 #define STATUS_HEAP_FULL                    30
 #define STATUS_UNALLOCATED_MEMORY           31
 #define STATUS_DEFRAGMENTATION_FAILED       32
+#define STATUS_INVALID_MSR                  33
 
 #endif
