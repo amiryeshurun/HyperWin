@@ -204,8 +204,10 @@ STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase
 {
     if(codeBase % PAGE_SIZE)
         return STATUS_MEMORY_NOT_ALIGNED;
-    PrintDebugLevelDebug("Mapping %8, length %8 to new address %8...\n", 
-        codeBase, codeLength, data->physicalHypervisorBase);
+    PrintDebugLevelDebug("Protecting code base %8, length %8 with access 0...\n", 
+        codeBase, codeLength);
+    PrintDebugLevelDebug("Protecting hypervisor base %8, length %8 with access 0...\n", 
+        data->physicalHypervisorBase, data->hypervisorBaseSize);
     QWORD codeSizeInPages = ALIGN_UP(codeLength, PAGE_SIZE) / PAGE_SIZE, 
         hypervisorBaseSizeInPages = data->hypervisorBaseSize / PAGE_SIZE;
     for(QWORD i = 0; i < data->numberOfCores; i++)
