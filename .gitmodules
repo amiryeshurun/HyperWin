@@ -1,0 +1,6 @@
+[submodule "HyperWin-Communication-Driver"]
+	path = HyperWin-Communication-Driver
+	url = https://github.com/amiryeshurun/HyperWin-Communication-Driver
+[submodule "HyperWin-Win32-Application"]
+	path = HyperWin-Win32-Application
+	url = https://github.com/amiryeshurun/HyperWin-Win32-Application
