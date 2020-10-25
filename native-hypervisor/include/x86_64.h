@@ -32,6 +32,9 @@
 /* Useful flags */
 #define RFLAGS_CARRY (1 << 0)
 
+/* Architectural data */
+#define X86_MAX_INSTRUCTION_LEN 15
+
 typedef struct _GDT
 {
     WORD limit;

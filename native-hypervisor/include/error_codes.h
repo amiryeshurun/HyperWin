@@ -37,5 +37,10 @@
 #define STATUS_UNALLOCATED_MEMORY           31
 #define STATUS_DEFRAGMENTATION_FAILED       32
 #define STATUS_INVALID_MSR                  33
+#define STATUS_NO_SPACE_AVAILABLE           34
+#define STATUS_UNKNOWN_KPP_INSTRUCTION      35
+#define STATUS_SSDT_NOT_FOUND               36
+
+#define STATUS_VM_EXIT_NOT_HANDLED          (1 << 16)
 
 #endif

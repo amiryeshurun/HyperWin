@@ -8,8 +8,7 @@
 struct _CURRENT_GUEST_STATE;
 struct _SHARED_CPU_DATA;
 
-typedef STATUS (*VMEXIT_HANDLER)(struct _CURRENT_GUEST_STATE*);
-typedef STATUS (*MODULE_INITIALIZER)(struct _SHARED_CPU_DATA*, struct _MODULE*);
+typedef STATUS (*VMEXIT_HANDLER)(INstruct _CURRENT_GUEST_STATE*, IN struct _MODULE*);
 
 typedef struct _MODULE
 {
@@ -19,9 +18,23 @@ typedef struct _MODULE
     PVOID moduleExtension;
 } MODULE, *PMODULE;
 
+typedef struct _GENETIC_MODULE_DATA
+{
+    union
+    {
+        struct _SYSCALLS_MODULE_DATA
+        {
+            PMODULE kppModule;
+        } syscallsModule;
+    };
+} GENERIC_MODULE_DATA, *PGENERIC_MODULE_DATA;
+
+typedef STATUS (*MODULE_INITIALIZER)(struct _SHARED_CPU_DATA*, struct _MODULE*, IN PGENERIC_MODULE_DATA);
+
 VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler);
 VOID RegisterModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module);
-VOID InitModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer);
+VOID InitModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer, 
+    IN PGENERIC_MODULE_DATA moduleData));
 VOID SetModuleName(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN PCHAR name);
 
 #endif

@@ -12,6 +12,7 @@
 #include <bios/apic.h>
 #include <vmx_modules/default_module.h>
 #include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/kpp_module.h>
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
@@ -177,13 +178,13 @@ VOID HandleVmExitEx()
     PSHARED_CPU_DATA shared = data->currentCPU->sharedData;
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->isHandledOnVmExit[exitReason])
-            if(shared->modules[i]->vmExitHandlers[exitReason](data) == STATUS_SUCCESS)
+            if(shared->modules[i]->vmExitHandlers[exitReason](data, module[i]) == STATUS_SUCCESS)
                 return;
 DefaultHandler:
     if(shared->defaultModule.isHandledOnVmExit[exitReason])
     {
         STATUS handleStatus;
-        if(handleStatus = shared->defaultModule.vmExitHandlers[exitReason](data))
+        if(handleStatus = shared->defaultModule.vmExitHandlers[exitReason](data, &shared->defaultModule))
         {
             Print("Error during handling vm-exit. Exit reaon: %d, Error code: %d", exitReason, handleStatus);
             ASSERT(FALSE);
@@ -291,7 +292,7 @@ VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
     // Init modules data
     sharedData->modules = NULL;
     sharedData->modulesCount = 0;
-    InitModule(sharedData, &sharedData->defaultModule, NULL);
+    InitModule(sharedData, &sharedData->defaultModule, NULL, NULL);
     // Default module
     SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
@@ -308,12 +309,22 @@ VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, HandleApicInit);
     RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
     Print("Successfully registered defualt module\n");
-    // Dynamic modules
+    // Dynamic modules initialozation
     // KPP Module
+    PMODULE kppModule;
+    sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
+    InitModule(sharedData, kppModule, KppModuleInitialize, NULL);
+    SetModuleName(sharedData, kppModule, "KPP Module");
+    RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
+    RegisterModule(sharedData, kppModule);
+    Print("Successfully registered KPP module\n");
+    // Syscalls Module
     PMODULE syscallsModule;
+    GENERIC_MODULE_DATA syscallsInitData;
+    syscallsInitData.syscallsModule.kppModule = kppModule;
     sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
-    InitModule(sharedData, syscallsModule, SyscallsModuleInitialize);
-    SetModuleName(sharedData, syscallsModule, "Syscalls Module");
+    InitModule(sharedData, syscallsModule, SyscallsModuleInitialize, &syscallsInitData);
+    SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
     RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
     RegisterModule(sharedData, syscallsModule);
     Print("Successfully registered syscalls module\n");

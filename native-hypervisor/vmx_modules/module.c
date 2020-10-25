@@ -2,13 +2,14 @@
 #include <vmx_modules/module.h>
 #include <debug.h>
 
-VOID InitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer)
+VOID InitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer,
+    IN PGENERIC_MODULE_DATA moduleData)
 {
     for(QWORD i = 0; i < VMEXIT_HANDLERS_MAX; module->isHandledOnVmExit[i] = FALSE,
         module->vmExitHandlers[i] = NULL, i++);
     module->moduleName = NULL;
     if(moduleInitializer)
-        ASSERT(moduleInitializer(sharedData, module) == STATUS_SUCCESS);
+        ASSERT(moduleInitializer(sharedData, module, moduleData) == STATUS_SUCCESS);
 }
 
 VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
