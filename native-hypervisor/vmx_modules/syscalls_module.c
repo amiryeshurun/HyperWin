@@ -21,7 +21,7 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
 STATUS SyscallsModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
 {
     PrintDebugLevelDebug("Starting initialization of syscalls module on core #%d\n", data->coreIdentifier);
-    // Hook the event pf writing to the LSTAR MSR
+    // Hook the event of writing to the LSTAR MSR
     UpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
     PrintDebugLevelDebug("Finished initialization of syscalls module on core #%d\n", data->coreIdentifier);
     return STATUS_SUCCESS;
