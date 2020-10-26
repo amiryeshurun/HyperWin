@@ -251,7 +251,7 @@ STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data)
+STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 	PREGISTERS regs = &(data->guestRegisters);
 	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);

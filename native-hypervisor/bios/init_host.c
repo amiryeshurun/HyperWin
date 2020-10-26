@@ -96,6 +96,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
+    sharedData->wereModulesInitiated = FALSE;
     // Init heap before registering modules
     HeapInit(&(sharedData->heap), HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
     // Enable 2xAPIC
@@ -106,8 +107,6 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
             == STATUS_SUCCESS);
     // Initialize hypervisor on BSP
     InitializeSingleHypervisor(sharedData->cpuData[0]);
-    // All modules registeration are taken care here
-    RegisterAllModules(sharedData);
     // Hook E820
     ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
 }
