@@ -6,13 +6,19 @@
 #include <win_kernel/memory_manager.h>
 #include <debug.h>
 
-STATUS KppModuleInitialize(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, 
-    IN GENERIC_MODULE_DATA initData)
+STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN GENERIC_MODULE_DATA initData)
 {
-    PrintDebugLevelDebug("Initializing KPP module\n");
+    PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
     SetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
-    PrintDebugLevelDebug("KPP module successfully initialized\n");
+    PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
+    return STATUS_SUCCESS;
+}
+
+STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
+{
+    PrintDebugLevelDebug("Starting initialization of KPP module on core #%d\n", data->coreIdentifier);
+    PrintDebugLevelDebug("Finished initialization of KPP module on core #%d\n", data->coreIdentifier);
     return STATUS_SUCCESS;
 }
 

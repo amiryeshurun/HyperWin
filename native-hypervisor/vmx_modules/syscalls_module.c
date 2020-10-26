@@ -1,22 +1,30 @@
 #include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/kpp_module.h>
 #include <vmm/msr.h>
 #include <debug.h>
 #include <win_kernel/memory_manager.h>
 
-STATUS SyscallsModuleInitialize(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, 
-    IN PGENERIC_MODULE_DATA initData)
+STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
-    PrintDebugLevelDebug("Initializing syscalls module\n");
+    PrintDebugLevelDebug("Starting initialization of syscalls module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(SYSCALLS_MODULE_EXTENSION), &module->moduleExtension);
     SetMemory(module->moduleExtension, 0, sizeof(SYSCALLS_MODULE_EXTENSION));
-    (PSYSCALLS_MODULE_EXTENSION)(module->moduleExtension)->kppModule = initData->syscallsModule.kppModule;
-    // Hook the event of writing to LSTAR MSR by OS
-    UpdateMsrAccessPolicy(sharedData, MSR_IA32_LSTAR, FALSE, TRUE);
-    PrintDebugLevelDebug("Syscalls module successfully initialized\n");
+    PSYSCALLS_MODULE_EXTENSION extension = module->moduleExtension;
+    extension->kppModule = initData->syscallsModule.kppModule;
+    PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
 }
 
-STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR ssdt)
+STATUS SyscallsModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
+{
+    PrintDebugLevelDebug("Starting initialization of syscalls module on core #%d\n", data->coreIdentifier);
+    // Hook the event pf writing to the LSTAR MSR
+    UpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
+    PrintDebugLevelDebug("Finished initialization of syscalls module on core #%d\n", data->coreIdentifier);
+    return STATUS_SUCCESS;
+}
+
+STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt)
 {
     // Will be updated later
     BYTE pattern[] = { 0x00, 0x00 };
@@ -50,7 +58,7 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data)
     Print("Guest attempted to write to %8 MSR\n", regs->rcx);
     QWORD msrValue = ((regs->rdx & 0xffffffff) << 32) | (regs->rax & 0xffffffff);
     BYTE_PTR ssdt;
-    if(LocateSSDT() != STATUS_SUCCESS)
+    if(LocateSSDT(msrValue, &ssdt) != STATUS_SUCCESS)
     {
         Print("Could not find SSDT in kernel's address space\n");
         ASSERT(FALSE);

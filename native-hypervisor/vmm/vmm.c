@@ -147,6 +147,9 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
     __vmwrite(VIRTUAL_PROCESSOR_ID, 1);
     
+    // Modules must be initiated while running in VMX-root operation
+    RegisterAllModules(cpuData);
+
     if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
         // Should never arrive here
@@ -178,7 +181,7 @@ VOID HandleVmExitEx()
     PSHARED_CPU_DATA shared = data->currentCPU->sharedData;
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->isHandledOnVmExit[exitReason])
-            if(shared->modules[i]->vmExitHandlers[exitReason](data, module[i]) == STATUS_SUCCESS)
+            if(shared->modules[i]->vmExitHandlers[exitReason](data, shared->modules[i]) == STATUS_SUCCESS)
                 return;
 DefaultHandler:
     if(shared->defaultModule.isHandledOnVmExit[exitReason])
@@ -251,25 +254,23 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
     return STATUS_SUCCESS;
 }
 
-STATUS UpdateMsrAccessPolicy(IN PSHARED_CPU_DATA sharedData, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
+STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
 {
     BYTE range;
     if(!IsMsrValid(msrNumber, &range))
         return STATUS_INVALID_MSR;
     QWORD msrReadIdx = (range == MSR_RANGE_FIRST) ? msrNumber : msrNumber - 0xc0000000 + 1024, 
         msrWriteIdx = (range == MSR_RANGE_FIRST) ? msrNumber + 2048 : msrNumber - 0xc0000000 + 3072;
-    for(QWORD i = 0; i < sharedData->numberOfCores; i++)
-    {
-        BYTE_PTR bitmap = sharedData->cpuData[i]->msrBitmaps;
-        if(read)
-            bitmap[msrReadIdx / 8] |= (1 << (msrReadIdx % 8));
-        else
-            bitmap[msrReadIdx / 8] &= ~(1 << (msrReadIdx % 8));
-        if(write)
-             bitmap[msrWriteIdx / 8] |= (1 << (msrReadIdx % 8));
-        else
-            bitmap[msrWriteIdx / 8] &= ~(1 << (msrReadIdx % 8));
-    }
+    BYTE_PTR bitmap = data->msrBitmaps;
+    if(read)
+        bitmap[msrReadIdx / 8] |= (1 << (msrReadIdx % 8));
+    else
+        bitmap[msrReadIdx / 8] &= ~(1 << (msrReadIdx % 8));
+    if(write)
+            bitmap[msrWriteIdx / 8] |= (1 << (msrReadIdx % 8));
+    else
+        bitmap[msrWriteIdx / 8] &= ~(1 << (msrReadIdx % 8));
+    return STATUS_SUCCESS;
 }
 
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
@@ -287,45 +288,52 @@ STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
     return STATUS_SUCCESS;
 }
 
-VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData)
+VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
 {
-    // Init modules data
-    sharedData->modules = NULL;
-    sharedData->modulesCount = 0;
-    InitModule(sharedData, &sharedData->defaultModule, NULL, NULL);
-    // Default module
-    SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, EmulateXSETBV);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, HandleCpuId);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, HandleCrAccess);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, HandleEptViolation);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, HandleVmCall);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, HandleApicInit);
-    RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
-    Print("Successfully registered defualt module\n");
-    // Dynamic modules initialozation
-    // KPP Module
-    PMODULE kppModule;
-    sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
-    InitModule(sharedData, kppModule, KppModuleInitialize, NULL);
-    SetModuleName(sharedData, kppModule, "KPP Module");
-    RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
-    RegisterModule(sharedData, kppModule);
-    Print("Successfully registered KPP module\n");
-    // Syscalls Module
-    PMODULE syscallsModule;
+    PSHARED_CPU_DATA sharedData = data->sharedData;
+    PMODULE kppModule, syscallsModule;
     GENERIC_MODULE_DATA syscallsInitData;
-    syscallsInitData.syscallsModule.kppModule = kppModule;
-    sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
-    InitModule(sharedData, syscallsModule, SyscallsModuleInitialize, &syscallsInitData);
-    SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
-    RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
-    RegisterModule(sharedData, syscallsModule);
-    Print("Successfully registered syscalls module\n");
+    if(!sharedData->wereModulesInitiated)
+    {
+        // Init modules data
+        sharedData->modules = NULL;
+        sharedData->modulesCount = 0;
+        // Default module
+        InitModule(sharedData, &sharedData->defaultModule, NULL, NULL);
+        SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, EmulateXSETBV);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, HandleCpuId);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, HandleCrAccess);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, HandleEptViolation);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, HandleVmCall);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, HandleApicInit);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
+        Print("Successfully registered defualt module\n");
+        // Dynamic modules initialozation
+        // KPP Module
+        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
+        InitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL);
+        SetModuleName(sharedData, kppModule, "KPP Module");
+        RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
+        RegisterModule(sharedData, kppModule);
+        Print("Successfully registered KPP module\n");
+        // Syscalls Module
+        syscallsInitData.syscallsModule.kppModule = kppModule;
+        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
+        InitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, &syscallsInitData);
+        SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
+        RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
+        RegisterModule(sharedData, syscallsModule);
+        Print("Successfully registered syscalls module\n");
+        // Mark modules as initiated
+        sharedData->wereModulesInitiated = TRUE;
+    }
+    KppModuleInitializeSingleCore(data);
+    SyscallsModuleInitializeSingleCore(data);
 }
