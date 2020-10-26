@@ -20,6 +20,7 @@
 #define DEBUG_LVL DEBUG_LVL_DEBUG
 
 // #define DEBUG_ADDRESS_TRANSLATION
+#define DEBUG_EPT_TRANSLATION
 // #define DEBUG_XSETBV
 
 VOID PrintBuffer(IN PCHAR buffer, IN QWORD length);

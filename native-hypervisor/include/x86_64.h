@@ -7,6 +7,7 @@
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
 #define LARGE_PAGE_MASK 0x1fffffULL
+#define GB_PAGE_MASK 0x3fffffffULL
 
 /* CR related data */
 #define CR0_NE_ENABLED (1 << 5)

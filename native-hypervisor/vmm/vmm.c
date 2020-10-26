@@ -259,17 +259,17 @@ STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BO
     BYTE range;
     if(!IsMsrValid(msrNumber, &range))
         return STATUS_INVALID_MSR;
-    QWORD msrReadIdx = (range == MSR_RANGE_FIRST) ? msrNumber : msrNumber - 0xc0000000 + 1024, 
-        msrWriteIdx = (range == MSR_RANGE_FIRST) ? msrNumber + 2048 : msrNumber - 0xc0000000 + 3072;
+    QWORD msrReadIdx = (range == MSR_RANGE_FIRST) ? msrNumber / 8 : (msrNumber - 0xc0000000) / 8 + 1024, 
+        msrWriteIdx = (range == MSR_RANGE_FIRST) ? msrNumber / 8 + 2048 : (msrNumber - 0xc0000000) / 8 + 3072;
     BYTE_PTR bitmap = data->msrBitmaps;
     if(read)
-        bitmap[msrReadIdx / 8] |= (1 << (msrReadIdx % 8));
+        bitmap[msrReadIdx] |= (1 << (msrNumber % 8));
     else
-        bitmap[msrReadIdx / 8] &= ~(1 << (msrReadIdx % 8));
+        bitmap[msrReadIdx] &= ~(1 << (msrNumber % 8));
     if(write)
-            bitmap[msrWriteIdx / 8] |= (1 << (msrReadIdx % 8));
+            bitmap[msrWriteIdx] |= (1 << (msrNumber % 8));
     else
-        bitmap[msrWriteIdx / 8] &= ~(1 << (msrReadIdx % 8));
+        bitmap[msrWriteIdx] &= ~(1 << (msrNumber % 8));
     return STATUS_SUCCESS;
 }
 
