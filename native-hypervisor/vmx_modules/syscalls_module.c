@@ -128,6 +128,6 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
         Due to Meltdown mitigations, the address might be not mapped later. 
         Hence, we are saving the current CR3 for future usage.
     */
-   ext->guestCr3 = vmread(GUEST_CR3);
+    ext->guestCr3 = vmread(GUEST_CR3);
     return STATUS_SUCCESS;
 }
