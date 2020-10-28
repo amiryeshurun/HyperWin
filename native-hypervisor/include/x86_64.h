@@ -18,6 +18,9 @@
 #define CR4_OSXSAVE (1 << 18)
 #define CR4_PAE_ENABLED (1 << 5)
 
+#define EFER_LONG_MODE_ENABLED (1 << 8)
+#define EFER_LONG_MODE_ACTIVE (1 << 10)
+
 /* CPUID related data */
 #define CPUID_XSAVE (1 << 26)
 #define CPUID_OSXSAVE (1 << 27)
