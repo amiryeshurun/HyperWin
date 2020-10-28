@@ -38,18 +38,36 @@ STATUS RegisterNewProtectedKppEntry(IN QWORD guestPhysicalAddress, IN BYTE_PTR i
 STATUS EmulatePatchGuardAction(IN PPATCH_GAURD_ENTRY kppEntries, IN QWORD count,
         IN QWORD address, IN BYTE instructionLength)
 {
-    BYTE_PTR hostVirtual = TranslateGuestPhysicalToHostVirtual(address);
-    BYTE instruction[X86_MAX_INSTRUCTION_LEN];
-    CopyMemory(instruction, hostVirtual, instructionLength);
-    if(FALSE)
+    PREGISTERS regs = &(GetVMMStruct()->guestRegisters);
+    BYTE inst[X86_MAX_INSTRUCTION_LEN];
+    CopyGuestMemory(inst, regs->rip, instructionLength);
+    if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x02)
     {
-        // still didn't search for KPP instruction
+        // mov eax,DWORD PTR [r10]
+        DWORD val;
+        CopyGuestMemory(&val, regs->r10, sizeof(DWORD));
+        regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
+    }
+    else if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8a && inst[2] == 0x02)
+    {
+        // mov al,BYTE PTR [r10]
+        BYTE val;
+        CopyGuestMemory(&val, regs->r10, sizeof(BYTE));
+        regs->rax = (regs->rax & 0xffffffffffffff00ULL) | val;
+    }
+    else if(instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xbf && inst[3] == 0x02)
+    {
+        // movzx eax,WORD PTR [r10]
+        WORD val;
+        CopyGuestMemory(&val, regs->r10, sizeof(WORD));
+        regs->rax = (regs->rax & 0xffffffffffff0000ULL) | val;
     }
     else
     {
-        Print("New KPP instruction found: %.b\n", instructionLength, instruction);
+        Print("New KPP instruction found at %8: %.b\n", address, instructionLength, inst);
         return STATUS_UNKNOWN_KPP_INSTRUCTION;
     }
+    regs->rip += instructionLength;
     return STATUS_SUCCESS;
 }
 

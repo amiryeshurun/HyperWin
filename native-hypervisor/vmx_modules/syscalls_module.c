@@ -58,7 +58,7 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
     BYTE kernelChunk[13];
     BYTE_PTR patternAddress;
     PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
-    QWORD offset = 0;
+    QWORD offset = 0x60D359;
 
     for(; offset < 0xffffffff; offset++)
     {
@@ -104,16 +104,8 @@ STATUS HookSystemCalls(IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win3
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscall, ntoskrnl + (offset >> 4),
              functionAddress);
         for(QWORD i = 0; i < shared->numberOfCores; i++)
-        {
             UpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)functionAddress, PAGE_SIZE), 
                 PAGE_SIZE, EPT_EXECUTE);
-                QWORD lstar;
-            ASSERT(TranslateGuestVirtualToGuestPhysicalUsingCr3(__readmsr(MSR_IA32_LSTAR), &lstar, guestCr3)
-                == STATUS_SUCCESS);
-
-            UpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)lstar, PAGE_SIZE), 
-                PAGE_SIZE, EPT_EXECUTE);
-        }
     }
     va_end(args);
     return STATUS_SUCCESS;
@@ -132,8 +124,9 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
     ext->lstar = msrValue;
     ext->startExitCount = TRUE;
-    /* Due to Meltdown mitigations, the address might not be mapped later. 
-       Hence, we are saving the current CR3 for future usage.
+    /* 
+        Due to Meltdown mitigations, the address might be not mapped later. 
+        Hence, we are saving the current CR3 for future usage.
     */
    ext->guestCr3 = vmread(GUEST_CR3);
     return STATUS_SUCCESS;
