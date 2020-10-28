@@ -15,20 +15,21 @@ STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR tran
 #ifdef DEBUG_ADDRESS_TRANSLATION
     PrintDebugLevelDebug("Address: %8\n", address);
 #endif
-    QWORD guestCR3 = vmread(GUEST_CR3), guestPhysicalAddress;;
+    QWORD_PAGE_TABLE_ENTRY guestCR3 = (QWORD_PAGE_TABLE_ENTRY)vmread(GUEST_CR3);
+    QWORD guestPhysicalAddress;
     VIRTUAL_ADDRESS_PARTITIONING virtualAddress = (VIRTUAL_ADDRESS_PARTITIONING)(address & VIRTUAL_ADDRESS_MASK);
     PQWORD_PAGE_TABLE_ENTRY pml4Address = 
-        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((guestCR3 & VIRTUAL_ADDRESS_MASK)
-             + virtualAddress.bitFields.pageMapLevel4Offset * sizeof(QWORD));
+        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual(guestCR3.bitFields.address << 12)
+             + virtualAddress.bitFields.pageMapLevel4Offset;
 #ifdef DEBUG_ADDRESS_TRANSLATION
-    PrintDebugLevelDebug("PML4: %8 %8 %8\n", (guestCR3 & VIRTUAL_ADDRESS_MASK)
-             + virtualAddress.bitFields.pageMapLevel4Offset * sizeof(QWORD), pml4Address, *(QWORD_PTR)pml4Address);
+    PrintDebugLevelDebug("PML4: %8 %8 %8\n", (guestCR3.bitFields.address << 12) + virtualAddress.bitFields.pageMapLevel4Offset 
+        * sizeof(QWORD), pml4Address, *(QWORD_PTR)pml4Address);
 #endif
     if(!pml4Address->bitFields.valid)
         return STATUS_ADDRESS_NOT_VALID;
     PQWORD_PAGE_TABLE_ENTRY pdtAddress = 
-        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((pml4Address->bitFields.address << 12)
-            + virtualAddress.bitFields.pageDirectoryPointerTableOffset * sizeof(QWORD));
+        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual(pml4Address->bitFields.address << 12)
+            + virtualAddress.bitFields.pageDirectoryPointerTableOffset;
 #ifdef DEBUG_ADDRESS_TRANSLATION
     PrintDebugLevelDebug("PDPT: %8 %8 %8\n", (pml4Address->bitFields.address << 12)
             + virtualAddress.bitFields.pageDirectoryPointerTableOffset * sizeof(QWORD), pdtAddress, *(QWORD_PTR)pdtAddress);
@@ -43,8 +44,8 @@ STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR tran
         goto AddressTranslated;
     }
     PQWORD_PAGE_TABLE_ENTRY pdAddress = 
-        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((pdtAddress->bitFields.address << 12)
-            + virtualAddress.bitFields.pageDirectoryOffset * sizeof(QWORD));
+        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual(pdtAddress->bitFields.address << 12)
+            + virtualAddress.bitFields.pageDirectoryOffset;
 #ifdef DEBUG_ADDRESS_TRANSLATION
     PrintDebugLevelDebug("PDT: %8 %8 %8\n", (pdtAddress->bitFields.address << 12)
             + virtualAddress.bitFields.pageDirectoryOffset * sizeof(QWORD), pdAddress, *(QWORD_PTR)pdAddress);
@@ -60,8 +61,8 @@ STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR tran
     }
     // 4-KB page
     PQWORD_PAGE_TABLE_ENTRY ptAddress = 
-        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual((pdAddress->bitFields.address << 12)
-            + virtualAddress.bitFields.pageTableOffset * sizeof(QWORD));
+        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual(pdAddress->bitFields.address << 12)
+            + virtualAddress.bitFields.pageTableOffset;
 #ifdef DEBUG_ADDRESS_TRANSLATION
     PrintDebugLevelDebug("PT: %8 %8 %8\n", (pdAddress->bitFields.address << 12)
                 + virtualAddress.bitFields.pageTableOffset * sizeof(QWORD), ptAddress, *(QWORD_PTR)ptAddress);

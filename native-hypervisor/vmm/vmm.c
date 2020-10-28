@@ -182,7 +182,7 @@ VOID HandleVmExitEx()
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->isHandledOnVmExit[exitReason])
             if(shared->modules[i]->vmExitHandlers[exitReason](data, shared->modules[i]) == STATUS_SUCCESS)
-                return;
+                    return;
 DefaultHandler:
     if(shared->defaultModule.isHandledOnVmExit[exitReason])
     {

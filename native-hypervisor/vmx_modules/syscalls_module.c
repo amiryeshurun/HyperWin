@@ -35,12 +35,16 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt)
     BYTE_PTR patternAddress;
     
     PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
+    
+    QWORD pml4Idx = 0x1ffULL;
+    pml4Idx <<= 39;
+    pml4Idx &= (QWORD)lstar;
+    pml4Idx >>= 39;
+    Print("IDX: %8 %8\n", pml4Idx, *(QWORD_PTR)(vmread(GUEST_CR3) + pml4Idx * sizeof(QWORD)));
     for(QWORD offset = 0; offset < 0xffffffff; offset++)
     {
         if(CopyGuestMemory(kernelChunk, lstar - offset, 13) != STATUS_SUCCESS)
-        {
-            Print("Invalid: %8\n", lstar - offset);
-        }
+            continue;
         if(!CompareMemory(kernelChunk, pattern, 13))
         {
             Print("Pattern found in kernel's address space\n");
@@ -62,8 +66,9 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     if(regs->rcx != MSR_IA32_LSTAR)
         return STATUS_VM_EXIT_NOT_HANDLED;
     QWORD msrValue = ((regs->rdx & 0xffffffff) << 32) | (regs->rax & 0xffffffff);
-    Print("Guest attempted to write to LSTAR %8 MSR: %8\n", regs->rcx, msrValue);
+    Print("Guest attempted to write to LSTAR %8 MSR: %8 %8\n", regs->rcx, msrValue, __readmsr(MSR_IA32_LSTAR));
     __writemsr(MSR_IA32_LSTAR, msrValue);
+    BYTE code[400];
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     BYTE_PTR ssdt;
     if(LocateSSDT(msrValue, &ssdt) != STATUS_SUCCESS)
