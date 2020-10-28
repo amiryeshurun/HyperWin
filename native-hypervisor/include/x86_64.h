@@ -7,6 +7,7 @@
 #define PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE 0x200000
 #define LARGE_PAGE_MASK 0x1fffffULL
+#define GB_PAGE_MASK 0x3fffffffULL
 
 /* CR related data */
 #define CR0_NE_ENABLED (1 << 5)
@@ -16,6 +17,9 @@
 #define CR4_VMX_ENABLED (1 << 13)
 #define CR4_OSXSAVE (1 << 18)
 #define CR4_PAE_ENABLED (1 << 5)
+
+#define EFER_LONG_MODE_ENABLED (1 << 8)
+#define EFER_LONG_MODE_ACTIVE (1 << 10)
 
 /* CPUID related data */
 #define CPUID_XSAVE (1 << 26)
@@ -31,6 +35,9 @@
 
 /* Useful flags */
 #define RFLAGS_CARRY (1 << 0)
+
+/* Architectural data */
+#define X86_MAX_INSTRUCTION_LEN 15
 
 typedef struct _GDT
 {

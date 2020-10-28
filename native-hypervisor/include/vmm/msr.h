@@ -360,4 +360,8 @@
 #define MSR_IA32_KERNEL_GS_BASE              0xc0000102U
 #define MSR_IA32_TSC_AUX                     0xc0000103U
 
+/* MSR types */
+#define MSR_RANGE_FIRST 0
+#define MSR_RANGE_SECOND 1
+
 #endif

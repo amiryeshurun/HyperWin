@@ -35,6 +35,7 @@ typedef struct _SHARED_CPU_DATA
     HEAP heap;
     MODULE defaultModule;
     PMODULE* modules;
+    BOOL wereModulesInitiated;
     QWORD modulesCount;
     struct _SINGLE_CPU_DATA* cpuData[MAX_CORES];
     struct _CURRENT_GUEST_STATE* currentState[MAX_CORES];
@@ -95,6 +96,7 @@ STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase
 STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
 BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData);
-VOID RegisterAllModules(IN PSHARED_CPU_DATA sharedData);
+VOID RegisterAllModules(IN PSINGLE_CPU_DATA sharedData);
+STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write);
 
 #endif

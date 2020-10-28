@@ -38,6 +38,7 @@ typedef union _VIRTUAL_ADDRESS_PARTITIONING
         QWORD pageDirectoryOffset : 9;
         QWORD pageDirectoryPointerTableOffset : 9;
         QWORD pageMapLevel4Offset : 9;
+        QWORD signExtension : 16;
     }bitFields;
     QWORD address;
 }VIRTUAL_ADDRESS_PARTITIONING, PVIRTUAL_ADDRESS_PARTITIONING;

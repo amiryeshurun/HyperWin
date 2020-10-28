@@ -13,7 +13,7 @@
 #include <guest_communication/vmcall_values.h>
 #include <guest_communication/vmcall_handlers.h>
 
-STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
+STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     // Disable CR3 access after the first time
     __vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmread(CPU_BASED_VM_EXEC_CONTROL)
@@ -156,7 +156,7 @@ STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data)
     return STATUS_SUCCESS;
 }
 
-STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data)
+STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 #ifdef DEBUG_XSETBV
     PrintDebugLevelDebug("XSETBV detected, emulating the instruction.\n");
@@ -181,7 +181,7 @@ STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data)
+STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {    
     PREGISTERS regs = &(data->guestRegisters);
 
@@ -237,7 +237,7 @@ EmulateIRET:
     return STATUS_UNKNOWN_VMCALL;
 }
 
-STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data)
+STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 	PREGISTERS regs = &(data->guestRegisters);
 	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
@@ -251,7 +251,7 @@ STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data)
+STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 	PREGISTERS regs = &(data->guestRegisters);
 	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
@@ -263,7 +263,7 @@ STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
+STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     PREGISTERS regs = &(data->guestRegisters);
     QWORD eax, ebx, ecx, edx, leaf = regs->rax, subleaf = regs->rcx;
@@ -319,7 +319,7 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleEptViolation(IN PCURRENT_GUEST_STATE data)
+STATUS HandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     if(CheckAccessToHiddenBase(data->currentCPU->sharedData, vmread(GUEST_PHYSICAL_ADDRESS)))
     {
@@ -331,31 +331,31 @@ STATUS HandleEptViolation(IN PCURRENT_GUEST_STATE data)
     return STATUS_UNHANDLED_EPT_VIOLATION;
 }
 
-STATUS HandleInvalidGuestState(IN PCURRENT_GUEST_STATE data)
+STATUS HandleInvalidGuestState(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("Invalid Guest State!\n");
     return STATUS_INVALID_GUEST_STATE;
 }
 
-STATUS HandleInvalidMsrLoading(IN PCURRENT_GUEST_STATE data)
+STATUS HandleInvalidMsrLoading(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("INVALID MSR LOADING!\n");
     return STATUS_INVALID_MSR_LOADING;
 }
 
-STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data)
+STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("Failure due to machine-check event!\n");
     return STATUS_MACHINE_CHECK_FAILURE;
 }
 
-STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data)
+STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("!!! TRIPLE FAULT !!!\n");
     return STATUS_TRIPLE_FAULT;
 }
 
-STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data)
+STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     // Intel SDM, Volume 3C, Section 33.5
     Print("INIT interrupt detected on core %d\n", data->currentCPU->coreIdentifier);
@@ -363,7 +363,7 @@ STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data)
+STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     QWORD vector = vmread(EXIT_QUALIFICATION);
     // See Intel SDM, Volume 3C, Section 25.2

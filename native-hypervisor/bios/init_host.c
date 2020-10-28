@@ -96,10 +96,9 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
     sharedData->validRamCount = validRamCount;
+    sharedData->wereModulesInitiated = FALSE;
     // Init heap before registering modules
     HeapInit(&(sharedData->heap), HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
-    // All modules registeration are taken care here
-    RegisterAllModules(sharedData);
     // Enable 2xAPIC
     EnableX2APIC();
     // Initialize hypervisor on all cores except the BSP
