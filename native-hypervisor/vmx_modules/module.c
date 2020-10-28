@@ -3,11 +3,16 @@
 #include <debug.h>
 
 VOID InitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer,
-    IN PGENERIC_MODULE_DATA moduleData)
+    IN PGENERIC_MODULE_DATA moduleData, IN VMEXIT_HANDLER defaultHandler)
 {
     for(QWORD i = 0; i < VMEXIT_HANDLERS_MAX; module->isHandledOnVmExit[i] = FALSE,
-        module->vmExitHandlers[i] = NULL, i++);
+            module->vmExitHandlers[i] = NULL, i++);
     module->moduleName = NULL;
+    if(defaultHandler)
+    {
+        module->hasDefaultHandler = TRUE;
+        module->defaultHandler = defaultHandler;
+    }
     if(moduleInitializer)
         ASSERT(moduleInitializer(sharedData, module, moduleData) == STATUS_SUCCESS);
 }
