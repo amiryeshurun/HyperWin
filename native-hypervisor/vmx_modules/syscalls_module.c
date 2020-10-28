@@ -33,14 +33,8 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt)
     BYTE pattern[] = { 0x8B, 0xF8, 0xC1, 0xEF, 0x07, 0x83, 0xE7, 0x20, 0x25, 0xFF, 0x0F, 0x00, 0x00 };
     BYTE kernelChunk[13];
     BYTE_PTR patternAddress;
-    
     PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
     
-    QWORD pml4Idx = 0x1ffULL;
-    pml4Idx <<= 39;
-    pml4Idx &= (QWORD)lstar;
-    pml4Idx >>= 39;
-    Print("IDX: %8 %8\n", pml4Idx, *(QWORD_PTR)(vmread(GUEST_CR3) + pml4Idx * sizeof(QWORD)));
     for(QWORD offset = 0; offset < 0xffffffff; offset++)
     {
         if(CopyGuestMemory(kernelChunk, lstar - offset, 13) != STATUS_SUCCESS)
