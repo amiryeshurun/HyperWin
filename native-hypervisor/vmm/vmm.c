@@ -339,6 +339,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
             SyscallsDefaultHandler);
         SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
         RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
+        RegisterVmExitHandler(syscallsModule, EXIT_REASON_EXCEPTION_NMI, SyscallsHandleException);
         RegisterModule(sharedData, syscallsModule);
         Print("Successfully registered syscalls module\n");
         // Mark modules as initiated

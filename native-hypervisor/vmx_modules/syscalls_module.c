@@ -6,7 +6,7 @@
 #include <intrinsics.h>
 #include <vmm/vm_operations.h>
 #include <vmm/vmcs.h>
-#include <win_kernel/syscalls.h>
+#include <win_kernel/syscall_handlers.h>
 #include <vmm/memory_manager.h>
 
 STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
@@ -130,4 +130,9 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     */
     ext->guestCr3 = vmread(GUEST_CR3);
     return STATUS_SUCCESS;
+}
+
+STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+{
+
 }
