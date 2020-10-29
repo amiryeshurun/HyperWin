@@ -55,7 +55,7 @@ STATUS EmulatePatchGuardAction(IN PPATCH_GAURD_ENTRY kppEntries, IN QWORD count,
         CopyGuestMemory(&val, regs->r10, sizeof(BYTE));
         regs->rax = (regs->rax & 0xffffffffffffff00ULL) | val;
     }
-    else if(instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xbf && inst[3] == 0x02)
+    else if(instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb7 && inst[3] == 0x02)
     {
         // movzx eax,WORD PTR [r10]
         WORD val;

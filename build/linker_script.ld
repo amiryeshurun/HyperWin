@@ -2,10 +2,21 @@ SECTIONS
 {
     /* Match the CODE_BEGIN_ADDRESS from entrypoint.asm */
     . = 0x3300000;
-    /* Use all text sections from input file */
+    /* Use all text sections from input files */
     .text : { *(.text) }
-    /* Use all data sections from input file */
+    .nt_data : 
+    {
+        __ntDataStart = .;
+        *(.nt_data)
+    }
+    /* Use all data sections from input files */
     .data : { *(.data) } 
-    /* Use all bss sections from input file */
-    .bss : { *(.bss) } 
+    /* Use all bss sections from input files */
+    .bss : { *(.bss) }
+    /* Use all rodata sections from input files */
+    .rodata : { *(.rodata) }
+    /DISCARD/ :
+    {
+        *(.eh_frame)
+    }
 }
