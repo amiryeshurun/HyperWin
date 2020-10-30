@@ -174,16 +174,25 @@ VOID HandleVmExitEx()
     if(exitReason & VM_ENTRY_FAILURE_MASK)
     {
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
-        goto DefaultHandler;
+        goto DefaultModule;
     }
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
     PCURRENT_GUEST_STATE data = GetVMMStruct();
     PSHARED_CPU_DATA shared = data->currentCPU->sharedData;
+    
+    // First run default handlers of all modules 
+    for(QWORD i = 0; i < shared->modulesCount; i++)
+        if(shared->modules[i]->hasDefaultHandler)
+            shared->modules[i]->defaultHandler(data, shared->modules[i]);
+    
+    // Try to handle vm-exit
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->isHandledOnVmExit[exitReason])
             if(shared->modules[i]->vmExitHandlers[exitReason](data, shared->modules[i]) == STATUS_SUCCESS)
                     return;
-DefaultHandler:
+    
+    // If vm-exit was not handled, run the default module
+DefaultModule:
     if(shared->defaultModule.isHandledOnVmExit[exitReason])
     {
         STATUS handleStatus;
@@ -248,8 +257,8 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
         base, length, access);
     QWORD lengthInPages = length / PAGE_SIZE;
     for(QWORD i = 0; i < lengthInPages; i++)
-        data->eptPageTables[base / PAGE_SIZE + i] = data->eptPageTables[base / PAGE_SIZE + i] 
-            & EPT_ACCESS_MASK | access;
+        data->eptPageTables[base / PAGE_SIZE + i] = (data->eptPageTables[base / PAGE_SIZE + i] 
+            & EPT_ACCESS_MASK & ~(7ULL)) | access;
     PrintDebugLevelDebug("EPT policy updated\n");
     return STATUS_SUCCESS;
 }
@@ -299,7 +308,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         sharedData->modules = NULL;
         sharedData->modulesCount = 0;
         // Default module
-        InitModule(sharedData, &sharedData->defaultModule, NULL, NULL);
+        InitModule(sharedData, &sharedData->defaultModule, NULL, NULL, NULL);
         SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
         RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
         RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
@@ -318,7 +327,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         // Dynamic modules initialozation
         // KPP Module
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
-        InitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL);
+        InitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL, NULL);
         SetModuleName(sharedData, kppModule, "KPP Module");
         RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
         RegisterModule(sharedData, kppModule);
@@ -326,9 +335,11 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         // Syscalls Module
         syscallsInitData.syscallsModule.kppModule = kppModule;
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
-        InitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, &syscallsInitData);
+        InitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, &syscallsInitData, 
+            SyscallsDefaultHandler);
         SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
         RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
+        RegisterVmExitHandler(syscallsModule, EXIT_REASON_EXCEPTION_NMI, SyscallsHandleException);
         RegisterModule(sharedData, syscallsModule);
         Print("Successfully registered syscalls module\n");
         // Mark modules as initiated

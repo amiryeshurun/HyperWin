@@ -7,7 +7,14 @@
 
 /* For more information about address translation, see Windows Internals, 7th edition, 
     page 381 */
+
 STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR translatedAddress)
+{
+    return TranslateGuestVirtualToGuestPhysicalUsingCr3(address, translatedAddress, 0);
+}
+
+STATUS TranslateGuestVirtualToGuestPhysicalUsingCr3(IN QWORD address, OUT QWORD_PTR translatedAddress,
+    IN QWORD guestCr3)
 {
     ASSERT(vmread(GUEST_CR0) & CR0_PM_ENABLED); // Protected mode
     ASSERT(vmread(GUEST_CR0) & CR0_PG_ENABLED); // Paging
@@ -15,14 +22,14 @@ STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR tran
 #ifdef DEBUG_ADDRESS_TRANSLATION
     PrintDebugLevelDebug("Address: %8\n", address);
 #endif
-    QWORD_PAGE_TABLE_ENTRY guestCR3 = (QWORD_PAGE_TABLE_ENTRY)vmread(GUEST_CR3);
+    QWORD_PAGE_TABLE_ENTRY pml4GuestCr3 = (QWORD_PAGE_TABLE_ENTRY)(guestCr3 ? guestCr3 : vmread(GUEST_CR3));
     QWORD guestPhysicalAddress;
     VIRTUAL_ADDRESS_PARTITIONING virtualAddress = (VIRTUAL_ADDRESS_PARTITIONING)(address & VIRTUAL_ADDRESS_MASK);
     PQWORD_PAGE_TABLE_ENTRY pml4Address = 
-        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual(guestCR3.bitFields.address << 12)
+        (PQWORD_PAGE_TABLE_ENTRY)TranslateGuestPhysicalToHostVirtual(pml4GuestCr3.bitFields.address << 12)
              + virtualAddress.bitFields.pageMapLevel4Offset;
 #ifdef DEBUG_ADDRESS_TRANSLATION
-    PrintDebugLevelDebug("PML4: %8 %8 %8\n", (guestCR3.bitFields.address << 12) + virtualAddress.bitFields.pageMapLevel4Offset 
+    PrintDebugLevelDebug("PML4: %8 %8 %8\n", (pml4GuestCr3.bitFields.address << 12) + virtualAddress.bitFields.pageMapLevel4Offset 
         * sizeof(QWORD), pml4Address, *(QWORD_PTR)pml4Address);
 #endif
     if(!pml4Address->bitFields.valid)
