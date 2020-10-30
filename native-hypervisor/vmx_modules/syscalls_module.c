@@ -18,6 +18,7 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     extension->kppModule = initData->syscallsModule.kppModule;
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
+    extension->syscallsData = &__ntDataStart;
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
 }

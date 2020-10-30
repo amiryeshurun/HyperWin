@@ -4,12 +4,14 @@
 #include <types.h>
 #include <vmm/vmm.h>
 #include <vmx_modules/module.h>
+#include <win_kernel/syscall_handlers.h>
 
 #define COUNT_UNTIL_HOOK 1000
 
 typedef struct _SYSCALLS_MODULE_EXTENSION
 {
     PMODULE kppModule;
+    PSYSCALL_DATA syscallsData;
     BOOL startExitCount;
     QWORD exitCount;
     BYTE_PTR ntoskrnl;
