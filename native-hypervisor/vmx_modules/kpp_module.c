@@ -24,12 +24,33 @@ STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
     return STATUS_SUCCESS;
 }
 
-STATUS RegisterNewProtectedKppEntry(IN QWORD idx, IN QWORD guestPhysicalAddress, IN BYTE_PTR instruction, 
-    IN BYTE instructionLength, IN PMODULE kppModule)
+STATUS RegisterNewProtectedKppEntry(IN QWORD syscall, IN QWORD guestPhysicalAddress, IN BYTE_PTR instruction, 
+    IN BYTE instructionLength, IN BOOL hookReturn, IN PMODULE kppModule)
 {
     PKPP_MODULE_DATA kppData = (PKPP_MODULE_DATA)kppModule->moduleExtension;
     if(kppData->hookedSyscallsCount >= KPP_MODULE_MAX_COUNT)
         return STATUS_NO_SPACE_AVAILABLE;
+    QWORD idx;
+    BOOL exist = FALSE;
+    for(QWORD i = 0; i < kppData->hookedSyscallsCount; i++)
+    {
+        if(kppData->hookedSyscalls[i] == syscall)
+        {
+            exist = TRUE;
+            idx = i;
+            break;
+        }
+    }
+    if(!exist)
+    {
+        kppData->hookedSyscalls[kppData->hookedSyscallsCount++] = syscall;
+        idx = kppData->hookedSyscallsCount;
+    }
+    if(hookReturn)
+    {
+        kppData->syscallsData[kppData->hookedSyscalls[idx]].returnHookAddress = guestPhysicalAddress;
+        return STATUS_SUCCESS;
+    }
     kppData->syscallsData[kppData->hookedSyscalls[idx]].hookedInstructionAddress = guestPhysicalAddress;
     kppData->syscallsData[kppData->hookedSyscalls[idx]].hookedInstructionLength = instructionLength;
     CopyMemory(kppData->syscallsData[kppData->hookedSyscalls[idx]].hookedInstrucion, instruction, 
