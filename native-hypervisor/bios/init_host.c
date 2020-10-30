@@ -12,7 +12,7 @@
 VOID Initialize()
 {
     SetupVirtualAddress(__readcr3());
-    InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000ffffULL);
+    InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
     LoadMBRToEntryPoint();
     CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, (BYTE_PTR)SetupSystemAndHandleControlToBios,
         SetupSystemAndHandleControlToBiosEnd - SetupSystemAndHandleControlToBios);
