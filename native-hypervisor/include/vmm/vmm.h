@@ -98,5 +98,6 @@ BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress)
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData);
 VOID RegisterAllModules(IN PSINGLE_CPU_DATA sharedData);
 STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write);
+STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode);
 
 #endif

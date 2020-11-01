@@ -374,10 +374,13 @@ STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
         interruptInformation |= (3 << 8);
     if(HasErrorCode(vector))
     {
+        if(errorCode == 0)
+            return STATUS_ERROR_CODE_MUST_BE_SPECIFIED;
         interruptInformation |= (1 << 11);
         __vmwrite(VM_ENTRY_EXCEPTION_ERROR_CODE, errorCode);
     }
     // mark interrupt as valid
     interruptInformation |= (1 << 31);
     __vmwrite(VM_ENTRY_INTR_INFO, interruptInformation);
+    return STATUS_SUCCESS;
 }
