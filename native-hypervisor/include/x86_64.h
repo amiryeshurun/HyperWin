@@ -39,6 +39,29 @@
 /* Architectural data */
 #define X86_MAX_INSTRUCTION_LEN 15
 
+/* Interrupts Data */
+#define INT_DIVIDE_ERROR         0
+#define INT_DEBUG                1
+#define INT_NMI                  2
+#define INT_BREAKPOINT           3
+#define INT_OVERFLOW             4
+#define INT_BOUND                5
+#define INT_INVALID_OPCODE       6
+#define INT_DEVICE_NOT_AVAIL     7
+#define INT_DOUBLE_FAULT         8
+#define INT_COPROCESSOR          9
+#define INT_INVALID_TSS         10
+#define INT_SEGMENT             11
+#define INT_STACK_FAULT         12
+#define INT_GENERAL_PROTECT     13
+#define INT_PAGE_FAULT          14
+#define INT_X87_FPU             16
+#define INT_ALIGNMENT           17
+#define INT_MACHINE_CHECK       18
+#define INT_SIMD_FLOAT          19
+#define INT_VIRTUAL_EXCE        20
+#define INT_SECURITY            31
+
 typedef struct _GDT
 {
     WORD limit;

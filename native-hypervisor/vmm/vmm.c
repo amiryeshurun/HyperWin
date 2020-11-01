@@ -348,3 +348,36 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
     KppModuleInitializeSingleCore(data);
     SyscallsModuleInitializeSingleCore(data);
 }
+
+BOOL IsSoftwareInterrupt(IN BYTE vector)
+{
+    return vector == INT_BREAKPOINT || vector == INT_OVERFLOW;
+}
+
+BOOL HasErrorCode(IN BYTE vector)
+{
+    return vector == INT_DOUBLE_FAULT || vector == INT_INVALID_TSS || vector == INT_SEGMENT
+        || vector == INT_STACK_FAULT || vector == INT_GENERAL_PROTECT || vector == INT_PAGE_FAULT
+        || vector == INT_ALIGNMENT || vector == INT_SECURITY;
+}
+
+STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
+{
+    QWORD interruptInformation = vector;
+    // Currently only software & hardware interrupt are supported
+    if(IsSoftwareInterrupt(vector))
+    {
+        interruptInformation |= (4 << 8);
+        __vmwrite(VM_ENTRY_INSTRUCTION_LEN, vmread(VM_EXIT_INSTRUCTION_LEN));
+    }
+    else
+        interruptInformation |= (3 << 8);
+    if(HasErrorCode(vector))
+    {
+        interruptInformation |= (1 << 11);
+        __vmwrite(VM_ENTRY_EXCEPTION_ERROR_CODE, errorCode);
+    }
+    // mark interrupt as valid
+    interruptInformation |= (1 << 31);
+    __vmwrite(VM_ENTRY_INTR_INFO, interruptInformation);
+}
