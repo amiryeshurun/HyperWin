@@ -5,6 +5,7 @@
 #include <vmm/msr.h>
 #include <win_kernel/memory_manager.h>
 #include <debug.h>
+#include <intrinsics.h>
 
 STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN GENERIC_MODULE_DATA initData)
 {
@@ -159,6 +160,47 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
     {
         // xor rbx,QWORD PTR [r8]
         // xor rbx,QWORD PTR [r8+0x8]
+        QWORD val;
+        BuildKppResult(&val, address, 8, kppData);
+        regs->rbx ^= val;
+    }
+    else if((instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb6 && inst[3] == 0x00)
+        || (instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb6 && inst[3] == 0x01))
+    {
+        // movzx eax,BYTE PTR [r8]
+        // movzx eax,BYTE PTR [r9]
+        BYTE val;
+        BuildKppResult(&val, address, 1, kppData);
+        regs->rax = (regs->rax & 0xffffffff00000000) | val;
+    }
+    else if(instructionLength == 4 && inst[0] == 0x4d && inst[1] == 0x8b && inst[2] == 0x41 && inst[3] == 0x08)
+    {
+        // mov r8,QWORD PTR [r9+0x8]
+        QWORD val;
+        BuildKppResult(&val, address, 8, kppData);
+        regs->r8 = val;
+    }
+    else if((instructionLength == 3 && inst[0] == 0x4d && inst[1] == 0x33 && inst[2] == 0x01)
+        || (instructionLength == 3 && inst[0] == 0x4d && inst[1] == 0x33 && inst[2] == 0x02)
+        || (instructionLength == 4 && inst[0] == 0x4d && inst[1] == 0x33 && inst[2] == 0x42 && inst[3] == 0x08))
+    {
+        // xor r8,QWORD PTR [r9]
+        // xor r8,QWORD PTR [r10]
+        // xor r8,QWORD PTR [r10+0x8]
+        QWORD val;
+        BuildKppResult(&val, address, 8, kppData);
+        regs->r8 ^= val;
+    }
+    else if(instructionLength == 4 && inst[0] == 0xc5 && inst[1] == 0xfe && inst[2] == 0x6f && inst[3] == 0x00)
+    {
+        // vmovdqu ymm0,YMMWORD PTR [rax]
+        BYTE val[16];
+        BuildKppResult(&val, address, 16, kppData);
+        __vmovdqu_ymm0(val);
+    }
+    else if(instructionLength == 3 && inst[0] == 0x48 && inst[1] == 0x33 && inst[2] == 0x1f)
+    {
+        // xor rbx,QWORD PTR [rdi]
         QWORD val;
         BuildKppResult(&val, address, 8, kppData);
         regs->rbx ^= val;

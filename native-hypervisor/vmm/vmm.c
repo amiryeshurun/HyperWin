@@ -348,8 +348,6 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
     }
     KppModuleInitializeSingleCore(data);
     SyscallsModuleInitializeSingleCore(data);
-    // testing
-    __vmwrite(EXCEPTION_BITMAP, vmread(EXCEPTION_BITMAP) | (1 << INT_PAGE_FAULT));
 }
 
 BOOL IsSoftwareInterrupt(IN BYTE vector)

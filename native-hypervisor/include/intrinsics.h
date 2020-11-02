@@ -179,4 +179,10 @@ VOID INLINE __xsetbv(IN DWORD edx, IN DWORD eax, IN DWORD ecx)
     asm volatile("xsetbv" :: "d"(edx), "a"(eax), "c"(ecx));
 }
 
+__attribute__((always_inline))
+VOID INLINE __vmovdqu_ymm0(IN BYTE_PTR addr)
+{
+    asm volatile("vmovdqu %0, %%ymm0" :: "m" (addr));
+}
+
 #endif
