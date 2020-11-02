@@ -412,3 +412,13 @@ STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     __vmwrite(GUEST_ACTIVITY_STATE, CPU_STATE_ACTIVE);
     return STATUS_SUCCESS;
 }
+
+STATUS HandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+{
+    QWORD vector = vmread(VM_EXIT_INTR_INFO);
+    if(vector & 0xff != INT_PAGE_FAULT)
+        return STATUS_VM_EXIT_NOT_HANDLED;
+    __writecr2(vmread(EXIT_QUALIFICATION));
+    ASSERT(InjectGuestInterrupt(INT_PAGE_FAULT, vmread(VM_EXIT_INTR_ERROR_CODE)) == STATUS_SUCCESS);
+    return STATUS_SUCCESS;
+}
