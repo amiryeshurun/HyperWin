@@ -18,5 +18,6 @@ STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
+STATUS HandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 
 #endif

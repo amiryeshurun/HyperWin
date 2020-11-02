@@ -323,6 +323,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
         RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, HandleApicInit);
         RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, HandleException);
         Print("Successfully registered defualt module\n");
         // Dynamic modules initialozation
         // KPP Module
@@ -347,6 +348,8 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
     }
     KppModuleInitializeSingleCore(data);
     SyscallsModuleInitializeSingleCore(data);
+    // testing
+    __vmwrite(EXCEPTION_BITMAP, vmread(EXCEPTION_BITMAP) | (1 << INT_PAGE_FAULT));
 }
 
 BOOL IsSoftwareInterrupt(IN BYTE vector)
@@ -363,7 +366,7 @@ BOOL HasErrorCode(IN BYTE vector)
 
 STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
 {
-    QWORD interruptInformation = vector;
+    DWORD interruptInformation = vector;
     // Currently only software & hardware interrupt are supported
     if(IsSoftwareInterrupt(vector))
     {
@@ -374,7 +377,7 @@ STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
         interruptInformation |= (3 << 8);
     if(HasErrorCode(vector))
     {
-        if(errorCode == 0)
+        if(errorCode == -1)
             return STATUS_ERROR_CODE_MUST_BE_SPECIFIED;
         interruptInformation |= (1 << 11);
         __vmwrite(VM_ENTRY_EXCEPTION_ERROR_CODE, errorCode);
