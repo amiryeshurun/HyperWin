@@ -12,12 +12,16 @@ typedef STATUS (*SYSCALL_HANDLER)(IN QWORD_PTR);
 
 typedef struct _SYSCALL_DATA
 {
+    // Defined statically
     SYSCALL_HANDLER handler;
     BYTE params;
+    BYTE hookInstructionOffset;
+    BOOL hookReturnEvent;
+    // Defined dynamically
+    QWORD hookedInstructionLength;
     QWORD hookedInstructionAddress;
     QWORD returnHookAddress;
     BYTE hookedInstrucion[X86_MAX_INSTRUCTION_LEN];
-    QWORD hookedInstructionLength;
 } SYSCALL_DATA, *PSYSCALL_DATA;
 
 STATUS HandleNtOpenPrcoess(IN QWORD_PTR params);
