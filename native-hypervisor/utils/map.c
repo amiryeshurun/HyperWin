@@ -3,6 +3,11 @@
 #include <vmm/vmm.h>
 #include <utils/allocation.h>
 
+QWORD BasicHashFunction(IN QWORD key)
+{
+    return SumDigits(key) % BASIC_HASH_LEN;
+}
+
 QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
 {
     QWORD hash = map->hash(key);
@@ -12,7 +17,7 @@ QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
         for(QWORD i = 0; i < map->keyArrays[hash].size; i++)
             if(map->keyArrays[hash].arr[i]->key == key)
                 return map->keyArrays[hash].arr[i]->value;
-    return INF;
+    return MAP_KEY_NOT_FOUND;
 }
 
 VOID MapOverride(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
@@ -35,7 +40,7 @@ VOID MapSet(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
     PQWORD_PAIR pair;
     QWORD hash = map->hash(key);
     // The key already exist
-    if(MapGet(map, key) != INF)
+    if(MapGet(map, key) != MAP_KEY_NOT_FOUND)
     {
         if(heap->allocate(heap, sizeof(QWORD_PAIR), &pair) != STATUS_SUCCESS)
         {
