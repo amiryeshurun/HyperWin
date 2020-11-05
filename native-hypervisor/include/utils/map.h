@@ -3,24 +3,13 @@
 
 #include <types.h>
 #include <error_codes.h>
-
-typedef struct _QWORD_PAIR
-{
-    QWORD key;
-    QWORD value;
-} QWORD_PAIR, *PQWORD_PAIR;
-
-typedef struct _QWORD_COLLECTION
-{
-    PQWORD_PAIR entries;
-    QWORD entriesCount;
-} QWORD_COLLECTION, *PQWORD_COLLECTION;
+#include <utils/array.h>
 
 typedef QWORD (*HASH_FUNC)(IN QWORD);
 
 typedef struct _QWORD_MAP
 {
-    PQWORD_COLLECTION arr;
+    PQWORD_PAIRS_ARRAY keyArrays;
     QWORD size;
     QWORD innerSize;
     HASH_FUNC hash;
