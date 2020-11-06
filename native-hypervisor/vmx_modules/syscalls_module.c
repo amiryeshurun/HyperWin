@@ -10,16 +10,6 @@
 #include <vmm/memory_manager.h>
 #include <vmm/vmm.h>
 
-SYSCALL_HANDLER GetHandlerById(IN QWORD syscallId)
-{
-    switch(syscallId)
-    {
-        case NT_OPEN_PROCESS:
-            return HandleNtOpenPrcoess;
-    }
-    return NULL;
-}
-
 STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
     PrintDebugLevelDebug("Starting initialization of syscalls module for all cores\n");
@@ -31,6 +21,10 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
     MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN);
+    /* System calls data initialization - START */
+    // Init NtOpenProcess related data
+    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE);
+    /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
 }
@@ -40,6 +34,7 @@ STATUS SyscallsModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
     PrintDebugLevelDebug("Starting initialization of syscalls module on core #%d\n", data->coreIdentifier);
     // Hook the event of writing to the LSTAR MSR
     UpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
+    __vmwrite(EXCEPTION_BITMAP, vmread(EXCEPTION_BITMAP) | (1 << INT_BREAKPOINT));
     PrintDebugLevelDebug("Finished initialization of syscalls module on core #%d\n", data->coreIdentifier);
     return STATUS_SUCCESS;
 }
@@ -49,14 +44,17 @@ STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE mod
     PSYSCALLS_MODULE_EXTENSION ext = (PSYSCALLS_MODULE_EXTENSION)module->moduleExtension;
     if(ext->exitCount++ >= COUNT_UNTIL_HOOK)
     {
+        // perform lock-checking
         module->hasDefaultHandler = FALSE;
         BYTE_PTR ssdt, ntoskrnl, win32k;
         LocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         GetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
         ASSERT(HookSystemCalls(ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS)
             == STATUS_SUCCESS);
+        Print("finished hooking\n");
         return STATUS_SUCCESS;
     }
+NotHandled:
     return STATUS_VM_EXIT_NOT_HANDLED;
 }
 
@@ -90,6 +88,7 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
 SSDTFound:
     patternAddress += 13; // pattern
     patternAddress += 7;  // lea r10,[nt!KeServiceDescriptorTable]
+    Print("Copying ssdt address\n");
     ASSERT(CopyGuestMemory(&offset, patternAddress + 3, sizeof(DWORD)) == STATUS_SUCCESS);
     *ssdt = (patternAddress + 7) + offset;
     return STATUS_SUCCESS;
@@ -97,6 +96,7 @@ SSDTFound:
 
 VOID GetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
 {
+    Print("System table\n");
     ASSERT(CopyGuestMemory(ntoskrnl, ssdt, sizeof(QWORD)) == STATUS_SUCCESS);
     ASSERT(CopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
 }
@@ -104,6 +104,7 @@ VOID GetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win
 STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
     IN QWORD count, ...)
 {
+    Print("Starting hook\n");
     va_list args;
     va_start(args, count);
     PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
@@ -116,9 +117,9 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
         // Get the offset of the syscall handler (in ntoskrnl.exe) from the shadowed SSDT
         ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
+        Print("offset: %8, base: %8, total: %8\n", offset, ntoskrnl, ntoskrnl + (offset >> 4));
         // Get the guest physical address of the syscall handler
-        ASSERT(TranslateGuestVirtualToGuestPhysicalUsingCr3(ntoskrnl + (offset >> 4), &functionAddress,
-            guestCr3) == STATUS_SUCCESS);
+        ASSERT(TranslateGuestVirtualToGuestPhysical(ntoskrnl + (offset >> 4), &functionAddress) == STATUS_SUCCESS);
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
         
@@ -126,7 +127,6 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
         QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].returnHookAddress = physicalHookAddress + 1;
-        ext->syscallsData[syscallId].handler = GetHandlerById(syscallId);
         CopyMemory(ext->syscallsData[syscallId].hookedInstrucion, 
             TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
@@ -164,7 +164,7 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     ext->lstar = msrValue;
     ext->startExitCount = TRUE;
     /* 
-        Due to Meltdown mitigations, the address might be not mapped later. 
+        Due to Meltdown mitigations, the address might be not mapped. 
         Hence, we are saving the current CR3 for future usage.
     */
     ext->guestCr3 = vmread(GUEST_CR3);

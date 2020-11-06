@@ -24,6 +24,8 @@ typedef struct _SYSCALL_DATA
     BYTE hookedInstrucion[X86_MAX_INSTRUCTION_LEN];
 } SYSCALL_DATA, *PSYSCALL_DATA;
 
+VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
+    IN SYSCALL_HANDLER handler, IN BOOL hookReturn);
 STATUS HandleNtOpenPrcoess(IN QWORD_PTR params);
 
 extern QWORD __ntDataStart;

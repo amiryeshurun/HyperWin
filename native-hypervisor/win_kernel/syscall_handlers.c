@@ -61,6 +61,15 @@ static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { N
  { NULL, 2 },  { NULL, 5 },  { NULL, 4 },  { NULL, 3 },  { NULL, 1 },  { NULL, 7 },  { NULL, 2 },  { NULL, 2 }, 
  { NULL, 4 },  { NULL, 4 },  { NULL, 5 },  { NULL, 1 },  { NULL, 1 } };
 
+VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
+    IN SYSCALL_HANDLER handler, IN BOOL hookReturn)
+{
+    syscallsData[syscallId].hookInstructionOffset = hookInstructionOffset;
+    syscallsData[syscallId].hookedInstructionLength = hookedInstructionLength;
+    syscallsData[syscallId].hookReturnEvent = hookReturn;
+    syscallsData[syscallId].handler = handler;
+}
+
 STATUS HandleNtOpenPrcoess(IN QWORD_PTR params)
 {
     PCURRENT_GUEST_STATE state = GetVMMStruct()->currentCPU;
@@ -72,5 +81,6 @@ STATUS HandleNtOpenPrcoess(IN QWORD_PTR params)
     QWORD pid;
     ASSERT(CopyGuestMemory(&pid, params[3], sizeof(QWORD)));
     Print("Caliing PID: %d\n", pid);
+    ASSERT(FALSE);
     return STATUS_SUCCESS;
 }
