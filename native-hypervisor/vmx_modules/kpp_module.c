@@ -35,7 +35,7 @@ BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD add
     MapGetValues(kppData->syscallsMap, hookedSyscalls, &hookedSyscallsCount);
     for(QWORD i = 0; i < hookedSyscallsCount; i++)
     {
-        Print("Syscall Number: %d\n", hookedSyscallsCount[i]);
+        Print("Syscall Number: %d\n", hookedSyscalls[i]);
         if(address >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
              && address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
               + kppData->syscallsData[hookedSyscalls[i]].hookedInstructionLength)
