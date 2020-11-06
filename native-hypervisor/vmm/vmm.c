@@ -301,7 +301,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
 {
     PSHARED_CPU_DATA sharedData = data->sharedData;
     PMODULE kppModule, syscallsModule;
-    GENERIC_MODULE_DATA syscallsInitData;
+    GENERIC_MODULE_DATA kppInitData;
     if(!sharedData->wereModulesInitiated)
     {
         // Init modules data
@@ -326,23 +326,23 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, HandleException);
         Print("Successfully registered defualt module\n");
         // Dynamic modules initialozation
-        // KPP Module
-        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
-        InitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL, NULL);
-        SetModuleName(sharedData, kppModule, "KPP Module");
-        RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
-        RegisterModule(sharedData, kppModule);
-        Print("Successfully registered KPP module\n");
-        // Syscalls Module
-        syscallsInitData.syscallsModule.kppModule = kppModule;
+        // Allocation
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
-        InitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, &syscallsInitData, 
-            SyscallsDefaultHandler);
+        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
+        // Syscalls Module
+        InitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, NULL, SyscallsDefaultHandler);
         SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
         RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
         RegisterVmExitHandler(syscallsModule, EXIT_REASON_EXCEPTION_NMI, SyscallsHandleException);
         RegisterModule(sharedData, syscallsModule);
         Print("Successfully registered syscalls module\n");
+        // KPP Module
+        kppInitData.kppModule.syscallsModule = syscallsModule;
+        InitModule(sharedData, kppModule, KppModuleInitializeAllCores, &kppInitData, NULL);
+        SetModuleName(sharedData, kppModule, "KPP Module");
+        RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
+        RegisterModule(sharedData, kppModule);
+        Print("Successfully registered KPP module\n");
         // Mark modules as initiated
         sharedData->wereModulesInitiated = TRUE;
     }

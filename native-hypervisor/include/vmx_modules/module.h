@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <error_codes.h>
+#include <utils/map.h>
 
 #define VMEXIT_HANDLERS_MAX 100
 
@@ -29,6 +30,10 @@ typedef struct _GENETIC_MODULE_DATA
         {
             PMODULE kppModule;
         } syscallsModule;
+        struct _KPP_INIT_MODULE_DATA
+        {
+            PMODULE syscallsModule;
+        } kppModule;
     };
 } GENERIC_MODULE_DATA, *PGENERIC_MODULE_DATA;
 
