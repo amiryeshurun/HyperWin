@@ -8,6 +8,17 @@
 #include <vmm/vmcs.h>
 #include <win_kernel/syscall_handlers.h>
 #include <vmm/memory_manager.h>
+#include <vmm/vmm.h>
+
+SYSCALL_HANDLER GetHandlerById(IN QWORD syscallId)
+{
+    switch(syscallId)
+    {
+        case NT_OPEN_PROCESS:
+            return HandleNtOpenPrcoess;
+    }
+    return NULL;
+}
 
 STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
@@ -19,6 +30,7 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
+    MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN);
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
 }
@@ -89,23 +101,49 @@ VOID GetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win
     ASSERT(CopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
 }
 
-STATUS HookSystemCalls(IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, IN QWORD count, ...)
+STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
+    IN QWORD count, ...)
 {
     va_list args;
     va_start(args, count);
     PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
+    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
 
     while(count--)
     {
-        QWORD syscall = va_arg(args, QWORD), offset = 0, functionAddress;
-        ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscall * sizeof(DWORD), 
+        // Get the syscall id from va_arg
+        QWORD syscallId = va_arg(args, QWORD), offset = 0, functionAddress;
+        // Get the offset of the syscall handler (in ntoskrnl.exe) from the shadowed SSDT
+        ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
+        // Get the guest physical address of the syscall handler
         ASSERT(TranslateGuestVirtualToGuestPhysicalUsingCr3(ntoskrnl + (offset >> 4), &functionAddress,
             guestCr3) == STATUS_SUCCESS);
-        Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscall, ntoskrnl + (offset >> 4),
+        Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
+        
+        // Save hook information in system calls database
+        QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
+        ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
+        ext->syscallsData[syscallId].returnHookAddress = physicalHookAddress + 1;
+        ext->syscallsData[syscallId].handler = GetHandlerById(syscallId);
+        CopyMemory(ext->syscallsData[syscallId].hookedInstrucion, 
+            TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
+            ext->syscallsData[syscallId].hookedInstructionLength);
+        // Build the hook instruction
+        BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN] = { INT3_OPCODE };
+        hookInstruction[1] = (ext->syscallsData[syscallId].hookReturnEvent) ? INT3_OPCODE : NOP_OPCODE;
+        SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
+        // Inject the hooked instruction to the guest
+        CopyMemory(TranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
+            ext->syscallsData[syscallId].hookedInstructionLength);
+        // Save the translation between the address and the syscall id
+        MapSet(&ext->addressToSyscall, physicalHookAddress, syscallId);
+        if(ext->syscallsData[syscallId].hookReturnEvent)
+            MapSet(&ext->addressToSyscall, physicalHookAddress + 1, syscallId & RETURN_EVENT_FLAG);
+        // Mark the page as unreadable & unwritable
         for(QWORD i = 0; i < shared->numberOfCores; i++)
-            UpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)functionAddress, PAGE_SIZE), 
+            UpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE), 
                 PAGE_SIZE, EPT_EXECUTE);
     }
     va_end(args);
@@ -133,7 +171,28 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
+VOID BuildSyscallParamsArray(OUT QWORD_PTR arr, BYTE count)
+{
+    PREGISTERS regs = &GetVMMStruct()->guestRegisters;
+    if(count >= 1)
+        arr[0] = regs->rax;
+    // continue this function
+}
+
 STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-
+    BYTE vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
+    if(vector != INT_BREAKPOINT)
+        return STATUS_VM_EXIT_NOT_HANDLED;
+    QWORD syscallId;
+    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
+    if((syscallId = MapGet(&ext->addressToSyscall, data->guestRegisters.rip)) != MAP_KEY_NOT_FOUND)
+    {
+        QWORD params[17];
+        BuildSyscallParamsArray(params, ext->syscallsData[syscallId].params);
+        ext->syscallsData[syscallId].handler(params);
+    }
+    else
+        InjectGuestInterrupt(INT_BREAKPOINT, 0);
+    return STATUS_SUCCESS;
 }

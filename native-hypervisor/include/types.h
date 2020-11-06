@@ -50,4 +50,10 @@ typedef struct _REGISTERS
     QWORD rip;
 }REGISTERS, *PREGISTERS;
 
+typedef struct _QWORD_PAIR
+{
+    QWORD key;
+    QWORD value;
+} QWORD_PAIR, *PQWORD_PAIR;
+
 #endif

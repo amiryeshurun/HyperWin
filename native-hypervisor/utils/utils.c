@@ -131,3 +131,14 @@ BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange)
         *msrRange = (msrNumber >= 0 && msrNumber <= 0x1fff) ? MSR_RANGE_FIRST : MSR_RANGE_SECOND;
     return result;
 }
+
+QWORD SumDigits(IN QWORD num)
+{
+    QWORD sum = 0;
+    while(num)
+    {
+        sum += num % 10;
+        num /= 10;
+    }
+    return sum;
+}
