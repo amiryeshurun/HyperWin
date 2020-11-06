@@ -49,7 +49,7 @@ STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE mod
         BYTE_PTR ssdt, ntoskrnl, win32k;
         LocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         GetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(HookSystemCalls(ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS)
+        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS)
             == STATUS_SUCCESS);
         Print("finished hooking\n");
         return STATUS_SUCCESS;
@@ -115,11 +115,16 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
         // Get the syscall id from va_arg
         QWORD syscallId = va_arg(args, QWORD), offset = 0, functionAddress;
         // Get the offset of the syscall handler (in ntoskrnl.exe) from the shadowed SSDT
+        QWORD offsets[100];
+        CopyGuestMemory(offsets, ntoskrnl, 70 * sizeof(QWORD));
+        Print("%.q\n", 70, offsets);
         ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
         Print("offset: %8, base: %8, total: %8\n", offset, ntoskrnl, ntoskrnl + (offset >> 4));
+        return STATUS_SUCCESS;
         // Get the guest physical address of the syscall handler
-        ASSERT(TranslateGuestVirtualToGuestPhysical(ntoskrnl + (offset >> 4), &functionAddress) == STATUS_SUCCESS);
+        ASSERT(TranslateGuestVirtualToGuestPhysicalUsingCr3(ntoskrnl + (offset >> 4), &functionAddress,
+            guestCr3) == STATUS_SUCCESS);
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
         
