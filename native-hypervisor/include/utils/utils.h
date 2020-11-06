@@ -7,6 +7,7 @@
 #define ALIGN_DOWN(x, y) ((x) & (~((y) - 1)))
 
 #define FIELD_OFFSET(type, field) (&((type)(0)->field))
+#define KSPIN_LOCK_ACQUIRE(kslock)
 
 #define INF 0xffffffffffffffffULL
 #define NEG_INF (-0xffff)
