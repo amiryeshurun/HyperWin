@@ -11,10 +11,10 @@ QWORD BasicHashFunction(IN QWORD key)
 QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
 {
     QWORD hash = map->hash(key);
-    if(map->keyArrays[hash].size == 1)
+    if(map->keyArrays[hash].count == 1)
         return map->keyArrays[hash].arr[0]->value;
     else
-        for(QWORD i = 0; i < map->keyArrays[hash].size; i++)
+        for(QWORD i = 0; i < map->keyArrays[hash].count; i++)
             if(map->keyArrays[hash].arr[i]->key == key)
                 return map->keyArrays[hash].arr[i]->value;
     return MAP_KEY_NOT_FOUND;
@@ -39,8 +39,8 @@ VOID MapSet(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
     PHEAP heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
     PQWORD_PAIR pair;
     QWORD hash = map->hash(key);
-    // The key already exist
-    if(MapGet(map, key) != MAP_KEY_NOT_FOUND)
+    // Check if the key already exist
+    if(MapGet(map, key) == MAP_KEY_NOT_FOUND)
     {
         if(heap->allocate(heap, sizeof(QWORD_PAIR), &pair) != STATUS_SUCCESS)
         {
@@ -61,6 +61,14 @@ QWORD MapSize(IN PQWORD_MAP map)
     return map->size;
 }
 
+VOID MapGetValues(IN PQWORD_MAP map, OUT QWORD_PTR values, OUT QWORD_PTR count)
+{
+    *count = 0;
+    for(QWORD i = 0; i < map->innerSize; i++)
+        for(QWORD j = 0; j < map->keyArrays[i].count; j++)
+            values[(*count)++] = map->keyArrays[i].arr[j]->value;
+}
+
 STATUS MapCreate(OUT PQWORD_MAP map, IN HASH_FUNC hasher, IN QWORD size)
 {
     PHEAP heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
@@ -71,6 +79,9 @@ STATUS MapCreate(OUT PQWORD_MAP map, IN HASH_FUNC hasher, IN QWORD size)
         Print("Could not initialize map\n");
         return STATUS_NO_MEM_AVAILABLE;
     }
+    SetMemory(map->keyArrays, 0, size * sizeof(QWORD_PAIRS_ARRAY));
+    for(QWORD i = 0; i < size; i++)
+        QPArrayInit(&(map->keyArrays[i]));
     map->size = 0;
     return STATUS_SUCCESS;
 }
