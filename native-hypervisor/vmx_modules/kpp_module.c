@@ -8,14 +8,14 @@
 #include <intrinsics.h>
 #include <vmx_modules/syscalls_module.h>
 
-STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN GENERIC_MODULE_DATA initData)
+STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
     PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
     SetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
     PKPP_MODULE_DATA extension = module->moduleExtension;
     extension->syscallsData = &__ntDataStart;
-    PSYSCALLS_MODULE_EXTENSION syscallsExt = initData.kppModule.syscallsModule->moduleExtension;
+    PSYSCALLS_MODULE_EXTENSION syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
     extension->syscallsMap = &syscallsExt->addressToSyscall;
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
     return STATUS_SUCCESS;
@@ -35,7 +35,6 @@ BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD add
     MapGetValues(kppData->syscallsMap, hookedSyscalls, &hookedSyscallsCount);
     for(QWORD i = 0; i < hookedSyscallsCount; i++)
     {
-        Print("Syscall Number: %d\n", hookedSyscalls[i]);
         if(address >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
              && address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
               + kppData->syscallsData[hookedSyscalls[i]].hookedInstructionLength)

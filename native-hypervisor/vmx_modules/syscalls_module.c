@@ -87,7 +87,6 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
 SSDTFound:
     patternAddress += 13; // pattern
     patternAddress += 7;  // lea r10,[nt!KeServiceDescriptorTable]
-    Print("Copying ssdt address\n");
     ASSERT(CopyGuestMemory(&offset, patternAddress + 3, sizeof(DWORD)) == STATUS_SUCCESS);
     *ssdt = (patternAddress + 7) + offset;
     return STATUS_SUCCESS;
@@ -95,7 +94,6 @@ SSDTFound:
 
 VOID GetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
 {
-    Print("System table\n");
     ASSERT(CopyGuestMemory(ntoskrnl, ssdt, sizeof(QWORD)) == STATUS_SUCCESS);
     ASSERT(CopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
 }
@@ -103,7 +101,6 @@ VOID GetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win
 STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
     IN QWORD count, ...)
 {
-    Print("Starting hook\n");
     va_list args;
     va_start(args, count);
     PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
