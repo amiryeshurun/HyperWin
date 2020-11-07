@@ -15,7 +15,6 @@
 
 typedef struct _SYSCALLS_MODULE_EXTENSION
 {
-    PMODULE kppModule;
     PSYSCALL_DATA syscallsData;
     BOOL startExitCount;
     QWORD exitCount;

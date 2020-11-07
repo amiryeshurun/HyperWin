@@ -6,14 +6,17 @@
 #include <win_kernel/memory_manager.h>
 #include <debug.h>
 #include <intrinsics.h>
+#include <vmx_modules/syscalls_module.h>
 
-STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN GENERIC_MODULE_DATA initData)
+STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
     PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
     SetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
     PKPP_MODULE_DATA extension = module->moduleExtension;
     extension->syscallsData = &__ntDataStart;
+    PSYSCALLS_MODULE_EXTENSION syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
+    extension->syscallsMap = &syscallsExt->addressToSyscall;
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
     return STATUS_SUCCESS;
 }
@@ -25,60 +28,28 @@ STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
     return STATUS_SUCCESS;
 }
 
-STATUS RegisterNewProtectedKppEntry(IN QWORD syscall, IN QWORD guestPhysicalAddress, IN BYTE_PTR instruction, 
-    IN BYTE instructionLength, IN BOOL hookReturn, IN PMODULE kppModule)
-{
-    PKPP_MODULE_DATA kppData = (PKPP_MODULE_DATA)kppModule->moduleExtension;
-    if(kppData->hookedSyscallsCount >= KPP_MODULE_MAX_COUNT)
-        return STATUS_NO_SPACE_AVAILABLE;
-    QWORD idx;
-    BOOL exist = FALSE;
-    for(QWORD i = 0; i < kppData->hookedSyscallsCount; i++)
-    {
-        if(kppData->hookedSyscalls[i] == syscall)
-        {
-            exist = TRUE;
-            idx = i;
-            break;
-        }
-    }
-    if(!exist)
-    {
-        kppData->hookedSyscalls[kppData->hookedSyscallsCount++] = syscall;
-        idx = kppData->hookedSyscallsCount;
-    }
-    if(hookReturn)
-    {
-        kppData->syscallsData[kppData->hookedSyscalls[idx]].returnHookAddress = guestPhysicalAddress;
-        return STATUS_SUCCESS;
-    }
-    kppData->syscallsData[kppData->hookedSyscalls[idx]].hookedInstructionAddress = guestPhysicalAddress;
-    kppData->syscallsData[kppData->hookedSyscalls[idx]].hookedInstructionLength = instructionLength;
-    CopyMemory(kppData->syscallsData[kppData->hookedSyscalls[idx]].hookedInstrucion, instruction, 
-        instructionLength);
-    return STATUS_SUCCESS;
-}
-
 BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
     IN BYTE readLength, OUT BOOL* before, OUT PSYSCALL_DATA* entry, QWORD_PTR ext)
 {
-    for(QWORD i = 0; i < kppData->hookedSyscallsCount; i++)
+    QWORD hookedSyscallsCount, hookedSyscalls[KPP_MODULE_MAX_COUNT];
+    MapGetValues(kppData->syscallsMap, hookedSyscalls, &hookedSyscallsCount);
+    for(QWORD i = 0; i < hookedSyscallsCount; i++)
     {
-        if(address >= kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionAddress
-             && address <= kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionAddress
-              + kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionLength)
+        if(address >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
+             && address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
+              + kppData->syscallsData[hookedSyscalls[i]].hookedInstructionLength)
         {
             *before = FALSE;
-            *entry = &(kppData->syscallsData[kppData->hookedSyscalls[i]]);
-            *ext = address - kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionAddress;
+            *entry = &(kppData->syscallsData[hookedSyscalls[i]]);
+            *ext = address - kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress;
             return TRUE;
         }
-        else if(address <= kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionAddress
-         && address + readLength >= kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionAddress)
+        else if(address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
+         && address + readLength >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress)
         {
             *before = TRUE;
-            *entry = &(kppData->syscallsData[kppData->hookedSyscalls[i]]);
-            *ext = kppData->syscallsData[kppData->hookedSyscalls[i]].hookedInstructionAddress - address;
+            *entry = &(kppData->syscallsData[hookedSyscalls[i]]);
+            *ext = kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress - address;
             return TRUE;
         }
     }

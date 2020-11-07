@@ -1,6 +1,8 @@
 #include <win_kernel/syscall_handlers.h>
 #include <win_kernel/memory_manager.h>
 #include <debug.h>
+#include <vmm/vmcs.h>
+#include <vmm/vm_operations.h>
 
 static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
  { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
@@ -72,15 +74,12 @@ VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE 
 
 STATUS HandleNtOpenPrcoess(IN QWORD_PTR params)
 {
-    PCURRENT_GUEST_STATE state = GetVMMStruct()->currentCPU;
+    PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
+    regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
     // End emulation
-    QWORD pid;
-    ASSERT(CopyGuestMemory(&pid, params[3], sizeof(QWORD)));
-    Print("Caliing PID: %d\n", pid);
-    ASSERT(FALSE);
     return STATUS_SUCCESS;
 }
