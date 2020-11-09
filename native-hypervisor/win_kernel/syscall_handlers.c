@@ -3,6 +3,7 @@
 #include <debug.h>
 #include <vmm/vmcs.h>
 #include <vmm/vm_operations.h>
+#include <win_kernel/kernel_objects.h>
 
 static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
  { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
@@ -109,10 +110,12 @@ STATUS HandleNtOpenPrcoess()
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
-    QWORD params[4], pid;
-    GetParameters(params, 4);
-    CopyGuestMemory(&pid, params[3], sizeof(QWORD));
-    Print("PID: %8\n", pid);
+    BYTE_PTR eprocess;
+    ASSERT(GetCurrent_EPROCESS(vmread(GUEST_GS_BASE), &eprocess) == STATUS_SUCCESS);
+    QWORD pid;
+    Print("ERPCESS: %8\n", eprocess);
+    ASSERT(GetObjectField(eprocess, EPROCESS_PID, &pid) == STATUS_SUCCESS);
+    Print("EPROCESS: %8, PID: %d\n", eprocess, pid);
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
     regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
@@ -125,7 +128,6 @@ STATUS HandleNtCreateUserProcess()
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
-    QWORD guestStack[50];
     // Emulate replaced instruction: push rbp
     ASSERT(CopyMemoryToGuest(regs->rsp - 8, &regs->rbp, sizeof(QWORD)) == STATUS_SUCCESS);
     regs->rsp -= 8;
