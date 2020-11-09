@@ -22,7 +22,8 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
-    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE);
+    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE, NULL);
+    InitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, HandleNtCreateUserProcess, FALSE, NULL);
     /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
@@ -48,8 +49,8 @@ STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE mod
         BYTE_PTR ssdt, ntoskrnl, win32k;
         LocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         GetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS)
-            == STATUS_SUCCESS);
+        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 2, NT_OPEN_PROCESS,
+            NT_CREATE_USER_PROCESS) == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
     }
@@ -167,14 +168,6 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-VOID BuildSyscallParamsArray(OUT QWORD_PTR arr, BYTE count)
-{
-    PREGISTERS regs = &GetVMMStruct()->guestRegisters;
-    if(count >= 1)
-        arr[0] = regs->rax;
-    // continue this function
-}
-
 STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     BYTE vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
@@ -185,10 +178,10 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     ASSERT(TranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
         == STATUS_SUCCESS);
     if((syscallId = MapGet(&ext->addressToSyscall, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
-    {
-        QWORD params[17];
-        BuildSyscallParamsArray(params, ext->syscallsData[syscallId].params);
-        ext->syscallsData[syscallId].handler(params);
+    {   
+        if(syscallId & RETURN_EVENT_FLAG)
+            ASSERT(ext->syscallsData[syscallId & ~(RETURN_EVENT_FLAG)].returnHandler() == STATUS_SUCCESS);
+        ASSERT(ext->syscallsData[syscallId].handler() == STATUS_SUCCESS);
     }
     else
         InjectGuestInterrupt(INT_BREAKPOINT, 0);

@@ -105,7 +105,8 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
         BuildKppResult(&val, address, 4, kppData);
         regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
     }
-    else if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8a && inst[2] == 0x02)
+    else if((instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8a && inst[2] == 0x02) ||
+        (instructionLength == 2 && inst[0] == 0x8a && inst[1] == 0x00))
     {
         // mov al,BYTE PTR [r10]
         BYTE val;
