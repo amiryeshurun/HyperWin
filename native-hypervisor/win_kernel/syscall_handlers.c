@@ -111,11 +111,7 @@ STATUS HandleNtOpenPrcoess()
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
     BYTE_PTR eprocess;
-    ASSERT(GetCurrent_EPROCESS(vmread(GUEST_GS_BASE), &eprocess) == STATUS_SUCCESS);
-    QWORD pid;
-    Print("ERPCESS: %8\n", eprocess);
-    ASSERT(GetObjectField(eprocess, EPROCESS_PID, &pid) == STATUS_SUCCESS);
-    Print("EPROCESS: %8, PID: %d\n", eprocess, pid);
+    GetCurrent_EPROCESS(&eprocess);
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
     regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;

@@ -1,29 +1,40 @@
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/memory_manager.h>
+#include <debug.h>
+#include <vmm/vm_operations.h>
+#include <vmm/vmcs.h>
 
-STATUS GetCurrent_ETHREAD(IN BYTE_PTR kprcb, OUT BYTE_PTR* ethread)
+BYTE_PTR GetCurrent_KPRCB()
 {
-    return CopyGuestMemory(ethread, kprcb + KPRCB_KTHREAD, sizeof(QWORD));
+    return vmread(GUEST_GS_BASE) + KPRC_KPRCB;
 }
 
-STATUS GetCurrent_EPROCESS(IN BYTE_PTR kprcb, OUT BYTE_PTR* eprocess)
+STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread)
+{
+    return CopyGuestMemory(ethread, GetCurrent_KPRCB() + KPRCB_KTHREAD, sizeof(QWORD));
+}
+
+STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess)
 {
     BYTE_PTR ethread;
-    if(GetCurrent_ETHREAD(kprcb, &ethread) != STATUS_SUCCESS)
+    if(GetCurrent_ETHREAD(&ethread) != STATUS_SUCCESS)
         return STATUS_ETHREAD_NOT_AVAILABLE;
-    Print("ETHREAD: %8\n", ethread);
-    return GetObjectField(ethread, KAPC_STATE_KPROCESS, eprocess);
+    return GetObjectField(ethread, ETHREAD_KPROCESS, eprocess);
+}
+
+STATUS TranslateHandleToObject(IN HANDLE handle, OUT BYTE_PTR* object)
+{
+
 }
 
 STATUS GetObjectField(IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
-        case KAPC_STATE_KPROCESS:
-            return CopyGuestMemory(value, object + ETHREAD_KAPC_STATE + KAPC_STATE_KPROCESS, 
-                sizeof(QWORD));
+        case ETHREAD_KPROCESS: 
         case EPROCESS_PID:
-            return CopyGuestMemory(value, object + EPROCESS_PID, sizeof(QWORD));
+        case EPROCESS_OBJECT_TABLE:
+            return CopyGuestMemory(value, object + field, sizeof(QWORD));
     }
 
     return STATUS_OBJECT_FIELD_NOT_FOUND;

@@ -18,6 +18,7 @@ typedef int INT;
 
 #define VOID void
 #define PVOID VOID*
+typedef QWORD HANDLE;
 
 #define FALSE (0)
 #define TRUE (!(FALSE))
