@@ -9,11 +9,15 @@ enum
     KPRCB_KTHREAD = 0x8,
     ETHREAD_KAPC_STATE = 0x98,
     KAPC_STATE_KPROCESS = 0x20,
-    EPROCESS_PID = 0x2E0
+    ETHREAD_KPROCESS = 0x220,
+    KPRC_KPRCB = 0x180,
+    EPROCESS_PID = 0x440,
+    EPROCESS_OBJECT_TABLE = 0x570
 };
 
-STATUS GetCurrent_ETHREAD(IN BYTE_PTR kprcb, OUT BYTE_PTR* ethread);
+STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
 STATUS GetObjectField(IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
-STATUS GetCurrent_EPROCESS(IN BYTE_PTR kprcb, OUT BYTE_PTR* eprocess);
+STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess);
+STATUS TranslateHandleToObject(IN HANDLE handle, OUT BYTE_PTR* object);
 
 #endif
