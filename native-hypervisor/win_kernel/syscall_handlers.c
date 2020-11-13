@@ -105,13 +105,20 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
     }
 }
 
+VOID HookReturnEvent(IN QWORD rsp, IN QWORD syscallId)
+{
+    Print("Return hook addr: %8\n", syscallsData[syscallId].virtualReturnHookAddress);
+    CopyMemoryToGuest(rsp, &syscallsData[syscallId].virtualReturnHookAddress, sizeof(QWORD));
+}
+
 STATUS HandleNtOpenPrcoess()
 {
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
-    BYTE_PTR eprocess;
-    GetCurrent_EPROCESS(&eprocess);
+    shared->tmp = regs->rcx;
+    HookReturnEvent(regs->rsp, NT_OPEN_PROCESS);
+    Print("Hooked return!\n");
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
     regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
@@ -134,5 +141,9 @@ STATUS HandleNtCreateUserProcess()
 
 STATUS HandleNtOpenPrcoessReturn()
 {
-
+    PCURRENT_GUEST_STATE state = GetVMMStruct();
+    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PREGISTERS regs = &state->guestRegisters;
+    Print("Hook return!\n");
+    ASSERT(FALSE);
 }
