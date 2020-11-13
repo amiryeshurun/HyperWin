@@ -1,0 +1,18 @@
+nt!_HANDLE_TABLE
+   +0x000 NextHandleNeedingPool : Uint4B
+   +0x004 ExtraInfoPages   : Int4B
+   +0x008 TableCode        : Uint8B
+   +0x010 QuotaProcess     : Ptr64 _EPROCESS
+   +0x018 HandleTableList  : _LIST_ENTRY
+   +0x028 UniqueProcessId  : Uint4B
+   +0x02c Flags            : Uint4B
+   +0x02c StrictFIFO       : Pos 0, 1 Bit
+   +0x02c EnableHandleExceptions : Pos 1, 1 Bit
+   +0x02c Rundown          : Pos 2, 1 Bit
+   +0x02c Duplicated       : Pos 3, 1 Bit
+   +0x02c RaiseUMExceptionOnInvalidHandleClose : Pos 4, 1 Bit
+   +0x030 HandleContentionEvent : _EX_PUSH_LOCK
+   +0x038 HandleTableLock  : _EX_PUSH_LOCK
+   +0x040 FreeLists        : [1] _HANDLE_TABLE_FREE_LIST
+   +0x040 ActualEntry      : [32] UChar
+   +0x060 DebugInfo        : Ptr64 _HANDLE_TRACE_DEBUG_INFO
