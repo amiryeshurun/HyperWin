@@ -54,6 +54,7 @@ typedef struct _SHARED_CPU_DATA
     QWORD int15Offset;
     COMMUNICATION_PIPE readPipe;
     COMMUNICATION_PIPE writePipe;
+    QWORD tmp;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
