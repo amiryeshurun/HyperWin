@@ -13,16 +13,18 @@ typedef STATUS (*SYSCALL_HANDLER)();
 
 typedef struct _SYSCALL_DATA
 {
-    // Defined statically
+    // Statically defined
     SYSCALL_HANDLER handler;
     SYSCALL_HANDLER returnHandler;
     BYTE params;
     BYTE hookInstructionOffset;
     BOOL hookReturnEvent;
-    // Defined dynamically
+    // Dynamically defined
     QWORD hookedInstructionLength;
     QWORD hookedInstructionAddress;
     QWORD returnHookAddress;
+    QWORD virtualHookedInstructionAddress;
+    QWORD virtualReturnHookAddress;
     BYTE hookedInstrucion[X86_MAX_INSTRUCTION_LEN];
 } SYSCALL_DATA, *PSYSCALL_DATA;
 
@@ -35,6 +37,7 @@ VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE 
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler);
 STATUS HandleNtOpenPrcoess();
 STATUS HandleNtCreateUserProcess();
+STATUS HandleNtOpenPrcoessReturn();
 
 extern QWORD __ntDataStart;
 

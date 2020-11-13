@@ -23,7 +23,7 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
     InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE, NULL);
-    InitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, HandleNtCreateUserProcess, FALSE, NULL);
+    InitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, HandleNtCreateUserProcess, TRUE, HandleNtOpenPrcoessReturn);
     /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
@@ -115,19 +115,23 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
         ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
         // Get the guest physical address of the syscall handler
+        QWORD virtualFunctionAddress = ntoskrnl + (offset >> 4);
         ASSERT(TranslateGuestVirtualToGuestPhysicalUsingCr3(ntoskrnl + (offset >> 4), &functionAddress,
             guestCr3) == STATUS_SUCCESS);
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
         
         // Save hook information in system calls database
-        QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
+        QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset,
+            virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].returnHookAddress = physicalHookAddress + 1;
-        CopyMemory(ext->syscallsData[syscallId].hookedInstrucion, 
+        ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
+        ext->syscallsData[syscallId].virtualReturnHookAddress = virtualHookAddress + 1;
+        CopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
             TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
-        // Build the hook instruction
+        // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
         BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN] = { INT3_OPCODE };
         hookInstruction[1] = (ext->syscallsData[syscallId].hookReturnEvent) ? INT3_OPCODE : NOP_OPCODE;
         SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
@@ -177,6 +181,7 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
     ASSERT(TranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
         == STATUS_SUCCESS);
+    Print("OUTTT!\n");
     if((syscallId = MapGet(&ext->addressToSyscall, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
     {   
         if(syscallId & RETURN_EVENT_FLAG)
