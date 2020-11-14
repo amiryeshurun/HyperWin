@@ -184,7 +184,7 @@ VOID HandleVmExitEx()
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->hasDefaultHandler)
             shared->modules[i]->defaultHandler(data, shared->modules[i]);
-    
+
     // Try to handle vm-exit
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->isHandledOnVmExit[exitReason])

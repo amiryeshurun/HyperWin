@@ -9,20 +9,21 @@
 
 typedef STATUS (*SYSCALL_HANDLER)();
 
-#define REGISTER_SYSCALL_HANDLER(idx, hand) syscallsData[idx].handler = hand
+// The INT3 instruction used to detect return events of system call is (ADDRESS + 1)
+#define CALC_RETURN_HOOK_ADDR(address) (address + 1)
 
 typedef struct _SYSCALL_DATA
 {
-    // Defined statically
+    // Statically defined
     SYSCALL_HANDLER handler;
     SYSCALL_HANDLER returnHandler;
     BYTE params;
     BYTE hookInstructionOffset;
     BOOL hookReturnEvent;
-    // Defined dynamically
+    // Dynamically defined
     QWORD hookedInstructionLength;
     QWORD hookedInstructionAddress;
-    QWORD returnHookAddress;
+    QWORD virtualHookedInstructionAddress;
     BYTE hookedInstrucion[X86_MAX_INSTRUCTION_LEN];
 } SYSCALL_DATA, *PSYSCALL_DATA;
 
@@ -33,8 +34,10 @@ typedef struct _SYSCALL_EVENT
 
 VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler);
+VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnAddress);
 STATUS HandleNtOpenPrcoess();
 STATUS HandleNtCreateUserProcess();
+STATUS HandleNtOpenPrcoessReturn();
 
 extern QWORD __ntDataStart;
 

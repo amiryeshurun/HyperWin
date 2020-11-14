@@ -11,7 +11,7 @@
 #define COUNT_UNTIL_HOOK 1000
 
 // Used to determine if a physical address is assosiated with a return event or not
-#define RETURN_EVENT_FLAG (1 << 50)
+#define RETURN_EVENT_FLAG (1 << 30)
 
 typedef struct _SYSCALLS_MODULE_EXTENSION
 {

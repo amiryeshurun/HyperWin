@@ -3,6 +3,7 @@
 #include <debug.h>
 #include <vmm/vmcs.h>
 #include <vmm/vm_operations.h>
+#include <win_kernel/kernel_objects.h>
 
 static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
  { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
@@ -104,19 +105,30 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
     }
 }
 
+VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnAddress)
+{
+    QWORD returnAddress = CALC_RETURN_HOOK_ADDR(syscallsData[syscallId].virtualHookedInstructionAddress);
+    CopyGuestMemory(realReturnAddress, rsp, sizeof(QWORD));
+    CopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
+}
+
 STATUS HandleNtOpenPrcoess()
 {
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
-    QWORD params[4], pid;
-    GetParameters(params, 4);
-    CopyGuestMemory(&pid, params[3], sizeof(QWORD));
-    Print("PID: %8\n", pid);
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
     regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
     // End emulation
+    return STATUS_SUCCESS;
+}
+
+STATUS HandleNtOpenPrcoessReturn()
+{
+    PCURRENT_GUEST_STATE state = GetVMMStruct();
+    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PREGISTERS regs = &state->guestRegisters;
     return STATUS_SUCCESS;
 }
 
@@ -125,16 +137,10 @@ STATUS HandleNtCreateUserProcess()
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
-    QWORD guestStack[50];
     // Emulate replaced instruction: push rbp
     ASSERT(CopyMemoryToGuest(regs->rsp - 8, &regs->rbp, sizeof(QWORD)) == STATUS_SUCCESS);
     regs->rsp -= 8;
     regs->rip += syscallsData[NT_CREATE_USER_PROCESS].hookedInstructionLength;
     // End emulation
     return STATUS_SUCCESS;
-}
-
-STATUS HandleNtOpenPrcoessReturn()
-{
-
 }

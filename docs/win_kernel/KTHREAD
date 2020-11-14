@@ -1,0 +1,205 @@
+nt!_KTHREAD
+   +0x000 Header           : _DISPATCHER_HEADER
+   +0x018 SListFaultAddress : Ptr64 Void
+   +0x020 QuantumTarget    : Uint8B
+   +0x028 InitialStack     : Ptr64 Void
+   +0x030 StackLimit       : Ptr64 Void
+   +0x038 StackBase        : Ptr64 Void
+   +0x040 ThreadLock       : Uint8B
+   +0x048 CycleTime        : Uint8B
+   +0x050 CurrentRunTime   : Uint4B
+   +0x054 ExpectedRunTime  : Uint4B
+   +0x058 KernelStack      : Ptr64 Void
+   +0x060 StateSaveArea    : Ptr64 _XSAVE_FORMAT
+   +0x068 SchedulingGroup  : Ptr64 _KSCHEDULING_GROUP
+   +0x070 WaitRegister     : _KWAIT_STATUS_REGISTER
+   +0x071 Running          : UChar
+   +0x072 Alerted          : [2] UChar
+   +0x074 AutoBoostActive  : Pos 0, 1 Bit
+   +0x074 ReadyTransition  : Pos 1, 1 Bit
+   +0x074 WaitNext         : Pos 2, 1 Bit
+   +0x074 SystemAffinityActive : Pos 3, 1 Bit
+   +0x074 Alertable        : Pos 4, 1 Bit
+   +0x074 UserStackWalkActive : Pos 5, 1 Bit
+   +0x074 ApcInterruptRequest : Pos 6, 1 Bit
+   +0x074 QuantumEndMigrate : Pos 7, 1 Bit
+   +0x074 UmsDirectedSwitchEnable : Pos 8, 1 Bit
+   +0x074 TimerActive      : Pos 9, 1 Bit
+   +0x074 SystemThread     : Pos 10, 1 Bit
+   +0x074 ProcessDetachActive : Pos 11, 1 Bit
+   +0x074 CalloutActive    : Pos 12, 1 Bit
+   +0x074 ScbReadyQueue    : Pos 13, 1 Bit
+   +0x074 ApcQueueable     : Pos 14, 1 Bit
+   +0x074 ReservedStackInUse : Pos 15, 1 Bit
+   +0x074 UmsPerformingSyscall : Pos 16, 1 Bit
+   +0x074 TimerSuspended   : Pos 17, 1 Bit
+   +0x074 SuspendedWaitMode : Pos 18, 1 Bit
+   +0x074 SuspendSchedulerApcWait : Pos 19, 1 Bit
+   +0x074 CetUserShadowStack : Pos 20, 1 Bit
+   +0x074 BypassProcessFreeze : Pos 21, 1 Bit
+   +0x074 Reserved         : Pos 22, 10 Bits
+   +0x074 MiscFlags        : Int4B
+   +0x078 ThreadFlagsSpare : Pos 0, 2 Bits
+   +0x078 AutoAlignment    : Pos 2, 1 Bit
+   +0x078 DisableBoost     : Pos 3, 1 Bit
+   +0x078 AlertedByThreadId : Pos 4, 1 Bit
+   +0x078 QuantumDonation  : Pos 5, 1 Bit
+   +0x078 EnableStackSwap  : Pos 6, 1 Bit
+   +0x078 GuiThread        : Pos 7, 1 Bit
+   +0x078 DisableQuantum   : Pos 8, 1 Bit
+   +0x078 ChargeOnlySchedulingGroup : Pos 9, 1 Bit
+   +0x078 DeferPreemption  : Pos 10, 1 Bit
+   +0x078 QueueDeferPreemption : Pos 11, 1 Bit
+   +0x078 ForceDeferSchedule : Pos 12, 1 Bit
+   +0x078 SharedReadyQueueAffinity : Pos 13, 1 Bit
+   +0x078 FreezeCount      : Pos 14, 1 Bit
+   +0x078 TerminationApcRequest : Pos 15, 1 Bit
+   +0x078 AutoBoostEntriesExhausted : Pos 16, 1 Bit
+   +0x078 KernelStackResident : Pos 17, 1 Bit
+   +0x078 TerminateRequestReason : Pos 18, 2 Bits
+   +0x078 ProcessStackCountDecremented : Pos 20, 1 Bit
+   +0x078 RestrictedGuiThread : Pos 21, 1 Bit
+   +0x078 VpBackingThread  : Pos 22, 1 Bit
+   +0x078 ThreadFlagsSpare2 : Pos 23, 1 Bit
+   +0x078 EtwStackTraceApcInserted : Pos 24, 8 Bits
+   +0x078 ThreadFlags      : Int4B
+   +0x07c Tag              : UChar
+   +0x07d SystemHeteroCpuPolicy : UChar
+   +0x07e UserHeteroCpuPolicy : Pos 0, 7 Bits
+   +0x07e ExplicitSystemHeteroCpuPolicy : Pos 7, 1 Bit
+   +0x07f RunningNonRetpolineCode : Pos 0, 1 Bit
+   +0x07f SpecCtrlSpare    : Pos 1, 7 Bits
+   +0x07f SpecCtrl         : UChar
+   +0x080 SystemCallNumber : Uint4B
+   +0x084 ReadyTime        : Uint4B
+   +0x088 FirstArgument    : Ptr64 Void
+   +0x090 TrapFrame        : Ptr64 _KTRAP_FRAME
+   +0x098 ApcState         : _KAPC_STATE
+   +0x098 ApcStateFill     : [43] UChar
+   +0x0c3 Priority         : Char
+   +0x0c4 UserIdealProcessor : Uint4B
+   +0x0c8 WaitStatus       : Int8B
+   +0x0d0 WaitBlockList    : Ptr64 _KWAIT_BLOCK
+   +0x0d8 WaitListEntry    : _LIST_ENTRY
+   +0x0d8 SwapListEntry    : _SINGLE_LIST_ENTRY
+   +0x0e8 Queue            : Ptr64 _DISPATCHER_HEADER
+   +0x0f0 Teb              : Ptr64 Void
+   +0x0f8 RelativeTimerBias : Uint8B
+   +0x100 Timer            : _KTIMER
+   +0x140 WaitBlock        : [4] _KWAIT_BLOCK
+   +0x140 WaitBlockFill4   : [20] UChar
+   +0x154 ContextSwitches  : Uint4B
+   +0x140 WaitBlockFill5   : [68] UChar
+   +0x184 State            : UChar
+   +0x185 Spare13          : Char
+   +0x186 WaitIrql         : UChar
+   +0x187 WaitMode         : Char
+   +0x140 WaitBlockFill6   : [116] UChar
+   +0x1b4 WaitTime         : Uint4B
+   +0x140 WaitBlockFill7   : [164] UChar
+   +0x1e4 KernelApcDisable : Int2B
+   +0x1e6 SpecialApcDisable : Int2B
+   +0x1e4 CombinedApcDisable : Uint4B
+   +0x140 WaitBlockFill8   : [40] UChar
+   +0x168 ThreadCounters   : Ptr64 _KTHREAD_COUNTERS
+   +0x140 WaitBlockFill9   : [88] UChar
+   +0x198 XStateSave       : Ptr64 _XSTATE_SAVE
+   +0x140 WaitBlockFill10  : [136] UChar
+   +0x1c8 Win32Thread      : Ptr64 Void
+   +0x140 WaitBlockFill11  : [176] UChar
+   +0x1f0 Ucb              : Ptr64 _UMS_CONTROL_BLOCK
+   +0x1f8 Uch              : Ptr64 _KUMS_CONTEXT_HEADER
+   +0x200 ThreadFlags2     : Int4B
+   +0x200 BamQosLevel      : Pos 0, 8 Bits
+   +0x200 ThreadFlags2Reserved : Pos 8, 24 Bits
+   +0x204 Spare21          : Uint4B
+   +0x208 QueueListEntry   : _LIST_ENTRY
+   +0x218 NextProcessor    : Uint4B
+   +0x218 NextProcessorNumber : Pos 0, 31 Bits
+   +0x218 SharedReadyQueue : Pos 31, 1 Bit
+   +0x21c QueuePriority    : Int4B
+   +0x220 Process          : Ptr64 _KPROCESS
+   +0x228 UserAffinity     : _GROUP_AFFINITY
+   +0x228 UserAffinityFill : [10] UChar
+   +0x232 PreviousMode     : Char
+   +0x233 BasePriority     : Char
+   +0x234 PriorityDecrement : Char
+   +0x234 ForegroundBoost  : Pos 0, 4 Bits
+   +0x234 UnusualBoost     : Pos 4, 4 Bits
+   +0x235 Preempted        : UChar
+   +0x236 AdjustReason     : UChar
+   +0x237 AdjustIncrement  : Char
+   +0x238 AffinityVersion  : Uint8B
+   +0x240 Affinity         : _GROUP_AFFINITY
+   +0x240 AffinityFill     : [10] UChar
+   +0x24a ApcStateIndex    : UChar
+   +0x24b WaitBlockCount   : UChar
+   +0x24c IdealProcessor   : Uint4B
+   +0x250 NpxState         : Uint8B
+   +0x258 SavedApcState    : _KAPC_STATE
+   +0x258 SavedApcStateFill : [43] UChar
+   +0x283 WaitReason       : UChar
+   +0x284 SuspendCount     : Char
+   +0x285 Saturation       : Char
+   +0x286 SListFaultCount  : Uint2B
+   +0x288 SchedulerApc     : _KAPC
+   +0x288 SchedulerApcFill0 : [1] UChar
+   +0x289 ResourceIndex    : UChar
+   +0x288 SchedulerApcFill1 : [3] UChar
+   +0x28b QuantumReset     : UChar
+   +0x288 SchedulerApcFill2 : [4] UChar
+   +0x28c KernelTime       : Uint4B
+   +0x288 SchedulerApcFill3 : [64] UChar
+   +0x2c8 WaitPrcb         : Ptr64 _KPRCB
+   +0x288 SchedulerApcFill4 : [72] UChar
+   +0x2d0 LegoData         : Ptr64 Void
+   +0x288 SchedulerApcFill5 : [83] UChar
+   +0x2db CallbackNestingLevel : UChar
+   +0x2dc UserTime         : Uint4B
+   +0x2e0 SuspendEvent     : _KEVENT
+   +0x2f8 ThreadListEntry  : _LIST_ENTRY
+   +0x308 MutantListHead   : _LIST_ENTRY
+   +0x318 AbEntrySummary   : UChar
+   +0x319 AbWaitEntryCount : UChar
+   +0x31a AbAllocationRegionCount : UChar
+   +0x31b SystemPriority   : Char
+   +0x31c SecureThreadCookie : Uint4B
+   +0x320 LockEntries      : Ptr64 _KLOCK_ENTRY
+   +0x328 PropagateBoostsEntry : _SINGLE_LIST_ENTRY
+   +0x330 IoSelfBoostsEntry : _SINGLE_LIST_ENTRY
+   +0x338 PriorityFloorCounts : [16] UChar
+   +0x348 PriorityFloorCountsReserved : [16] UChar
+   +0x358 PriorityFloorSummary : Uint4B
+   +0x35c AbCompletedIoBoostCount : Int4B
+   +0x360 AbCompletedIoQoSBoostCount : Int4B
+   +0x364 KeReferenceCount : Int2B
+   +0x366 AbOrphanedEntrySummary : UChar
+   +0x367 AbOwnedEntryCount : UChar
+   +0x368 ForegroundLossTime : Uint4B
+   +0x370 GlobalForegroundListEntry : _LIST_ENTRY
+   +0x370 ForegroundDpcStackListEntry : _SINGLE_LIST_ENTRY
+   +0x378 InGlobalForegroundList : Uint8B
+   +0x380 ReadOperationCount : Int8B
+   +0x388 WriteOperationCount : Int8B
+   +0x390 OtherOperationCount : Int8B
+   +0x398 ReadTransferCount : Int8B
+   +0x3a0 WriteTransferCount : Int8B
+   +0x3a8 OtherTransferCount : Int8B
+   +0x3b0 QueuedScb        : Ptr64 _KSCB
+   +0x3b8 ThreadTimerDelay : Uint4B
+   +0x3bc ThreadFlags3     : Int4B
+   +0x3bc ThreadFlags3Reserved : Pos 0, 8 Bits
+   +0x3bc PpmPolicy        : Pos 8, 2 Bits
+   +0x3bc ThreadFlags3Reserved2 : Pos 10, 22 Bits
+   +0x3c0 TracingPrivate   : [1] Uint8B
+   +0x3c8 SchedulerAssist  : Ptr64 Void
+   +0x3d0 AbWaitObject     : Ptr64 Void
+   +0x3d8 ReservedPreviousReadyTimeValue : Uint4B
+   +0x3e0 KernelWaitTime   : Uint8B
+   +0x3e8 UserWaitTime     : Uint8B
+   +0x3f0 GlobalUpdateVpThreadPriorityListEntry : _LIST_ENTRY
+   +0x3f0 UpdateVpThreadPriorityDpcStackListEntry : _SINGLE_LIST_ENTRY
+   +0x3f8 InGlobalUpdateVpThreadPriorityList : Uint8B
+   +0x400 SchedulerAssistPriorityFloor : Int4B
+   +0x404 Spare28          : Uint4B
+   +0x408 EndPadding       : [5] Uint8B
