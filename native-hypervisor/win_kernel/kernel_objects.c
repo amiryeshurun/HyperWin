@@ -36,7 +36,7 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
     if(handle >= nextHandleNeedingPool)
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
     QWORD tableBase;
-    if(CopyGuestMemory(&tableBase, handleTable, sizeof(DWORD)) != STATUS_SUCCESS)
+    if(CopyGuestMemory(&tableBase, handleTable + 0x8, sizeof(QWORD)) != STATUS_SUCCESS)
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
     QWORD tableLevel = tableBase & 3, tableResult;
     // mov rax,rdx (case 1) OR mov rcx,rdx (case 2)
@@ -92,11 +92,10 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
             ASSERT(FALSE);
         }
     }
-    // Taken from ReactOS:
     QWORD objectHeader;
     if(CopyGuestMemory(&objectHeader, tableResult, sizeof(QWORD)))
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
-    objectHeader &= 0xfffffffffffULL;
+    objectHeader >>= 20;
     objectHeader *= 0x10;
     objectHeader += 0xffff000000000000ULL;
     *object = objectHeader + OBJECT_HEADER_BODY;

@@ -125,9 +125,7 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
         QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset,
             virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
-        ext->syscallsData[syscallId].returnHookAddress = physicalHookAddress + 1;
         ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
-        ext->syscallsData[syscallId].virtualReturnHookAddress = virtualHookAddress + 1;
         CopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
             TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
@@ -140,7 +138,8 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
         // Save the translation between the address and the syscall id
         MapSet(&ext->addressToSyscall, physicalHookAddress, syscallId);
         if(ext->syscallsData[syscallId].hookReturnEvent)
-            MapSet(&ext->addressToSyscall, physicalHookAddress + 1, syscallId | RETURN_EVENT_FLAG);
+            MapSet(&ext->addressToSyscall, CALC_RETURN_HOOK_ADDR(physicalHookAddress),
+                 syscallId | RETURN_EVENT_FLAG);
         // Mark the page as unreadable & unwritable
         for(QWORD i = 0; i < shared->numberOfCores; i++)
             UpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE), 
@@ -184,7 +183,8 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     {
         if(syscallId & RETURN_EVENT_FLAG)
             ASSERT(ext->syscallsData[syscallId & ~(RETURN_EVENT_FLAG)].returnHandler() == STATUS_SUCCESS);
-        ASSERT(ext->syscallsData[syscallId].handler() == STATUS_SUCCESS);
+        else
+            ASSERT(ext->syscallsData[syscallId].handler() == STATUS_SUCCESS);
     }
     else
         InjectGuestInterrupt(INT_BREAKPOINT, 0);

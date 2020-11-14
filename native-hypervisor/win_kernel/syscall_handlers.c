@@ -105,9 +105,11 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
     }
 }
 
-VOID HookReturnEvent(IN QWORD rsp, IN QWORD syscallId)
+VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnAddress)
 {
-    CopyMemoryToGuest(rsp, &syscallsData[syscallId].virtualReturnHookAddress, sizeof(QWORD));
+    QWORD returnAddress = CALC_RETURN_HOOK_ADDR(syscallsData[syscallId].virtualHookedInstructionAddress);
+    CopyGuestMemory(realReturnAddress, rsp, sizeof(QWORD));
+    CopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
 }
 
 STATUS HandleNtOpenPrcoess()
@@ -115,12 +117,18 @@ STATUS HandleNtOpenPrcoess()
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
-    shared->tmp = regs->rcx;
-    HookReturnEvent(regs->rsp, NT_OPEN_PROCESS);
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
     regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
     // End emulation
+    return STATUS_SUCCESS;
+}
+
+STATUS HandleNtOpenPrcoessReturn()
+{
+    PCURRENT_GUEST_STATE state = GetVMMStruct();
+    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PREGISTERS regs = &state->guestRegisters;
     return STATUS_SUCCESS;
 }
 
@@ -135,13 +143,4 @@ STATUS HandleNtCreateUserProcess()
     regs->rip += syscallsData[NT_CREATE_USER_PROCESS].hookedInstructionLength;
     // End emulation
     return STATUS_SUCCESS;
-}
-
-STATUS HandleNtOpenPrcoessReturn()
-{
-    PCURRENT_GUEST_STATE state = GetVMMStruct();
-    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
-    PREGISTERS regs = &state->guestRegisters;
-    Print("Hook return!\n");
-    ASSERT(FALSE);
 }
