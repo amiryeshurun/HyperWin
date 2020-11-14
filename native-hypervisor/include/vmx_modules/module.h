@@ -5,7 +5,7 @@
 #include <error_codes.h>
 #include <utils/map.h>
 
-#define VMEXIT_HANDLERS_MAX 100
+#define VMEXIT_HANDLERS_MAX 70
 
 struct _CURRENT_GUEST_STATE;
 struct _SHARED_CPU_DATA;
