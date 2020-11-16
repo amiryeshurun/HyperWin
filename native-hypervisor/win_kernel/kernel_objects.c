@@ -19,12 +19,12 @@ STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess)
     BYTE_PTR ethread;
     if(GetCurrent_ETHREAD(&ethread) != STATUS_SUCCESS)
         return STATUS_ETHREAD_NOT_AVAILABLE;
-    return GetObjectField(ethread, ETHREAD_KPROCESS, eprocess);
+    return GetObjectField(ETHREAD, ethread, ETHREAD_KPROCESS, eprocess);
 }
 
 /* 
     This function is based on the assembly code of ExpLookupHandleTableEntry.
-    To have better understanding, see ReactOS' implementation, and then get back and read this.
+    To have better a understanding, see ReactOS' implementation before reading this.
 */
 STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object)
 {
@@ -102,14 +102,37 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
     return STATUS_SUCCESS;
 }
 
-STATUS GetObjectField(IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
+STATUS Get_ETHREAD_field(IN IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
-        case ETHREAD_KPROCESS: 
+        case ETHREAD_KPROCESS:
+            return CopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+STATUS Get_EPROCESS_field(IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
         case EPROCESS_PID:
         case EPROCESS_OBJECT_TABLE:
             return CopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+
+STATUS GetObjectField(IN BYTE objectType, IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
+{
+    switch(objectType)
+    {
+        case ETHREAD:
+            return Get_ETHREAD_field(object, field, value);
+        case EPROCESS:
+            return Get_EPROCESS_field(object, field, value);
+        default:
+        {
+            Print("Unsupported object type!\n");
+            ASSERT(FALSE);
+        }
     }
 
     return STATUS_OBJECT_FIELD_NOT_FOUND;
