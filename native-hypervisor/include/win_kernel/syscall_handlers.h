@@ -20,8 +20,8 @@ typedef struct _SYSCALL_DATA
     BYTE params;
     BYTE hookInstructionOffset;
     BOOL hookReturnEvent;
-    // Dynamically defined
     QWORD hookedInstructionLength;
+    // Dynamically defined
     QWORD hookedInstructionAddress;
     QWORD virtualHookedInstructionAddress;
     BYTE hookedInstrucion[X86_MAX_INSTRUCTION_LEN];

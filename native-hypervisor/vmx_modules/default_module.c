@@ -10,8 +10,7 @@
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
 #include <bios/apic.h>
-#include <guest_communication/vmcall_values.h>
-#include <guest_communication/vmcall_handlers.h>
+#include <guest_communication/communication_block.h>
 
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
