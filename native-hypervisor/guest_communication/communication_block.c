@@ -78,5 +78,6 @@ STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
     GetCurrent_EPROCESS(&eprocess);
     if(MarkProcessProtected(eprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
         return STATUS_PROTECTED_PROCESS_FAILED;
+    args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return STATUS_SUCCESS;
 }

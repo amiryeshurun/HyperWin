@@ -41,7 +41,6 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
     QWORD tableLevel = tableBase & 3, tableResult;
     // mov rax,rdx (case 1) OR mov rcx,rdx (case 2)
     HANDLE handleBackup = handle;
-    Print("Level: %d\n", tableLevel);
     switch(tableLevel)
     {
         case 2:
