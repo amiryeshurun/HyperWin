@@ -14,6 +14,10 @@ typedef struct _GENERIC_COM_STRUCT
             QWORD messageLength;
             BYTE message[PAGE_SIZE];
         } initArgs;
+        struct _PROTECT_PROCESS
+        {
+            HANDLE handle;
+        } protectProcess;
         struct _CLEANUP
         {
             union
