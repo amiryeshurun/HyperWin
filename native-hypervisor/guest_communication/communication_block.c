@@ -74,9 +74,11 @@ STATUS HandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
 
 STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
 {
-    QWORD eprocess;
+    QWORD eprocess, handleTable, protectedProcessEprocess;
     GetCurrent_EPROCESS(&eprocess);
-    if(MarkProcessProtected(eprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
+    GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
+    TranslateHandleToObject(args->argumentsUnion.protectProcess.handle, handleTable, &protectedProcessEprocess);
+    if(MarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
         return STATUS_PROTECTED_PROCESS_FAILED;
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return STATUS_SUCCESS;
