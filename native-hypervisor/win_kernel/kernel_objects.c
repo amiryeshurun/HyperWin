@@ -28,7 +28,7 @@ STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess)
 */
 STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object)
 {
-    if(handle == (-1)ULL)
+    if(handle == -1ULL)
     {
         GetCurrent_EPROCESS(object);
         return STATUS_SUCCESS;
