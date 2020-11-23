@@ -6,6 +6,7 @@
 #include <vmx_modules/module.h>
 #include <win_kernel/syscall_handlers.h>
 #include <utils/map.h>
+#include <utils/set.h>
 
 // Used to determine how many vm-exits should occur before hooking the system calls
 #define COUNT_UNTIL_HOOK 1000
@@ -23,6 +24,7 @@ typedef struct _SYSCALLS_MODULE_EXTENSION
     BYTE_PTR lstar;
     QWORD guestCr3;
     QWORD_MAP addressToSyscall;
+    QWORD_SET addressSet;
 } SYSCALLS_MODULE_EXTENSION, *PSYSCALLS_MODULE_EXTENSION;
 
 STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData);

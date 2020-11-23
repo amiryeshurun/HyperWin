@@ -5,6 +5,7 @@
 #include <vmm/vmm.h>
 #include <x86_64.h>
 #include <win_kernel/syscall_handlers.h>
+#include <utils/set.h>
 
 #define KPP_MODULE_MAX_COUNT 100
 
@@ -12,6 +13,7 @@ typedef struct _KPP_MODULE_DATA
 {
     PSYSCALL_DATA syscallsData;
     PQWORD_MAP syscallsMap;
+    PQWORD_SET addressSet; 
 } KPP_MODULE_DATA, *PKPP_MODULE_DATA;
 
 STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module);

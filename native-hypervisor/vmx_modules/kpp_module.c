@@ -17,6 +17,7 @@ STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE mo
     extension->syscallsData = &__ntDataStart;
     PSYSCALLS_MODULE_EXTENSION syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
     extension->syscallsMap = &syscallsExt->addressToSyscall;
+    extension->addressSet = &syscallsExt->addressSet;
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
     return STATUS_SUCCESS;
 }
@@ -190,5 +191,7 @@ STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     QWORD address = vmread(GUEST_PHYSICAL_ADDRESS), instructionLength = vmread(VM_EXIT_INSTRUCTION_LEN);
     PKPP_MODULE_DATA kppData = (PKPP_MODULE_DATA)module->moduleExtension;
+    if(!IsInSet(kppData->addressSet, ALIGN_DOWN(address, PAGE_SIZE)))
+        return STATUS_VM_EXIT_NOT_HANDLED;
     return EmulatePatchGuardAction(kppData, address, instructionLength);
 }

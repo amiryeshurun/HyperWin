@@ -20,6 +20,7 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
     MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN);
+    SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
     InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, TRUE, HandleNtOpenPrcoessReturn);
@@ -69,7 +70,7 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
     BYTE kernelChunk[13];
     BYTE_PTR patternAddress;
     PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
-    QWORD offset = 0x60D359;
+    QWORD offset = 0x60C759; // MS updates ntoskrnl.exe's image from time to time. Previouse value is: 0x60D359;
 
     for(; offset < 0xffffffff; offset++)
     {
@@ -116,11 +117,9 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
             sizeof(DWORD)) == STATUS_SUCCESS);
         // Get the guest physical address of the syscall handler
         QWORD virtualFunctionAddress = ntoskrnl + (offset >> 4);
-        ASSERT(TranslateGuestVirtualToGuestPhysicalUsingCr3(ntoskrnl + (offset >> 4), &functionAddress,
-            guestCr3) == STATUS_SUCCESS);
+        ASSERT(TranslateGuestVirtualToGuestPhysical(ntoskrnl + (offset >> 4), &functionAddress) == STATUS_SUCCESS);
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
-        
         // Save hook information in system calls database
         QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset,
             virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
@@ -137,6 +136,7 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Save the translation between the address and the syscall id
         MapSet(&ext->addressToSyscall, physicalHookAddress, syscallId);
+        SetInsert(&ext->addressSet, ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE));
         if(ext->syscallsData[syscallId].hookReturnEvent)
             MapSet(&ext->addressToSyscall, CALC_RETURN_HOOK_ADDR(physicalHookAddress),
                  syscallId | RETURN_EVENT_FLAG);
