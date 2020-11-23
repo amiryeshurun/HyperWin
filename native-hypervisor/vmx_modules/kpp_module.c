@@ -17,6 +17,7 @@ STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE mo
     extension->syscallsData = &__ntDataStart;
     PSYSCALLS_MODULE_EXTENSION syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
     extension->syscallsMap = &syscallsExt->addressToSyscall;
+    extension->addressSet = &syscallsExt->addressSet;
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
     return STATUS_SUCCESS;
 }
@@ -35,17 +36,20 @@ BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD add
     MapGetValues(kppData->syscallsMap, hookedSyscalls, &hookedSyscallsCount);
     for(QWORD i = 0; i < hookedSyscallsCount; i++)
     {
-        if(address >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
-             && address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
-              + kppData->syscallsData[hookedSyscalls[i]].hookedInstructionLength)
+        if(hookedSyscalls[i] & RETURN_EVENT_FLAG)
+            continue;
+        // if(address >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
+        //      && address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
+        //       + kppData->syscallsData[hookedSyscalls[i]].hookedInstructionLength)
+        if(address - kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress <= readLength)
         {
             *before = FALSE;
             *entry = &(kppData->syscallsData[hookedSyscalls[i]]);
             *ext = address - kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress;
             return TRUE;
         }
-        else if(address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
-         && address + readLength >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress)
+        else if((address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress)
+         && ((address + readLength) >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress))
         {
             *before = TRUE;
             *entry = &(kppData->syscallsData[hookedSyscalls[i]]);
@@ -53,7 +57,6 @@ BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD add
             return TRUE;
         }
     }
-    
     return FALSE;
 }
 
@@ -93,9 +96,6 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
 {
     PREGISTERS regs = &(GetVMMStruct()->guestRegisters);
     BYTE inst[X86_MAX_INSTRUCTION_LEN];
-    BOOL isProtectedAddress, isBefore;
-    QWORD ext;
-    PSYSCALL_DATA entry;
 
     CopyGuestMemory(inst, regs->rip, instructionLength);
     if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x02)
@@ -190,5 +190,7 @@ STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     QWORD address = vmread(GUEST_PHYSICAL_ADDRESS), instructionLength = vmread(VM_EXIT_INSTRUCTION_LEN);
     PKPP_MODULE_DATA kppData = (PKPP_MODULE_DATA)module->moduleExtension;
+    if(!IsInSet(kppData->addressSet, ALIGN_DOWN(address, PAGE_SIZE)))
+        return STATUS_VM_EXIT_NOT_HANDLED;
     return EmulatePatchGuardAction(kppData, address, instructionLength);
 }
