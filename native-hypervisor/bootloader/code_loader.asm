@@ -2,7 +2,7 @@
 #define DISK_INDEX_ADDRESS 0x1550
 %define SIZE_IN_SECTORS 0x1552
 %define CURRENT_OFFSET 0x1556
-%define BOOTABLE_SIGNATURE 0x55aa
+%define BOOTABLE_SIGNATURE 0xaa55
 %define CODE_BEGIN_ADDRESS 0x3300000
 %define LARGE_PAGE_SIZE 0x200000
 %define HYPERVISOR_SIZE 0xfffff
@@ -11,6 +11,7 @@
 %define BOOTLOADER_SIZE 0x1ff0
 %define COM3 0x3E8
 %define COMPUTER_MEM_SIZE 16
+%define PM_CODE_GATE 0x4200
 
 %macro MovQwordToAddressLittleEndian 3
     mov eax, %1
@@ -28,6 +29,9 @@
 %endmacro
 
 extern SectorsLoader
+
+global ExitLongMode
+global ExitLongModeEnd
 
 SEGMENT .text
 
@@ -123,5 +127,28 @@ BootloaderLongMode:
 
     mov rsp, 0x2800000
     call SectorsLoader
-    
-    
+
+    ; Back to 32bit
+    push 16
+    mov rax, 0x25ff0
+    push rax
+    pushf
+    push 24 ; 32 bit code selector
+    push PM_CODE_GATE
+    iretq
+
+[BITS 32]
+ExitLongMode:
+    ; Disable long mode & paging
+    mov eax, cr0
+    and eax, ~(1 << 31) ; Disable paging
+    mov cr0, eax
+    mov eax, cr4
+    and eax, ~(1 << 5)
+    mov cr4, eax
+    mov ecx, EFER_MSR
+    rdmsr ; Value is stored in EDX:EAX
+    and eax, ~(1 << 8)
+    wrmsr
+    jmp 24:CODE_BEGIN_ADDRESS
+ExitLongModeEnd:
