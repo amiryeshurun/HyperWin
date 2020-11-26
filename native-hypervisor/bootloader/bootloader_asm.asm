@@ -11,6 +11,7 @@
 %define BOOTLOADER_SIZE 0x1ff0
 %define COM3 0x3E8
 %define COMPUTER_MEM_SIZE 16
+%define SECTOR_SIZE 512
 
 %macro MovQwordToAddressLittleEndian 3
     mov eax, %1
@@ -34,9 +35,9 @@ SEGMENT .text
 BiosFirstEntry:
     mov byte [DISK_INDEX_ADDRESS], dl ; save the disk number
     mov eax, BOOTLOADER_SIZE
-    mov ecx, 0x200 ; sector size
+    mov ecx, SECTOR_SIZE ; sector size
     div ecx ; eax now stores the number of sectors to read for bootloader
-    mov ecx, eax
+    mov ecx, eax ; for the below loop
 
     mov eax, CODE_LOAD_ADDRESS
     mov ebx, 1

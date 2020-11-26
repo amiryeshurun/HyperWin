@@ -66,14 +66,14 @@ VOID BootloaderReadSector(IN BYTE diskIndex, IN QWORD sectorNumber, OUT BYTE_PTR
     *address = REAL_MODE_OUTPUT_BUFFER_ADDRESS;
 }
 
-VOID SectorsLoader()
+VOID BootloaderSectorsLoader()
 {
     BYTE diskIndex = *(BYTE_PTR)DISK_INDEX_ADDRESS;
     QWORD lengthInSectors = HYPERVISOR_CODE_LENGTH / SECTOR_SIZE + 1,
         firstSector = HYPERVISOR_CODE_BASE / SECTOR_SIZE;
     BYTE_PTR dest = HYPERVISOR_CODE_BASE, realModeDest;
 
-    for(QWORD sector = firstSector; sector <= lengthInSectors; sector++)
+    for(QWORD sector = firstSector; sector <= firstSector + lengthInSectors; sector++)
     {
         BootloaderReadSector(diskIndex, sector, &dest);
         BootloaderCopyMemory(dest, realModeDest, SECTOR_SIZE);
