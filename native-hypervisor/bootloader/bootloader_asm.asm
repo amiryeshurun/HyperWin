@@ -2,7 +2,7 @@
 #define DISK_INDEX_ADDRESS 0x1550
 %define SIZE_IN_SECTORS 0x1552
 %define CURRENT_OFFSET 0x1556
-%define BOOTABLE_SIGNATURE 0x55aa
+%define BOOTABLE_SIGNATURE 0xaa55
 %define CODE_BEGIN_ADDRESS 0x3300000
 %define LARGE_PAGE_SIZE 0x200000
 %define HYPERVISOR_SIZE 0xfffff
@@ -32,20 +32,20 @@ SEGMENT .text
 ; Bootloader entrypoint
 [BITS 16]
 BiosFirstEntry:
-    mov word [DISK_INDEX_ADDRESS], dl ; save the disk number
+    mov byte [DISK_INDEX_ADDRESS], dl ; save the disk number
     mov eax, BOOTLOADER_SIZE
     mov ecx, 0x200 ; sector size
     div ecx ; eax now stores the number of sectors to read for bootloader
     mov ecx, eax
 
-    xor eax, eax
+    mov eax, CODE_LOAD_ADDRESS
     mov ebx, 1
 .ReadBootloaderCode:
     ; Prepare DAP
     mov byte [DAP_ADDRESS], 0x10  ; packet size. always 0x10
     mov byte [DAP_ADDRESS + 1], 0 ; unused. always 0
     mov word [DAP_ADDRESS + 2], 1 ; number of sectors to be read
-    mov word [DAP_ADDRESS + 4], CODE_LOAD_ADDRESS + eax ; dest address
+    mov word [DAP_ADDRESS + 4], eax ; dest address
     mov word [DAP_ADDRESS + 6], 0 ; segment dest
     mov word [DAP_ADDRESS + 4], ebx ; sector no. to be read
     add eax, 0x200 ; sector size
@@ -59,6 +59,5 @@ BiosFirstEntry:
     ; Jump to the main bootloader code
     jmp 0:CODE_LOAD_ADDRESS ; next sectors are stored here
 
-;;; TODO: Zero this area
-
+times 510 - ($-$$) db 0 ; Zero the remaining area
 dw BOOTABLE_SIGNATURE

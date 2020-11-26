@@ -2,7 +2,7 @@
 %define MBR_ADDRESS 0x7c00
 %define DAP_ADDRESS 0x4000
 %define FIRST_SECTOR_DEST 0x3000
-%define BOOTABLE_SIGNATURE 0x55aa
+%define BOOTABLE_SIGNATURE 0xaa55
 %define REAL_MODE_OUTPUT_BUFFER_ADDRESS 0x2200
 %define REAL_MODE_CODE_START 0x4200
 %define WINDOWS_DISK_INDEX 0x6010
@@ -178,6 +178,7 @@ CompatibilityTo64:
     add rdi, 8
     add rax, LARGE_PAGE_SIZE
     loop .setup_pds_long_mode
+    
     mov rsp, 0x2800000
     call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
     push 16
@@ -229,6 +230,6 @@ HandleControlToBios:
     mov fs, ax
     mov gs, ax
     mov eax, 0x11223344
-    vmcall              ; HV will redirect execution to MBR
+    vmcall              ; Hypervisor will redirect execution to MBR
 HandleControlToBiosEnd:
 SetupSystemAndHandleControlToBiosEnd:
