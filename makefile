@@ -8,7 +8,8 @@ C_COMPILER_FLAGS = -I./native-hypervisor/include \
 				   -fno-stack-protector \
 				   -mno-red-zone \
 				   -nostdinc \
-				   -g
+				   -g \
+				   -fshort-wchar
 
 # --------------- LINKER --------------- #
 LINKER 			= ld
@@ -57,8 +58,7 @@ OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(ENTRYPOINT_ASM:.asm=.o))        
 
 .PHONY: clean
 
-all: clean \
-	 $(OBJDIR)/hypervisor.iso
+all: $(OBJDIR)/hypervisor.iso
 
 $(OBJDIR)/%.o : $(SRC_DIR)/%.c
 	$(C_COMPILER) $(C_COMPILER_FLAGS) $< -o $@
