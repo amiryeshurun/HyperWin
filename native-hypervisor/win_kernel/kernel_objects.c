@@ -118,6 +118,8 @@ STATUS Get_EPROCESS_field(IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
+        case EPROCESS_EXE_NAME:
+            return CopyGuestMemory(value, object + field, 15 * sizeof(CHAR));
         case EPROCESS_PID:
         case EPROCESS_OBJECT_TABLE:
             return CopyGuestMemory(value, object + field, sizeof(QWORD));

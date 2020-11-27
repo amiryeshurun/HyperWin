@@ -12,6 +12,7 @@
 VOID InitPipe(OUT PCOMMUNICATION_PIPE pipe, IN QWORD physicalAddress, IN BYTE_PTR virtualAddress,
     IN QWORD currentOffset);
 
+STATUS ValidateCaller();
 STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data);
 STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress,
     IN QWORD offsetWithinPipe, OUT POPERATION operation, OUT PGENERIC_COM_STRUCT* arguments);

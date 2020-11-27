@@ -12,7 +12,14 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     OPERATION operation;
     PGENERIC_COM_STRUCT args;
     QWORD offsetWithinPipe = regs->rbx;
-    
+    STATUS status;
+
+    if((status = ValidateCaller()) != STATUS_SUCCESS)
+    {
+        Print("Could not validate the VMCALL caller: %d\n", status);
+        return status;
+    }
+
     if(ParseCommunicationBlock(data->currentCPU->sharedData->readPipe.virtualAddress, offsetWithinPipe,
         &operation, &args))
         return STATUS_COMMUNICATION_PARSING_FAILED;
@@ -56,6 +63,19 @@ STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress, IN QWORD o
     return STATUS_SUCCESS;
 }
 
+STATUS ValidateCaller()
+{
+    QWORD eprocess;
+    CHAR name[20], applicationName[] = { 0x48, 0x79, 0x70, 0x65, 0x72, 0x57, 0x69, 0x6E, 0x2D, 0x43, 0x6F, 0x6E,
+         0x73, 0x6F, 0x00 };
+    GetCurrent_EPROCESS(&eprocess);
+    GetObjectField(EPROCESS, eprocess, EPROCESS_EXE_NAME, name);
+    // Yes, this is a very shitty way to validate caller's identity. Will be improved later...
+    if(!CompareMemory(name, applicationName, 15))
+        return STATUS_SUCCESS;
+    return STATUS_UNKNOWN_VMCALL_CALLER;
+}
+
 // Handlers
 
 STATUS HandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
@@ -83,3 +103,4 @@ STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return STATUS_SUCCESS;
 }
+
