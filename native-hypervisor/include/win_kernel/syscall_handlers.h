@@ -39,6 +39,9 @@ STATUS HandleNtOpenPrcoess();
 STATUS HandleNtCreateUserProcess();
 STATUS HandleNtOpenPrcoessReturn();
 
+VOID AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR content, 
+    IN QWORD contentLength);
+
 extern QWORD __ntDataStart;
 
 #endif

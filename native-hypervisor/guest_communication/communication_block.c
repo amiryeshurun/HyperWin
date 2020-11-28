@@ -5,6 +5,7 @@
 #include <vmm/memory_manager.h>
 #include <debug.h>
 #include <win_kernel/kernel_objects.h>
+#include <win_kernel/syscall_handlers.h>
 
 STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
 {
@@ -34,6 +35,11 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
         case OPERATION_PROTECTED_PROCESS:
         {
             regs->rax = HandleCommunicationProtect(args);
+            break;
+        }
+        case OPERATION_PROTECT_FILE_DATA:
+        {
+            regs->rax = HandleCommunicationHideData(args);
             break;
         }
         default:
@@ -104,3 +110,13 @@ STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
     return STATUS_SUCCESS;
 }
 
+STATUS HandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
+{
+    BYTE_PTR filePath = args->argumentsUnion.protectFileData.filePath,
+        content = args->argumentsUnion.protectFileData.content;
+    AddNewProtectedFile(filePath, args->argumentsUnion.protectFileData.filePathLength,
+        content, args->argumentsUnion.protectFileData.contentLength);
+    Print("The content of the file will be hidden from now on\n");
+    args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
+    return STATUS_SUCCESS;
+}
