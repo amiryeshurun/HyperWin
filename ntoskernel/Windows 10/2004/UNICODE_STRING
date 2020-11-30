@@ -1,0 +1,4 @@
+nt!_UNICODE_STRING
+   +0x000 Length           : Uint2B
+   +0x002 MaximumLength    : Uint2B
+   +0x008 Buffer           : Ptr64 Wchar
