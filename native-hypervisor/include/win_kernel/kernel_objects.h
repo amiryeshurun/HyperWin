@@ -9,6 +9,7 @@
 #define OBJECT_HEADER 0x2
 #define ETHREAD 0x3
 #define EPROCESS 0x4
+#define FILE_OBJECT 0x5
  
 enum
 {
@@ -48,14 +49,17 @@ enum
 
 STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
 STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess);
-STATUS Get_ETHREAD_field(IN IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
-STATUS Get_EPROCESS_field(IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
-STATUS GetObjectField(IN BYTE objectType, IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
+STATUS Get_ETHREAD_field(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS Get_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS Get_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS GetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value);
 STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object);
 
 typedef struct _WIN_KERNEL_UNICODE_STRING
 {
-    
+    WORD length;
+    WORD maxLength;
+    QWORD address;
 } WIN_KERNEL_UNICODE_STRING, *PWIN_KERNEL_UNICODE_STRING;
 
 #endif

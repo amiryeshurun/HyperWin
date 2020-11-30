@@ -113,6 +113,14 @@ VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnA
     CopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
 }
 
+VOID SaveReturnAddress(IN QWORD returnAddress)
+{
+    // Need to create a DB that contains thread IDs
+    QWORD ethread, threadId;
+    GetCurrent_ETHREAD(&ethread);
+    if()
+}
+
 STATUS HandleNtOpenPrcoess()
 {
     PCURRENT_GUEST_STATE state = GetVMMStruct();
@@ -152,6 +160,7 @@ STATUS HandleNtReadFile()
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
+    // First get the syscalls module pointer
     if(!module)
     {
         STATUS status;
@@ -163,9 +172,42 @@ STATUS HandleNtReadFile()
     }
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
     PQWORD_MAP filesData = &ext->filesData;
-
-    // Here I need to translate the handle parameter to a file path
-
+    // Receive syscall parameters
+    QWORD params[17];
+    GetParameters(params, syscallsData[NT_READ_FILE].params);
+    // Translate the first parameter (file handle) to the corresponding _FILE_OBJECT structure
+    QWORD fileObject, handleTable, eprocess;
+    GetCurrent_EPROCESS(&eprocess);
+    GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
+    if(TranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
+    {
+        Print("Could not translate handle to object, skipping...\n");
+        return STATUS_SUCCESS;
+    }
+    // Check if the current path is a protected file
+    WIN_KERNEL_UNICODE_STRING filePath;
+    if(GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_FILE_NAME, &filePath) != STATUS_SUCCESS)
+    {
+        Print("Could not get the file path using the FILE_OBJECT structure, skipping...\n");
+        return STATUS_SUCCESS;
+    }
+    BYTE path[BUFF_MAX_SIZE];
+    if(CopyGuestMemory(path, filePath.address, filePath.length) != STATUS_SUCCESS)
+    {
+        Print("Could not copy the path of the current file, skipping...\n");
+        return STATUS_SUCCESS;
+    }
+    UNICODE_STRING str;
+    PHIDDEN_FILE_RULE hiddenFileRule;
+    str.data = path;
+    str.length = filePath.length;
+    if((hiddenFileRule = MapGet(filesData, &str)) != MAP_KEY_NOT_FOUND)
+    {
+        QWORD returnAddress;
+        // The file is a protected file
+        HookReturnEvent(NT_READ_FILE, regs->rsp, &returnAddress);
+        SaveReturnAddress(returnAddress);
+    }
     // Emulate replaced instruction: mov rax,rsp
     regs->rax = regs->rsp;
     // End emulation

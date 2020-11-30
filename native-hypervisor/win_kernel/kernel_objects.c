@@ -106,7 +106,7 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
     return STATUS_SUCCESS;
 }
 
-STATUS Get_ETHREAD_field(IN IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
+STATUS Get_ETHREAD_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
@@ -114,7 +114,7 @@ STATUS Get_ETHREAD_field(IN IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
             return CopyGuestMemory(value, object + field, sizeof(QWORD));
     }
 }
-STATUS Get_EPROCESS_field(IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
+STATUS Get_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
@@ -126,7 +126,16 @@ STATUS Get_EPROCESS_field(IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
     }
 }
 
-STATUS GetObjectField(IN BYTE objectType, IN BYTE_PTR object, IN QWORD field, OUT PVOID value)
+STATUS Get_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case FILE_OBJECT_FILE_NAME:
+            return CopyGuestMemory(value, object + field, sizeof(WIN_KERNEL_UNICODE_STRING));
+    }
+}
+
+STATUS GetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(objectType)
     {
@@ -134,6 +143,8 @@ STATUS GetObjectField(IN BYTE objectType, IN BYTE_PTR object, IN QWORD field, OU
             return Get_ETHREAD_field(object, field, value);
         case EPROCESS:
             return Get_EPROCESS_field(object, field, value);
+        case FILE_OBJECT:
+            return Get_FILE_OBJECT_field(object, field, value);
         default:
         {
             Print("Unsupported object type!\n");
