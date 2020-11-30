@@ -53,4 +53,9 @@ STATUS Get_EPROCESS_field(IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
 STATUS GetObjectField(IN BYTE objectType, IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
 STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object);
 
+typedef struct _WIN_KERNEL_UNICODE_STRING
+{
+    
+} WIN_KERNEL_UNICODE_STRING, *PWIN_KERNEL_UNICODE_STRING;
+
 #endif

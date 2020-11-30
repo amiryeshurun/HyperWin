@@ -4,6 +4,7 @@
 #include <vmm/vmcs.h>
 #include <vmm/vm_operations.h>
 #include <win_kernel/kernel_objects.h>
+#include <vmx_modules/syscalls_module.h>
 
 static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
  { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
@@ -142,5 +143,36 @@ STATUS HandleNtCreateUserProcess()
     regs->rsp -= 8;
     regs->rip += syscallsData[NT_CREATE_USER_PROCESS].hookedInstructionLength;
     // End emulation
+    return STATUS_SUCCESS;
+}
+
+STATUS HandleNtReadFile()
+{
+    static PMODULE module = NULL;
+    PCURRENT_GUEST_STATE state = GetVMMStruct();
+    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PREGISTERS regs = &state->guestRegisters;
+    if(!module)
+    {
+        STATUS status;
+        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        {
+            Print("Could not find the desired module\n");
+            return status;
+        }
+    }
+    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
+    PQWORD_MAP filesData = &ext->filesData;
+
+    // Here I need to translate the handle parameter to a file path
+
+    // Emulate replaced instruction: mov rax,rsp
+    regs->rax = regs->rsp;
+    // End emulation
+    return STATUS_SUCCESS;
+}
+
+STATUS HandleNtReadFileReturn()
+{
     return STATUS_SUCCESS;
 }

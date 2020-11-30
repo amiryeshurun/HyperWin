@@ -19,12 +19,14 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
-    MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN);
+    MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+    MapCreate(&extension->filesData, UnicodeStringHash, BASIC_HASH_LEN, UnicodeStringEquals);
     SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
-    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, TRUE, HandleNtOpenPrcoessReturn);
+    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE, NULL);
     InitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, HandleNtCreateUserProcess, FALSE, NULL);
+    InitSyscallData(NT_READ_FILE, 0, 3, HandleNtReadFile, TRUE, HandleNtReadFileReturn);
     /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
@@ -188,5 +190,35 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     }
     else
         InjectGuestInterrupt(INT_BREAKPOINT, 0);
+    return STATUS_SUCCESS;
+}
+
+STATUS AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR content, 
+    IN QWORD contentLength)
+{
+    static PMODULE module = NULL;
+    PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
+    PHEAP heap = &shared->heap;
+    if(!module)
+    {
+        STATUS status;
+        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        {
+            Print("Could not find the desired module\n");
+            return status;
+        }
+    }
+    PUNICODE_STRING filePath;
+    heap->allocate(heap, sizeof(UNICODE_STRING), &filePath);
+    heap->allocate(heap, sizeof(BYTE) * pathLength, &filePath->data);
+    PHIDDEN_FILE_RULE rule;
+    heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
+    heap->allocate(heap, sizeof(BYTE) * contentLength, &rule->content);
+    CopyMemory(filePath->data, path, pathLength);
+    CopyMemory(rule->content, content, contentLength);
+    filePath->length = pathLength;
+    rule->content.length = contentLength;
+    rule->rule = FILE_HIDE_CONTENT;
+    MapSet(&module->filesData, filePath, rule);
     return STATUS_SUCCESS;
 }

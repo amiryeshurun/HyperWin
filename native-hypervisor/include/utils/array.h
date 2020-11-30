@@ -11,15 +11,15 @@ typedef struct _QWORD_PAIRS_ARRAY
     QWORD count;
 } QWORD_PAIRS_ARRAY, *PQWORD_PAIRS_ARRAY;
 
+STATUS QPArrayInit(OUT PQWORD_PAIRS_ARRAY array);
+STATUS QPArrayInsert(IN PQWORD_PAIRS_ARRAY array, IN PQWORD_PAIR value);
+
 typedef struct _QWORD_ARRAY
 {
     QWORD_PTR arr;
     QWORD size;
     QWORD count;
 } QWORD_ARRAY, *PQWORD_ARRAY;
-
-STATUS QPArrayInit(OUT PQWORD_PAIRS_ARRAY array);
-STATUS QPArrayInsert(IN PQWORD_PAIRS_ARRAY array, IN PQWORD_PAIR value);
 
 STATUS QArrayInit(OUT PQWORD_ARRAY array);
 STATUS QArrayInsert(IN PQWORD_ARRAY array, IN QWORD value);
