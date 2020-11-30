@@ -10,6 +10,7 @@ typedef unsigned char BYTE, UCHAR, *BYTE_PTR;
 typedef unsigned short WORD, *WORD_PTR;
 typedef char CHAR, *PCHAR;
 typedef int INT;
+typedef WORD WCHAR, *PWCHAR;
 
 #define va_list __builtin_va_list
 #define va_start(v,l) __builtin_va_start(v,l)
