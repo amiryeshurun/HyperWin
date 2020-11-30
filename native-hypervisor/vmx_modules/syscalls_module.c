@@ -52,7 +52,7 @@ STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE mod
         BYTE_PTR ssdt, ntoskrnl, win32k;
         LocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         GetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS) 
+        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE) 
             == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
@@ -208,6 +208,7 @@ STATUS AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR co
             return status;
         }
     }
+    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
     PUNICODE_STRING filePath;
     heap->allocate(heap, sizeof(UNICODE_STRING), &filePath);
     heap->allocate(heap, sizeof(BYTE) * pathLength, &filePath->data);
@@ -215,10 +216,10 @@ STATUS AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR co
     heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
     heap->allocate(heap, sizeof(BYTE) * contentLength, &rule->content);
     CopyMemory(filePath->data, path, pathLength);
-    CopyMemory(rule->content, content, contentLength);
+    CopyMemory(rule->content.data, content, contentLength);
     filePath->length = pathLength;
     rule->content.length = contentLength;
     rule->rule = FILE_HIDE_CONTENT;
-    MapSet(&module->filesData, filePath, rule);
+    MapSet(&ext->filesData, filePath, rule);
     return STATUS_SUCCESS;
 }

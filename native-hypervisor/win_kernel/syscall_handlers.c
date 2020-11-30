@@ -65,6 +65,8 @@ static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { N
  { NULL, 2 },  { NULL, 5 },  { NULL, 4 },  { NULL, 3 },  { NULL, 1 },  { NULL, 7 },  { NULL, 2 },  { NULL, 2 }, 
  { NULL, 4 },  { NULL, 4 },  { NULL, 5 },  { NULL, 1 },  { NULL, 1 } };
 
+static __attribute__((section(".nt_sycalls_events"))) SYSCALL_EVENT syscallEvents[25000];
+
 VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler)
 {
@@ -106,19 +108,11 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
     }
 }
 
-VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnAddress)
+VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId)
 {
     QWORD returnAddress = CALC_RETURN_HOOK_ADDR(syscallsData[syscallId].virtualHookedInstructionAddress);
-    CopyGuestMemory(realReturnAddress, rsp, sizeof(QWORD));
+    CopyGuestMemory(&syscallEvents[threadId].returnAddress, rsp, sizeof(QWORD));
     CopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
-}
-
-VOID SaveReturnAddress(IN QWORD returnAddress)
-{
-    // Need to create a DB that contains thread IDs
-    QWORD ethread, threadId;
-    GetCurrent_ETHREAD(&ethread);
-    if()
 }
 
 STATUS HandleNtOpenPrcoess()
@@ -182,31 +176,34 @@ STATUS HandleNtReadFile()
     if(TranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
     {
         Print("Could not translate handle to object, skipping...\n");
-        return STATUS_SUCCESS;
+        return STATUS_SYSCALL_NOT_HANDLED;
     }
     // Check if the current path is a protected file
     WIN_KERNEL_UNICODE_STRING filePath;
     if(GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_FILE_NAME, &filePath) != STATUS_SUCCESS)
     {
         Print("Could not get the file path using the FILE_OBJECT structure, skipping...\n");
-        return STATUS_SUCCESS;
+        return STATUS_SYSCALL_NOT_HANDLED;
     }
     BYTE path[BUFF_MAX_SIZE];
     if(CopyGuestMemory(path, filePath.address, filePath.length) != STATUS_SUCCESS)
     {
         Print("Could not copy the path of the current file, skipping...\n");
-        return STATUS_SUCCESS;
+        return STATUS_SYSCALL_NOT_HANDLED;
     }
+    Print("Name: %.b\n", filePath.length, path);
     UNICODE_STRING str;
     PHIDDEN_FILE_RULE hiddenFileRule;
     str.data = path;
     str.length = filePath.length;
     if((hiddenFileRule = MapGet(filesData, &str)) != MAP_KEY_NOT_FOUND)
     {
-        QWORD returnAddress;
         // The file is a protected file
-        HookReturnEvent(NT_READ_FILE, regs->rsp, &returnAddress);
-        SaveReturnAddress(returnAddress);
+        QWORD threadId, ethread, returnAddress;
+        GetCurrent_ETHREAD(&ethread);
+        GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
+        HookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
+        syscallEvents[threadId].dataUnion.NtReadFile.data = hiddenFileRule;
     }
     // Emulate replaced instruction: mov rax,rsp
     regs->rax = regs->rsp;
@@ -216,5 +213,25 @@ STATUS HandleNtReadFile()
 
 STATUS HandleNtReadFileReturn()
 {
+    static PMODULE module = NULL;
+    PCURRENT_GUEST_STATE state = GetVMMStruct();
+    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PREGISTERS regs = &state->guestRegisters;
+    // First get the syscalls module pointer
+    if(!module)
+    {
+        STATUS status;
+        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        {
+            Print("Could not find the desired module\n");
+            return status;
+        }
+    }
+    QWORD threadId, ethread;
+    GetCurrent_ETHREAD(&ethread);
+    GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
+    Print("Thread %d hooken the return event of NtReadFile\n", threadId);
+    // Put back the saved address to the top of the stack
+    regs->rip = syscallEvents[threadId].returnAddress;
     return STATUS_SUCCESS;
 }

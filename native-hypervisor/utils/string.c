@@ -1,4 +1,4 @@
-#include <string.h>
+#include <utils/string.h>
 #include <utils/utils.h>
 
 BOOL UnicodeStringEquals(IN PUNICODE_STRING str1, IN PUNICODE_STRING str2)
@@ -12,6 +12,6 @@ QWORD UnicodeStringHash(IN PUNICODE_STRING str)
 {
     QWORD hash = 5381;
     for(QWORD i = 0; i < str->length; i++)
-        hash = ((hash << 5) + hash) + str->data[i];
+        hash = ((hash << 5) + hash) + (BYTE_PTR)(str->data)[i];
     return hash % BASIC_HASH_LEN;
 }

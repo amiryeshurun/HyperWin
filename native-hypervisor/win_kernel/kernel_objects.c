@@ -110,6 +110,7 @@ STATUS Get_ETHREAD_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
+        case ETHREAD_THREAD_ID:
         case ETHREAD_KPROCESS:
             return CopyGuestMemory(value, object + field, sizeof(QWORD));
     }

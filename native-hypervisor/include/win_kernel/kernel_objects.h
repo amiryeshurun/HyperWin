@@ -30,6 +30,7 @@ enum
 {
     ETHREAD_KAPC_STATE = 0x98,
     ETHREAD_KPROCESS = 0x220,
+    ETHREAD_THREAD_ID = 0x480
 };
 
 enum

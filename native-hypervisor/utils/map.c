@@ -29,7 +29,7 @@ VOID MapOverride(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
     {
         for(QWORD i = 0; i < map->keyArrays[hash].size; i++)
         {
-            if(map->equals(->keyArrays[hash].arr[i]->key, key))
+            if(map->equals(map->keyArrays[hash].arr[i]->key, key))
             {
                 map->keyArrays[hash].arr[i]->value = value;
                 return;
