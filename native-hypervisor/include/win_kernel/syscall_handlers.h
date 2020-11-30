@@ -6,6 +6,7 @@
 
 #define NT_OPEN_PROCESS 0x26
 #define NT_CREATE_USER_PROCESS 0xc8
+#define NT_READ_FILE 0x6
 
 typedef STATUS (*SYSCALL_HANDLER)();
 
@@ -38,9 +39,6 @@ VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnA
 STATUS HandleNtOpenPrcoess();
 STATUS HandleNtCreateUserProcess();
 STATUS HandleNtOpenPrcoessReturn();
-
-VOID AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR content, 
-    IN QWORD contentLength);
 
 extern QWORD __ntDataStart;
 

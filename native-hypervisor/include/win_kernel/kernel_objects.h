@@ -41,6 +41,11 @@ enum
     EPROCESS_EXE_NAME = 0x5a8
 };
 
+enum
+{
+    FILE_OBJECT_FILE_NAME = 0x58
+};
+
 STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
 STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess);
 STATUS Get_ETHREAD_field(IN IN BYTE_PTR object, IN QWORD field, OUT PVOID value);
