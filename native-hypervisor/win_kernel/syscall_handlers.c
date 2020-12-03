@@ -231,7 +231,26 @@ STATUS HandleNtReadFileReturn()
     GetCurrent_ETHREAD(&ethread);
     GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     Print("Thread %d hooken the return event of NtReadFile\n", threadId);
-    // Put back the saved address to the top of the stack
+    // Get the rule found in the hashmap
+    PHIDDEN_FILE_RULE rule = syscallEvents[threadId].dataUnion.NtReadFile.data;
+    QWORD bufferLength;
+    // Copy the readen data length
+    CopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock,
+        sizeof(QWORD));
+    Print("The size of the data returned in buffer is %d\n", bufferLength);
+    BYTE buffer[BUFF_MAX_SIZE];
+    // Copy the readon data itself
+    CopyGuestMemory(buffer, syscallEvents[threadId].dataUnion.NtReadFile.buffer, bufferLength);
+    QWORD idx;
+    // Replace hidden content (if exist)
+    if(bufferLength >= rule->content.length && (idx = MemoryContains(buffer, bufferLength, rule->content.data,
+        rule->content.length)) != IDX_NOT_FOUND)
+    {
+        for(QWORD i = idx; i < idx + rule->content.length; i++)
+            buffer[i] = 0;
+    }
+    CopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.buffer, buffer, bufferLength);
+    // Put back the saved address in the RIP register
     regs->rip = syscallEvents[threadId].returnAddress;
     return STATUS_SUCCESS;
 }
