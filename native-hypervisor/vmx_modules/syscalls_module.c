@@ -196,7 +196,7 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 STATUS AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR content, 
     IN QWORD contentLength)
 {
-    static PMODULE module = NULL;
+    PMODULE module = NULL;
     PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
     PHEAP heap = &shared->heap;
     if(!module)

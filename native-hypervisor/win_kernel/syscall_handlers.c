@@ -150,7 +150,7 @@ STATUS HandleNtCreateUserProcess()
 
 STATUS HandleNtReadFile()
 {
-    static PMODULE module = NULL;
+    PMODULE module = NULL;
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
@@ -213,7 +213,7 @@ STATUS HandleNtReadFile()
 
 STATUS HandleNtReadFileReturn()
 {
-    static PMODULE module = NULL;
+    PMODULE module = NULL;
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
     PREGISTERS regs = &state->guestRegisters;
