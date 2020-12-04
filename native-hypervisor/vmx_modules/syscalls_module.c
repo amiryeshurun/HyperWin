@@ -196,8 +196,9 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 STATUS AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR content, 
     IN QWORD contentLength)
 {
-    PMODULE module = NULL;
     PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
+    PMODULE module = shared->staticVariables.addNewProtectedFile.staticContent
+        .addNewProtectedFile.module;
     PHEAP heap = &shared->heap;
     if(!module)
     {
@@ -207,6 +208,8 @@ STATUS AddNewProtectedFile(IN BYTE_PTR path, IN QWORD pathLength, IN BYTE_PTR co
             Print("Could not find the desired module\n");
             return status;
         }
+        shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module 
+            = module;
     }
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
     PUNICODE_STRING filePath;

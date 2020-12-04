@@ -150,9 +150,10 @@ STATUS HandleNtCreateUserProcess()
 
 STATUS HandleNtReadFile()
 {
-    PMODULE module = NULL;
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PMODULE module = shared->staticVariables.handleNtReadFile.staticContent
+        .handleNtReadFile.module;
     PREGISTERS regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
@@ -163,6 +164,7 @@ STATUS HandleNtReadFile()
             Print("Could not find the desired module\n");
             return status;
         }
+        shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module = module;
     }
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
     PQWORD_MAP filesData = &ext->filesData;
@@ -213,9 +215,10 @@ STATUS HandleNtReadFile()
 
 STATUS HandleNtReadFileReturn()
 {
-    PMODULE module = NULL;
     PCURRENT_GUEST_STATE state = GetVMMStruct();
     PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
+    PMODULE module = shared->staticVariables.handleNtReadFileReturn.staticContent
+        .handleNtReadFileReturn.module;
     PREGISTERS regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
@@ -226,6 +229,8 @@ STATUS HandleNtReadFileReturn()
             Print("Could not find the desired module\n");
             return status;
         }
+        shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn
+            .module = module;
     }
     QWORD threadId, ethread;
     GetCurrent_ETHREAD(&ethread);
