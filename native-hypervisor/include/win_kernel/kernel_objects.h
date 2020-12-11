@@ -45,7 +45,8 @@ enum
 
 enum
 {
-    FILE_OBJECT_FILE_NAME = 0x58
+    FILE_OBJECT_FILE_NAME = 0x58,
+    FILE_OBJECT_SCB = 0x18
 };
 
 STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread);

@@ -28,6 +28,9 @@ STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess)
 */
 STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object)
 {
+    DWORD nextHandleNeedingPool;
+    QWORD tableBase, tableLevel, res, tableResult, objectHeader;
+    HANDLE handleBackup;
     if(handle == -1ULL)
     {
         GetCurrent_EPROCESS(object);
@@ -35,17 +38,16 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
     }
     // Zero the 2 last bits (tag bits)
     handle &= ~(3ULL);
-    DWORD nextHandleNeedingPool;
     if(CopyGuestMemory(&nextHandleNeedingPool, handleTable, sizeof(DWORD)) != STATUS_SUCCESS)
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
     if(handle >= nextHandleNeedingPool)
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
-    QWORD tableBase;
+    
     if(CopyGuestMemory(&tableBase, handleTable + 0x8, sizeof(QWORD)) != STATUS_SUCCESS)
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
-    QWORD tableLevel = tableBase & 3, tableResult;
+    tableLevel = tableBase & 3;
     // mov rax,rdx (case 1) OR mov rcx,rdx (case 2)
-    HANDLE handleBackup = handle;
+    handleBackup = handle;
     switch(tableLevel)
     {
         case 2:
@@ -54,7 +56,7 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
             // shr rcx,0Ah
             handleBackup >>= 0xa;
             // mov rax,rcx
-            QWORD res = handleBackup;
+            res = handleBackup;
             // and ecx,1FFh
             handleBackup &= 0x1ff;
             // shr rax,9
@@ -96,7 +98,6 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
             ASSERT(FALSE);
         }
     }
-    QWORD objectHeader;
     if(CopyGuestMemory(&objectHeader, tableResult, sizeof(QWORD)))
         return STATUS_COULD_NOT_TRANSLATE_HANDLE;
     objectHeader >>= 20;
@@ -131,6 +132,8 @@ STATUS Get_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
+        case FILE_OBJECT_SCB:
+            return CopyGuestMemory(value, object + field, sizeof(QWORD));
         case FILE_OBJECT_FILE_NAME:
             return CopyGuestMemory(value, object + field, sizeof(WIN_KERNEL_UNICODE_STRING));
     }

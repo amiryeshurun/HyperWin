@@ -31,8 +31,7 @@ typedef struct _GENERIC_COM_STRUCT
         } cleanup;
         struct _PROTECT_FILE_DATA
         {
-            QWORD filePathLength;
-            BYTE filePath[FILE_PATH_MAX_LENGTH];
+            HANDLE fileHandle;
             QWORD contentLength;
             BYTE content[FILE_PATH_MAX_LENGTH];
             DWORD protectionOperation;
