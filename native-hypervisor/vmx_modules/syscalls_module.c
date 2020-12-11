@@ -141,7 +141,7 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
             TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
-        hookInstruction = { INT3_OPCODE, INT3_OPCODE };
+        hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
         SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
         // Inject the hooked instruction to the guest
         CopyMemory(TranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
@@ -209,8 +209,7 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN QWORD pathLength, IN BYTE_PTR content, 
-    IN QWORD contentLength)
+STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength)
 {
     PSHARED_CPU_DATA shared;
     PMODULE module;
@@ -221,8 +220,7 @@ STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN QWORD pathLength, IN BYTE_PT
 
     shared = GetVMMStruct()->currentCPU->sharedData;
     heap = &shared->heap;
-    module = shared->staticVariables.addNewProtectedFile.staticContent
-        .addNewProtectedFile.module;
+    module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
     if(!module)
     {
         STATUS status;

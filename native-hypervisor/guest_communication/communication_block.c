@@ -122,8 +122,7 @@ STATUS HandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
 
     fileHandle = args->argumentsUnion.protectFileData.fileHandle;
     content = args->argumentsUnion.protectFileData.content;
-    AddNewProtectedFile(filePath, args->argumentsUnion.protectFileData.filePathLength,
-        content, args->argumentsUnion.protectFileData.contentLength);
+    AddNewProtectedFile(fileHandle, content, args->argumentsUnion.protectFileData.contentLength);
     Print("The content of the file will be hidden from now on\n");
 
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;

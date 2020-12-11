@@ -160,7 +160,7 @@ STATUS HandleNtReadFile()
     QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex;
     PHIDDEN_FILE_RULE hiddenFileRule;
     STATUS status;
-    
+
     state = GetVMMStruct();
     shared = state->currentCPU->sharedData;
     module = shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module;
@@ -237,13 +237,13 @@ STATUS HandleNtReadFileReturn()
     GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     Print("Thread %d hooken the return event of NtReadFile\n", threadId);
     // Get the rule found in the hashmap
-    rule = syscallEvents[threadId].dataUnion.NtReadFile.data;
+    rule = syscallEvents[threadId].dataUnion.NtReadFile.rule;
     // Copy the readen data length
     CopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock,
         sizeof(QWORD));
     Print("The size of the data returned in buffer is %d\n", bufferLength);
     // Copy the readon data itself
-    CopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.buffer, bufferLength);
+    CopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
     // Replace hidden content (if exist)
     if(bufferLength >= rule->content.length && (idx = MemoryContains(readDataBuffer, bufferLength, rule->content.data,
         rule->content.length)) != IDX_NOT_FOUND)
@@ -251,7 +251,7 @@ STATUS HandleNtReadFileReturn()
         for(QWORD i = idx; i < idx + rule->content.length; i++)
             readDataBuffer[i] = '0';
     }
-    CopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.buffer, readDataBuffer, bufferLength);
+    CopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
     // Put back the saved address in the RIP register
     regs->rip = syscallEvents[threadId].returnAddress;
     return STATUS_SUCCESS;

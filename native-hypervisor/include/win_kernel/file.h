@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <utils/string.h>
+#include <error_codes.h>
 
 enum
 {
