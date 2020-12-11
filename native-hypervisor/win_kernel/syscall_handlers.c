@@ -150,15 +150,24 @@ STATUS HandleNtCreateUserProcess()
 
 STATUS HandleNtReadFile()
 {
-    PCURRENT_GUEST_STATE state = GetVMMStruct();
-    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
-    PMODULE module = shared->staticVariables.handleNtReadFile.staticContent
-        .handleNtReadFile.module;
-    PREGISTERS regs = &state->guestRegisters;
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PMODULE module;
+    PREGISTERS regs;
+    PSYSCALLS_MODULE_EXTENSION ext;
+    PQWORD_MAP filesData;
+    QWORD params[17];
+    QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex;
+    PHIDDEN_FILE_RULE hiddenFileRule;
+    STATUS status;
+    
+    state = GetVMMStruct();
+    shared = state->currentCPU->sharedData;
+    module = shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module;
+    regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
     {
-        STATUS status;
         if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
@@ -166,13 +175,11 @@ STATUS HandleNtReadFile()
         }
         shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module = module;
     }
-    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
-    PQWORD_MAP filesData = &ext->filesData;
+    ext = module->moduleExtension;
+    filesData = &ext->filesData;
     // Receive syscall parameters
-    QWORD params[17];
     GetParameters(params, syscallsData[NT_READ_FILE].params);
     // Translate the first parameter (file handle) to the corresponding _FILE_OBJECT structure
-    QWORD fileObject, handleTable, eprocess;
     GetCurrent_EPROCESS(&eprocess);
     GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
     if(TranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
@@ -180,32 +187,19 @@ STATUS HandleNtReadFile()
         Print("Could not translate handle to object, skipping...\n");
         return STATUS_SYSCALL_NOT_HANDLED;
     }
-    // Check if the current path is a protected file
-    WIN_KERNEL_UNICODE_STRING filePath;
-    if(GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_FILE_NAME, &filePath) != STATUS_SUCCESS)
-    {
-        Print("Could not get the file path using the FILE_OBJECT structure, skipping...\n");
-        return STATUS_SYSCALL_NOT_HANDLED;
-    }
-    BYTE path[BUFF_MAX_SIZE];
-    if(CopyGuestMemory(path, filePath.address, filePath.length) != STATUS_SUCCESS)
-    {
-        Print("Could not copy the path of the current file, skipping...\n");
-        return STATUS_SYSCALL_NOT_HANDLED;
-    }
-    Print("Name: %.b\n", filePath.length, path);
-    UNICODE_STRING str;
-    PHIDDEN_FILE_RULE hiddenFileRule;
-    str.data = path;
-    str.length = filePath.length;
-    if((hiddenFileRule = MapGet(filesData, &str)) != MAP_KEY_NOT_FOUND)
+    // Get the MFTIndex of the current file
+    GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
+    Translate_SCB_To_FCB(scb, &fcb);
+    Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex);
+    // Check if the current file is protected
+    if((hiddenFileRule = MapGet(filesData, fileIndex)) != MAP_KEY_NOT_FOUND)
     {
         // The file is a protected file
-        QWORD threadId, ethread, returnAddress;
         GetCurrent_ETHREAD(&ethread);
         GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
         HookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
-        syscallEvents[threadId].dataUnion.NtReadFile.data = hiddenFileRule;
+        syscallEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
+        // Need to save the IoStatusBlock & UserBuffer
     }
     // Emulate replaced instruction: mov rax,rsp
     regs->rax = regs->rsp;
@@ -215,15 +209,22 @@ STATUS HandleNtReadFile()
 
 STATUS HandleNtReadFileReturn()
 {
-    PCURRENT_GUEST_STATE state = GetVMMStruct();
-    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
-    PMODULE module = shared->staticVariables.handleNtReadFileReturn.staticContent
-        .handleNtReadFileReturn.module;
-    PREGISTERS regs = &state->guestRegisters;
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PMODULE module;
+    PREGISTERS regs;
+    QWORD threadId, ethread, bufferLength, idx;
+    PHIDDEN_FILE_RULE rule;
+    BYTE readDataBuffer[BUFF_MAX_SIZE];
+    STATUS status;
+
+    state = GetVMMStruct();
+    shared = state->currentCPU->sharedData;
+    module = shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn.module;
+    regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
     {
-        STATUS status;
         if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
@@ -232,29 +233,25 @@ STATUS HandleNtReadFileReturn()
         shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn
             .module = module;
     }
-    QWORD threadId, ethread;
     GetCurrent_ETHREAD(&ethread);
     GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     Print("Thread %d hooken the return event of NtReadFile\n", threadId);
     // Get the rule found in the hashmap
-    PHIDDEN_FILE_RULE rule = syscallEvents[threadId].dataUnion.NtReadFile.data;
-    QWORD bufferLength;
+    rule = syscallEvents[threadId].dataUnion.NtReadFile.data;
     // Copy the readen data length
     CopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock,
         sizeof(QWORD));
     Print("The size of the data returned in buffer is %d\n", bufferLength);
-    BYTE buffer[BUFF_MAX_SIZE];
     // Copy the readon data itself
-    CopyGuestMemory(buffer, syscallEvents[threadId].dataUnion.NtReadFile.buffer, bufferLength);
-    QWORD idx;
+    CopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.buffer, bufferLength);
     // Replace hidden content (if exist)
-    if(bufferLength >= rule->content.length && (idx = MemoryContains(buffer, bufferLength, rule->content.data,
+    if(bufferLength >= rule->content.length && (idx = MemoryContains(readDataBuffer, bufferLength, rule->content.data,
         rule->content.length)) != IDX_NOT_FOUND)
     {
         for(QWORD i = idx; i < idx + rule->content.length; i++)
-            buffer[i] = 0;
+            readDataBuffer[i] = '0';
     }
-    CopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.buffer, buffer, bufferLength);
+    CopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.buffer, readDataBuffer, bufferLength);
     // Put back the saved address in the RIP register
     regs->rip = syscallEvents[threadId].returnAddress;
     return STATUS_SUCCESS;

@@ -36,9 +36,9 @@ typedef struct _SYSCALL_EVENT
     {
         struct
         {
-            PHIDDEN_FILE_RULE data;
-            QWORD buffer;
+            PHIDDEN_FILE_RULE rule;
             QWORD ioStatusBlock;
+            QWORD userBuffer;
         } NtReadFile;
     } dataUnion;
 } SYSCALL_EVENT, *PSYSCALL_EVENT;
