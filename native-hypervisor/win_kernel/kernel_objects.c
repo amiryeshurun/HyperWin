@@ -132,6 +132,8 @@ STATUS Get_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
+        case FILE_OBJECT_TYPE:
+            return CopyGuestMemory(value, object + field, sizeof(WORD));
         case FILE_OBJECT_SCB:
             return CopyGuestMemory(value, object + field, sizeof(QWORD));
         case FILE_OBJECT_FILE_NAME:

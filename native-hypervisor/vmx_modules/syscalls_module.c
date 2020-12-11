@@ -115,7 +115,8 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
     va_list args;
     PSHARED_CPU_DATA shared;
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
-    QWORD syscallId, offset, functionAddress, virtualFunctionAddress, physicalHookAddress, virtualHookAddress;
+    QWORD syscallId, functionAddress, virtualFunctionAddress, physicalHookAddress, virtualHookAddress;
+    DWORD offset;
     BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN];
 
     va_start(args, count);
@@ -164,10 +165,11 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
 STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     // PatchGaurd might put a fake LSTAR value later, hence we save it now
-    PREGISTERS regs = &data->guestRegisters;
+    PREGISTERS regs;
     QWORD msrValue;
     PSYSCALLS_MODULE_EXTENSION ext;
 
+    regs = &data->guestRegisters;
     if(regs->rcx != MSR_IA32_LSTAR)
         return STATUS_VM_EXIT_NOT_HANDLED;
     msrValue = ((regs->rdx & 0xffffffff) << 32) | (regs->rax & 0xffffffff);
@@ -217,20 +219,19 @@ STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD c
     PSYSCALLS_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
     QWORD fileObject, scb, fcb, eprocess, handleTable, fileIndex;
+    STATUS status;
 
     shared = GetVMMStruct()->currentCPU->sharedData;
     heap = &shared->heap;
     module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
     if(!module)
     {
-        STATUS status;
         if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             return status;
         }
-        shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module 
-            = module;
+        shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module = module;
     }
     // Allocate memory for storing the rule
     heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
@@ -244,12 +245,13 @@ STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD c
     // Translate the Handle to an object
     GetCurrent_EPROCESS(&eprocess);
     GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    TranslateHandleToObject(fileHandle, handleTable, &fileObject);
+    ASSERT(TranslateHandleToObject(fileHandle, handleTable, &fileObject) == STATUS_SUCCESS);
     // Get the MFTIndex field
-    GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
-    Translate_SCB_To_FCB(scb, &fcb);
-    Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex);
+    ASSERT(GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb) == STATUS_SUCCESS);
+    ASSERT(Translate_SCB_To_FCB(scb, &fcb) == STATUS_SUCCESS);
+    ASSERT(Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex) == STATUS_SUCCESS);
+    Print("File Idx: %8\n", fileIndex);
     // Map the file to a rule
-    MapSet(&ext->filesData, fileIndex , rule);
+    // MapSet(&ext->filesData, fileIndex , rule);
     return STATUS_SUCCESS;
 }

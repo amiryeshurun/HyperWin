@@ -159,6 +159,7 @@ STATUS HandleNtReadFile()
     QWORD params[17];
     QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex;
     PHIDDEN_FILE_RULE hiddenFileRule;
+    WORD fileType;
     STATUS status;
 
     state = GetVMMStruct();
@@ -171,7 +172,7 @@ STATUS HandleNtReadFile()
         if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
-            return status;
+            goto NtReadFileEmulateInstruction;
         }
         shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module = module;
     }
@@ -185,12 +186,17 @@ STATUS HandleNtReadFile()
     if(TranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
     {
         Print("Could not translate handle to object, skipping...\n");
-        return STATUS_SYSCALL_NOT_HANDLED;
+        goto NtReadFileEmulateInstruction;
     }
+    // Check if this is a file object (See MSDN file object page)
+    GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_TYPE, &fileType);
+    if(fileType != 5)
+        goto NtReadFileEmulateInstruction;
     // Get the MFTIndex of the current file
     GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
     Translate_SCB_To_FCB(scb, &fcb);
     Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex);
+    Print("Idx: %8\n", fileIndex);
     // Check if the current file is protected
     if((hiddenFileRule = MapGet(filesData, fileIndex)) != MAP_KEY_NOT_FOUND)
     {
@@ -201,8 +207,10 @@ STATUS HandleNtReadFile()
         syscallEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
         // Need to save the IoStatusBlock & UserBuffer
     }
+NtReadFileEmulateInstruction:
     // Emulate replaced instruction: mov rax,rsp
     regs->rax = regs->rsp;
+    regs->rip += syscallsData[NT_READ_FILE].hookedInstructionLength;
     // End emulation
     return STATUS_SUCCESS;
 }
