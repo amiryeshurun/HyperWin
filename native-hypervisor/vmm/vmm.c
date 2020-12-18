@@ -16,7 +16,11 @@
 
 VOID InitializeSingleHypervisor(IN PVOID data)
 {
-    PSINGLE_CPU_DATA cpuData = (PSINGLE_CPU_DATA)data;
+    PSINGLE_CPU_DATA cpuData;
+    GDT gdt;
+    IDT idt;
+
+    cpuData = (PSINGLE_CPU_DATA)data;
     Print("Initializing hypervisor on core #%d\n", cpuData->coreIdentifier);
 
     __writecr0((__readcr0() | CR0_NE_ENABLED | __readmsr(MSR_IA32_VMX_CR0_FIXED0)) 
@@ -43,8 +47,6 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(GUEST_CR0, __readcr0());
     __vmwrite(GUEST_CR3, __readcr3());
     __vmwrite(GUEST_CR4, __readcr4());
-    GDT gdt;
-    IDT idt;
     GetGDT(&gdt);
     GetIDT(&idt);
     __vmwrite(GUEST_GDTR_BASE, gdt.address);
@@ -161,7 +163,9 @@ VOID InitializeSingleHypervisor(IN PVOID data)
 
 DWORD AdjustControls(IN DWORD control, IN QWORD msr)
 {
-	QWORD msrValue = __readmsr(msr);
+	QWORD msrValue;
+    
+    msrValue = __readmsr(msr);
 	control &= (msrValue >> 32);            // force 0 if the corresponding MSR requires it
 	control |= (msrValue & 0xffffffffULL); // force 1 if the corresponding MSR requires it
 	return control;
@@ -233,14 +237,16 @@ PCURRENT_GUEST_STATE GetVMMStruct()
 
 STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength)
 {
+    QWORD codeSizeInPages, hypervisorBaseSizeInPages;
+
     if(codeBase % PAGE_SIZE)
         return STATUS_MEMORY_NOT_ALIGNED;
     PrintDebugLevelDebug("Protecting code base %8, length %8 with access 0...\n", 
         codeBase, codeLength);
     PrintDebugLevelDebug("Protecting hypervisor base %8, length %8 with access 0...\n", 
         data->physicalHypervisorBase, data->hypervisorBaseSize);
-    QWORD codeSizeInPages = ALIGN_UP(codeLength, PAGE_SIZE) / PAGE_SIZE, 
-        hypervisorBaseSizeInPages = data->hypervisorBaseSize / PAGE_SIZE;
+    codeSizeInPages = ALIGN_UP(codeLength, PAGE_SIZE) / PAGE_SIZE;
+    hypervisorBaseSizeInPages = data->hypervisorBaseSize / PAGE_SIZE;
     for(QWORD i = 0; i < data->numberOfCores; i++)
     {
         ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalCodeBase, data->codeBaseSize,
@@ -260,6 +266,8 @@ BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress)
 
 STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access)
 {
+    QWORD lengthInPages;
+
     if(base % PAGE_SIZE || length % PAGE_SIZE)
     {
         PrintDebugLevelDebug("Could not update EPT policy. Memory not aligned: %8 %8\n", base, length);
@@ -272,7 +280,7 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
     }
     PrintDebugLevelDebug("Updating EPT policy. Guest physical: %8, length: %8, access: %d...\n", 
         base, length, access);
-    QWORD lengthInPages = length / PAGE_SIZE;
+    lengthInPages = length / PAGE_SIZE;
     for(QWORD i = 0; i < lengthInPages; i++)
         data->eptPageTables[base / PAGE_SIZE + i] = (data->eptPageTables[base / PAGE_SIZE + i] 
             & EPT_ACCESS_MASK & ~(7ULL)) | access;
@@ -283,11 +291,14 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
 STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
 {
     BYTE range;
+    QWORD msrReadIdx, msrWriteIdx;
+    BYTE_PTR bitmap;
+
     if(!IsMsrValid(msrNumber, &range))
         return STATUS_INVALID_MSR;
-    QWORD msrReadIdx = (range == MSR_RANGE_FIRST) ? msrNumber / 8 : (msrNumber - 0xc0000000) / 8 + 1024, 
-        msrWriteIdx = (range == MSR_RANGE_FIRST) ? msrNumber / 8 + 2048 : (msrNumber - 0xc0000000) / 8 + 3072;
-    BYTE_PTR bitmap = data->msrBitmaps;
+    msrReadIdx = (range == MSR_RANGE_FIRST) ? msrNumber / 8 : (msrNumber - 0xc0000000) / 8 + 1024;
+    msrWriteIdx = (range == MSR_RANGE_FIRST) ? msrNumber / 8 + 2048 : (msrNumber - 0xc0000000) / 8 + 3072;
+    bitmap = data->msrBitmaps;
     if(read)
         bitmap[msrReadIdx] |= (1 << (msrNumber % 8));
     else
@@ -301,10 +312,13 @@ STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BO
 
 STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 {
-    DWORD_PTR ivtAddress = PhysicalToVirtual(0);
-    QWORD segment = (ivtAddress[0x15] >> 16) & 0xffffULL;
-    QWORD offset = ivtAddress[0x15] & 0xffffULL;
+    DWORD_PTR ivtAddress;
+    QWORD segment, offset;
     BYTE vmcall[] = { 0x0f, 0x01, 0xc1 };
+
+    ivtAddress = PhysicalToVirtual(0);
+    segment = (ivtAddress[0x15] >> 16) & 0xffffULL;
+    offset = ivtAddress[0x15] & 0xffffULL;
     CopyMemory(E820_VMCALL_GATE, vmcall, 3);
     ivtAddress[0x15] = E820_VMCALL_GATE;
     sharedData->int15Offset = offset;
@@ -316,9 +330,11 @@ STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 
 VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
 {
-    PSHARED_CPU_DATA sharedData = data->sharedData;
+    PSHARED_CPU_DATA sharedData;
     PMODULE kppModule, syscallsModule;
     GENERIC_MODULE_DATA kppInitData;
+
+    sharedData = data->sharedData;
     if(!sharedData->wereModulesInitiated)
     {
         // Init modules data
@@ -381,7 +397,9 @@ BOOL HasErrorCode(IN BYTE vector)
 
 STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
 {
-    DWORD interruptInformation = vector;
+    DWORD interruptInformation;
+    
+    interruptInformation = vector;
     // Currently only software & hardware interrupt are supported
     if(IsSoftwareInterrupt(vector))
     {
