@@ -79,7 +79,7 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
     BYTE_PTR patternAddress;
     QWORD offset;
 
-    offset = 0x60C759; // MS updates ntoskrnl.exe's image from time to time. Previouse value is: 0x60D359;
+    offset = 0x60C159; // MS updates ntoskrnl.exe's image from time to time. Previouse values are: 0x60D359, 0x60C759;
     PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
 
     for(; offset < 0xffffffff; offset++)
