@@ -3,6 +3,8 @@
 
 #include <guest_communication/communication_operations.h>
 
+#define FILE_PATH_MAX_LENGTH 256
+
 typedef struct _GENERIC_COM_STRUCT
 {
     OPERATION operation;
@@ -27,6 +29,13 @@ typedef struct _GENERIC_COM_STRUCT
             };
             QWORD readLength;
         } cleanup;
+        struct _PROTECT_FILE_DATA
+        {
+            HANDLE fileHandle;
+            QWORD contentLength;
+            BYTE content[FILE_PATH_MAX_LENGTH];
+            DWORD protectionOperation;
+        } protectFileData;
     } argumentsUnion;
 } GENERIC_COM_STRUCT, *PGENERIC_COM_STRUCT;
 

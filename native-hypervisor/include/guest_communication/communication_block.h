@@ -20,5 +20,6 @@ STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress,
 // Operations
 STATUS HandleCommunicationInit(IN PGENERIC_COM_STRUCT args);
 STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args);
+STATUS HandleCommunicationHideData(IN PGENERIC_COM_STRUCT args);
 
 #endif

@@ -142,3 +142,11 @@ QWORD SumDigits(IN QWORD num)
     }
     return sum;
 }
+
+QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2)
+{
+    for(QWORD i = 0; i < size1 - size2; i++)
+        if(!CompareMemory(buff1 + i, buff2, size2))
+            return i;
+    return IDX_NOT_FOUND;
+}

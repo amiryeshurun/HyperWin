@@ -169,16 +169,26 @@ DWORD AdjustControls(IN DWORD control, IN QWORD msr)
 
 VOID HandleVmExitEx()
 {
-    QWORD exitReason = vmread(VM_EXIT_REASON);
-    QWORD exitQualification = vmread(EXIT_QUALIFICATION);
+    QWORD exitReason, exitQualification;
+    PCURRENT_GUEST_STATE data;
+    PSHARED_CPU_DATA shared;
+    STATUS handleStatus;
+
+    exitReason = vmread(VM_EXIT_REASON);
+    exitQualification = vmread(EXIT_QUALIFICATION);
+
+#ifdef DEBUG_ALL_VM_EXIT
+    Print("Vm-Exit: %d\n", exitReason);
+#endif
+
     if(exitReason & VM_ENTRY_FAILURE_MASK)
     {
         Print("VM-Entry failure occured. Exit qualification: %d\n", exitQualification);
         goto DefaultModule;
     }
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
-    PCURRENT_GUEST_STATE data = GetVMMStruct();
-    PSHARED_CPU_DATA shared = data->currentCPU->sharedData;
+    data = GetVMMStruct();
+    shared = data->currentCPU->sharedData;
     
     // First run default handlers of all modules 
     for(QWORD i = 0; i < shared->modulesCount; i++)
@@ -189,13 +199,17 @@ VOID HandleVmExitEx()
     for(QWORD i = 0; i < shared->modulesCount; i++)
         if(shared->modules[i]->isHandledOnVmExit[exitReason])
             if(shared->modules[i]->vmExitHandlers[exitReason](data, shared->modules[i]) == STATUS_SUCCESS)
-                    return;
+                    {
+#ifdef DEBUG_ALL_VM_EXIT
+                        Print("Vm-Entry\n");
+#endif  
+                        return;
+                    }
     
     // If vm-exit was not handled, run the default module
 DefaultModule:
     if(shared->defaultModule.isHandledOnVmExit[exitReason])
     {
-        STATUS handleStatus;
         if(handleStatus = shared->defaultModule.vmExitHandlers[exitReason](data, &shared->defaultModule))
         {
             Print("Error during handling vm-exit. Exit reaon: %d, Error code: %d", exitReason, handleStatus);
@@ -207,6 +221,9 @@ DefaultModule:
         Print("Unhandled vm-exit occured. Exit reason is: %d\n", exitReason);
         ASSERT(FALSE);
     }
+#ifdef DEBUG_ALL_VM_EXIT
+    Print("Vm-Entry\n");
+#endif
 }
 
 PCURRENT_GUEST_STATE GetVMMStruct()

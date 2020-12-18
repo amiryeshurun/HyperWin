@@ -44,5 +44,6 @@ VOID RegisterModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module);
 VOID InitModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer, 
     IN PGENERIC_MODULE_DATA moduleData, IN VMEXIT_HANDLER defaultHandler);
 VOID SetModuleName(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN PCHAR name);
+STATUS GetModuleByName(OUT PMODULE* module, IN PCHAR name);
 
 #endif

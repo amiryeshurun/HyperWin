@@ -9,22 +9,28 @@
 #include <win_kernel/syscall_handlers.h>
 #include <vmm/memory_manager.h>
 #include <vmm/vmm.h>
+#include <win_kernel/kernel_objects.h>
+#include <win_kernel/file.h>
 
 STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
+    PSYSCALLS_MODULE_EXTENSION extension;
+
     PrintDebugLevelDebug("Starting initialization of syscalls module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(SYSCALLS_MODULE_EXTENSION), &module->moduleExtension);
     SetMemory(module->moduleExtension, 0, sizeof(SYSCALLS_MODULE_EXTENSION));
-    PSYSCALLS_MODULE_EXTENSION extension = module->moduleExtension;
+    extension = module->moduleExtension;
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
-    MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN);
+    MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+    MapCreate(&extension->filesData, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
     SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
-    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, TRUE, HandleNtOpenPrcoessReturn);
+    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE, NULL);
     InitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, HandleNtCreateUserProcess, FALSE, NULL);
+    InitSyscallData(NT_READ_FILE, 0, 3, HandleNtReadFile, TRUE, HandleNtReadFileReturn);
     /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
@@ -42,15 +48,17 @@ STATUS SyscallsModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
 
 STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE module)
 {
-    PSYSCALLS_MODULE_EXTENSION ext = (PSYSCALLS_MODULE_EXTENSION)module->moduleExtension;
+    PSYSCALLS_MODULE_EXTENSION ext;
+    BYTE_PTR ssdt, ntoskrnl, win32k;
+
+    ext = (PSYSCALLS_MODULE_EXTENSION)module->moduleExtension;
     if(ext->exitCount++ >= COUNT_UNTIL_HOOK)
     {
         // perform lock-checking
         module->hasDefaultHandler = FALSE;
-        BYTE_PTR ssdt, ntoskrnl, win32k;
         LocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         GetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS) 
+        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE) 
             == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
@@ -69,8 +77,9 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
     BYTE pattern[] = { 0x8B, 0xF8, 0xC1, 0xEF, 0x07, 0x83, 0xE7, 0x20, 0x25, 0xFF, 0x0F, 0x00, 0x00 };
     BYTE kernelChunk[13];
     BYTE_PTR patternAddress;
-    PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
     QWORD offset = 0x60C759; // MS updates ntoskrnl.exe's image from time to time. Previouse value is: 0x60D359;
+
+    PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
 
     for(; offset < 0xffffffff; offset++)
     {
@@ -104,32 +113,36 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
     IN QWORD count, ...)
 {
     va_list args;
-    va_start(args, count);
-    PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
+    PSHARED_CPU_DATA shared;
     PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
+    QWORD syscallId, functionAddress, virtualFunctionAddress, physicalHookAddress, virtualHookAddress;
+    DWORD offset;
+    BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN];
 
+    va_start(args, count);
+    shared = GetVMMStruct()->currentCPU->sharedData;
     while(count--)
     {
         // Get the syscall id from va_arg
-        QWORD syscallId = va_arg(args, QWORD), offset = 0, functionAddress;
+        syscallId = va_arg(args, QWORD);
         // Get the offset of the syscall handler (in ntoskrnl.exe) from the shadowed SSDT
         ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
         // Get the guest physical address of the syscall handler
-        QWORD virtualFunctionAddress = ntoskrnl + (offset >> 4);
+        virtualFunctionAddress = ntoskrnl + (offset >> 4);
         ASSERT(TranslateGuestVirtualToGuestPhysical(ntoskrnl + (offset >> 4), &functionAddress) == STATUS_SUCCESS);
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
         // Save hook information in system calls database
-        QWORD physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset,
-            virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
+        physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
+        virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
         CopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
             TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
-        BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN] = { INT3_OPCODE, INT3_OPCODE };
+        hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
         SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
         // Inject the hooked instruction to the guest
         CopyMemory(TranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
@@ -152,14 +165,18 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
 STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     // PatchGaurd might put a fake LSTAR value later, hence we save it now
-    PREGISTERS regs = &data->guestRegisters;
+    PREGISTERS regs;
+    QWORD msrValue;
+    PSYSCALLS_MODULE_EXTENSION ext;
+
+    regs = &data->guestRegisters;
     if(regs->rcx != MSR_IA32_LSTAR)
         return STATUS_VM_EXIT_NOT_HANDLED;
-    QWORD msrValue = ((regs->rdx & 0xffffffff) << 32) | (regs->rax & 0xffffffff);
+    msrValue = ((regs->rdx & 0xffffffff) << 32) | (regs->rax & 0xffffffff);
     Print("Guest attempted to write to LSTAR %8 MSR: %8\n", regs->rcx, msrValue);
     __writemsr(MSR_IA32_LSTAR, msrValue);
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
+    ext = module->moduleExtension;
     ext->lstar = msrValue;
     ext->startExitCount = TRUE;
     /* 
@@ -173,10 +190,13 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     BYTE vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
+    QWORD syscallId, ripPhysicalAddress;
+    PSYSCALLS_MODULE_EXTENSION ext;
+
     if(vector != INT_BREAKPOINT)
         return STATUS_VM_EXIT_NOT_HANDLED;
-    QWORD syscallId, ripPhysicalAddress;
-    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
+    
+    ext = module->moduleExtension;
     ASSERT(TranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
         == STATUS_SUCCESS);
     if((syscallId = MapGet(&ext->addressToSyscall, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
@@ -188,5 +208,50 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     }
     else
         InjectGuestInterrupt(INT_BREAKPOINT, 0);
+    return STATUS_SUCCESS;
+}
+
+STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength)
+{
+    PSHARED_CPU_DATA shared;
+    PMODULE module;
+    PHEAP heap;
+    PSYSCALLS_MODULE_EXTENSION ext;
+    PHIDDEN_FILE_RULE rule;
+    QWORD fileObject, scb, fcb, eprocess, handleTable, fileIndex;
+    STATUS status;
+
+    shared = GetVMMStruct()->currentCPU->sharedData;
+    heap = &shared->heap;
+    module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
+    if(!module)
+    {
+        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        {
+            Print("Could not find the desired module\n");
+            return status;
+        }
+        shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module = module;
+    }
+    // Allocate memory for storing the rule
+    heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
+    heap->allocate(heap, sizeof(BYTE) * contentLength, &rule->content);
+    CopyMemory(rule->content.data, content, contentLength);
+    // Set the rule
+    rule->content.length = contentLength;
+    rule->rule = FILE_HIDE_CONTENT;
+    // Get the module extension
+    ext = module->moduleExtension;
+    // Translate the Handle to an object
+    GetCurrent_EPROCESS(&eprocess);
+    GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
+    ASSERT(TranslateHandleToObject(fileHandle, handleTable, &fileObject) == STATUS_SUCCESS);
+    // Get the MFTIndex field
+    ASSERT(GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb) == STATUS_SUCCESS);
+    ASSERT(Translate_SCB_To_FCB(scb, &fcb) == STATUS_SUCCESS);
+    ASSERT(Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex) == STATUS_SUCCESS);
+    Print("File Idx: %8\n", fileIndex);
+    // Map the file to a rule
+    // MapSet(&ext->filesData, fileIndex , rule);
     return STATUS_SUCCESS;
 }

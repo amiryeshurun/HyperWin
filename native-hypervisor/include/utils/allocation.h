@@ -5,7 +5,7 @@
 #include <types.h>
 #include <error_codes.h>
 
-#define HEAP_SIZE (8 * PAGE_SIZE)
+#define HEAP_SIZE LARGE_PAGE_SIZE
 #define HEAP_FREE_CYCLE 10
 
 typedef struct _HEAP;

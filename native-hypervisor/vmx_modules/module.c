@@ -40,3 +40,18 @@ VOID SetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHAR m
         &(module->moduleName));
     CopyMemory(module->moduleName, moduleName, StringLength(moduleName) + 1);
 }
+
+STATUS GetModuleByName(OUT PMODULE* module, IN PCHAR name)
+{
+    PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
+    QWORD nameLength = StringLength(name);
+    for(QWORD i = 0; i < shared->modulesCount; i++)
+    {
+        if(!CompareMemory(name, shared->modules[i]->moduleName, nameLength))
+        {
+            *module = shared->modules[i];
+            return STATUS_SUCCESS;
+        }
+    }
+    return STATUS_MODULE_NOT_FOUND;
+}

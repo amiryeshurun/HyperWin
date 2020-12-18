@@ -9,6 +9,11 @@ SECTIONS
         __ntDataStart = .;
         *(.nt_data)
     }
+    .nt_sycalls_events :
+    {
+        __ntSyscallsEventsStart = .;
+        *(.nt_sycalls_events)
+    }
     /* Use all data sections from input files */
     .data : { *(.data) } 
     /* Use all bss sections from input files */

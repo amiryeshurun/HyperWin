@@ -1,0 +1,16 @@
+nt!_DRIVER_OBJECT
+   +0x000 Type             : Int2B
+   +0x002 Size             : Int2B
+   +0x008 DeviceObject     : Ptr64 _DEVICE_OBJECT
+   +0x010 Flags            : Uint4B
+   +0x018 DriverStart      : Ptr64 Void
+   +0x020 DriverSize       : Uint4B
+   +0x028 DriverSection    : Ptr64 Void
+   +0x030 DriverExtension  : Ptr64 _DRIVER_EXTENSION
+   +0x038 DriverName       : _UNICODE_STRING
+   +0x048 HardwareDatabase : Ptr64 _UNICODE_STRING
+   +0x050 FastIoDispatch   : Ptr64 _FAST_IO_DISPATCH
+   +0x058 DriverInit       : Ptr64     long
+   +0x060 DriverStartIo    : Ptr64     void
+   +0x068 DriverUnload     : Ptr64     void
+   +0x070 MajorFunction    : [28] Ptr64     long

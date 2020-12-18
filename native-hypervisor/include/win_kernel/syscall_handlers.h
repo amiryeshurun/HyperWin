@@ -3,9 +3,11 @@
 
 #include <types.h>
 #include <vmm/vmm.h>
+#include <win_kernel/file.h>
 
 #define NT_OPEN_PROCESS 0x26
 #define NT_CREATE_USER_PROCESS 0xc8
+#define NT_READ_FILE 0x6
 
 typedef STATUS (*SYSCALL_HANDLER)();
 
@@ -29,15 +31,26 @@ typedef struct _SYSCALL_DATA
 
 typedef struct _SYSCALL_EVENT
 {
-    QWORD params[17];
+    QWORD returnAddress;
+    union
+    {
+        struct
+        {
+            PHIDDEN_FILE_RULE rule;
+            QWORD ioStatusBlock;
+            QWORD userBuffer;
+        } NtReadFile;
+    } dataUnion;
 } SYSCALL_EVENT, *PSYSCALL_EVENT;
 
 VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler);
-VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, OUT QWORD_PTR realReturnAddress);
+VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId);
 STATUS HandleNtOpenPrcoess();
 STATUS HandleNtCreateUserProcess();
 STATUS HandleNtOpenPrcoessReturn();
+STATUS HandleNtReadFile();
+STATUS HandleNtReadFileReturn();
 
 extern QWORD __ntDataStart;
 
