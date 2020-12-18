@@ -3,16 +3,21 @@
 #include <utils/utils.h>
 #include <intrinsics.h>
 #include <debug.h>
+#include <vmm/vmcs.h>
+#include <vmm/vm_operations.h>
 
 BiosFunction functionsBegin[] = { DiskReader, GetMemoryMap, SleepAsm };
 BiosFunction functionsEnd[] = { DiskReaderEnd, GetMemoryMapEnd, SleepAsmEnd };
 
 VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
 {
-    BiosFunction functionBegin = functionsBegin[function];
-    BiosFunction functionEnd = functionsEnd[function];
-    QWORD enterRealModeLength = EnterRealModeEnd - EnterRealMode;
-    QWORD functionLength = functionEnd - functionBegin;
+    BiosFunction functionBegin, functionEnd;
+    QWORD enterRealModeLength, functionLength;
+
+    functionBegin = functionsBegin[function];
+    functionEnd = functionsEnd[function];
+    functionLength = functionEnd - functionBegin;
+    enterRealModeLength = EnterRealModeEnd - EnterRealMode;
     CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, EnterRealMode, enterRealModeLength);
     CopyMemory((BYTE_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
@@ -26,6 +31,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
 VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
 {
     PDISK_ADDRESS_PACKET packet = DAP_ADDRESS;
+
     packet->size = 0x10;
     packet->reserved = 0;
     packet->count = 1;
@@ -63,7 +69,9 @@ VOID LoadMBRToEntryPoint()
 
 VOID Sleep(IN DWORD milliSeconds)
 {
-    DWORD timeInMs = milliSeconds * 1000;
+    DWORD timeInMs;
+
+    timeInMs = milliSeconds * 1000;
     *(WORD_PTR)SLEEP_TIME_FIRST_2 = timeInMs >> 16;
     *(WORD_PTR)SLEEP_TIME_SECOND_2 = timeInMs & 0xffff;
     EnterRealModeRunFunction(SLEEP, NULL);
@@ -72,9 +80,10 @@ VOID Sleep(IN DWORD milliSeconds)
 STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
 {
     CHAR pattern[] = "RSD PTR ";
-    BYTE_PTR ebdaAddress = (*(WORD_PTR)EBDA_POINTER_ADDRESS) >> 4;
-    BYTE_PTR rsdpBaseAddress;
-    
+    BYTE_PTR ebdaAddress, rsdpBaseAddress;
+    QWORD sum;
+
+    ebdaAddress = (*(WORD_PTR)EBDA_POINTER_ADDRESS) >> 4;
     for(QWORD i = 0; i < 0x1024; i += 16)
     {
         if(!CompareMemory(ebdaAddress + i, pattern, 8))
@@ -96,8 +105,8 @@ STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
     return STATUS_FAILURE;
 
 RSDPFound:
-    NOP
-    QWORD sum = 0;
+
+    sum = 0;
     for(BYTE i = 0; i < RSDP_STRUCTURE_SIZE; i++)
             sum += rsdpBaseAddress[i];
     if(sum & 0xff) // checksum failed
@@ -113,6 +122,7 @@ RSDPFound:
         sum += (rsdpBaseAddress + RSDP_STRUCTURE_SIZE)[i];
     if(sum & 0xff)
         return STATUS_RSDP_INVALID_CHECKSUM;
+    
     *type = 2;
     *address = *(QWORD_PTR)(rsdpBaseAddress + RSDP_STRUCTURE_SIZE + 4); // Xsdt
     return STATUS_SUCCESS;
@@ -120,22 +130,25 @@ RSDPFound:
 
 STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature)
 {
-    QWORD sum = 0;
+    QWORD sum, entriesCount;
+    DWORD_PTR dwSectionsArrayBase;
+    QWORD_PTR qwSectionsArrayBase;
+
+    sum = 0;
     for(QWORD i = 0; i < *(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET); i++)
         sum += rsdt[i];
     if(sum % 0x100)
         return STATUS_RSDT_INVALID_CHECKSUM;
-    QWORD entriesCount;
     if(type == 1) // ACPI Version 1.0
     {
         entriesCount = ((*(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET)) - ACPI_SDT_HEADER_SIZE) / 4;
-        DWORD_PTR sectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
+        dwSectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
 
         for(QWORD i = 0; i < entriesCount; i++)
         {
-            if(!CompareMemory(signature, sectionsArrayBase[i], 4))
+            if(!CompareMemory(signature, dwSectionsArrayBase[i], 4))
             {
-                *table = sectionsArrayBase[i];
+                *table = dwSectionsArrayBase[i];
                 return STATUS_SUCCESS;
             }
         }
@@ -144,16 +157,49 @@ STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWO
     else // Version >= 2.0
     {
         entriesCount = ((*(DWORD_PTR)(rsdt + RSDT_LENGTH_OFFSET)) - ACPI_SDT_HEADER_SIZE) / 8;
-        QWORD_PTR sectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
+        qwSectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
         for(QWORD i = 0; i < entriesCount; i++)
         {
-            if(!CompareMemory(signature, sectionsArrayBase[i], 4))
+            if(!CompareMemory(signature, qwSectionsArrayBase[i], 4))
             {
-                *table = sectionsArrayBase[i];
+                *table = qwSectionsArrayBase[i];
                 return STATUS_SUCCESS;
             }
         }
     }
 
     return STATUS_APIC_NOT_FOUND;
+}
+
+STATUS HandleE820(IN PCURRENT_GUEST_STATE data, IN PREGISTERS regs)
+{
+    BOOL carrySet;
+    WORD csValue, flags;
+
+    carrySet = FALSE;
+    if(regs->rbx >= data->currentCPU->sharedData->memoryRangesCount)
+    {
+        carrySet = TRUE;
+        goto EmulateIRET;
+    }
+    regs->rax = E820_MAGIC;
+    regs->rcx = (regs->rcx & ~(0xffULL)) | 20;
+    CopyMemory(vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL), 
+        &(data->currentCPU->sharedData->allRam[regs->rbx++]), sizeof(E820_LIST_ENTRY));
+    carrySet = FALSE;
+    if(regs->rbx == data->currentCPU->sharedData->memoryRangesCount)
+        regs->rbx = 0;
+    
+EmulateIRET:
+    regs->rip = (DWORD)(*(DWORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp));
+    csValue = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 2);
+    flags = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 4);
+    if(carrySet) 
+        flags |= RFLAGS_CARRY;
+    else
+        flags &= ~(RFLAGS_CARRY);
+    __vmwrite(GUEST_CS_BASE, csValue << 4);
+    __vmwrite(GUEST_CS_SELECTOR, csValue);
+    regs->rsp += 6;
+    return STATUS_SUCCESS;
 }

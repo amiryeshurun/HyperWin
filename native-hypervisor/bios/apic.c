@@ -8,8 +8,11 @@
 
 STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers)
 {
-    QWORD tableLength = *(DWORD_PTR)(apicTable + RSDT_LENGTH_OFFSET);
+    QWORD tableLength;
+
+    tableLength = *(DWORD_PTR)(apicTable + RSDT_LENGTH_OFFSET);
     *processorsCount = 0;
+
     for(QWORD offset = 0x2C; offset < tableLength;)
     {
         switch(*(BYTE_PTR)(apicTable + offset))
@@ -31,6 +34,7 @@ STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYT
 STATUS DetectX2APICAvailability()
 {
     QWORD tmp, ecx;
+
     __cpuid(1, 0, &tmp, &tmp, &ecx, &tmp);
     return (ecx & CPUID_2XAPIC_AVAILABLE) ? STATUS_SUCCESS : STATUS_2XAPIC_NOT_AVAILABLE;
 }
@@ -48,8 +52,7 @@ VOID EnableAPIC()
 
 VOID X2APICIssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode, IN QWORD lvl)
 {
-    QWORD ipi = (destenation << APIC_DESTINAION_BIT_OFFSET) | deliveryMode | vector | lvl;
-    __writemsr(MSR_IA32_X2APIC_ICR, ipi);
+    __writemsr(MSR_IA32_X2APIC_ICR, (destenation << APIC_DESTINAION_BIT_OFFSET) | deliveryMode | vector | lvl);
 }
 
 VOID APICGetBaseAddress()

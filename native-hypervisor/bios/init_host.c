@@ -21,39 +21,41 @@ VOID Initialize()
 VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
 {
     BYTE rsdtType, numberOfCores, processorIdentifires[MAX_CORES];
-    BYTE_PTR apicTable, rsdtTable;
+    BYTE_PTR apicTable, rsdtTable, physicalHypervisorBase, physicalReadPipe, physicalWritePipe;
+    WORD memoryRegionsCount;
+    QWORD allocationSize, hypervisorBase;
+    DWORD validRamCount;
+    PSHARED_CPU_DATA sharedData;
+
     ASSERT(FindRSDT(&rsdtTable, &rsdtType) == STATUS_SUCCESS);
     ASSERT(LocateSystemDescriptorTable(rsdtTable, &apicTable, rsdtType, "APIC") == STATUS_SUCCESS);
     ASSERT(GetCoresData(apicTable, &numberOfCores, processorIdentifires) == STATUS_SUCCESS);
     EnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
-    WORD memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
+    memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
-    QWORD allocationSize = 0;
+    allocationSize = 0;
     allocationSize += ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE);
     allocationSize += (ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE) * numberOfCores);
     allocationSize += (ALIGN_UP(sizeof(CURRENT_GUEST_STATE), PAGE_SIZE) * numberOfCores);
-    BYTE_PTR physicalHypervisorBase;
     if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize, &physicalHypervisorBase))
     {
         Print("Allocation of %8 bytes failed.\n", allocationSize);
         ASSERT(FALSE);
     }
-    BYTE_PTR physicalReadPipe;
     if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalReadPipe))
     {
         Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
         ASSERT(FALSE);
     }
-    BYTE_PTR physicalWritePipe;
     if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalWritePipe))
     {
         Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
         ASSERT(FALSE);
     }
     ASSERT(HideCodeBase(memoryMap, &memoryRegionsCount, codeBase, codeLength) == STATUS_SUCCESS);
-    QWORD hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
+    hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
-    PSHARED_CPU_DATA sharedData = hypervisorBase;
+    sharedData = hypervisorBase;
     sharedData->numberOfCores = numberOfCores;
     sharedData->hypervisorBase = hypervisorBase;
     sharedData->physicalHypervisorBase = physicalHypervisorBase;
@@ -78,7 +80,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         sharedData->cpuData[i]->sharedData = sharedData;
         sharedData->cpuData[i]->coreIdentifier = processorIdentifires[i];
     }
-    DWORD validRamCount = 0;
+    validRamCount = 0;
     for(DWORD i = 0; i < memoryRegionsCount; i++)
     {
         if(memoryMap[i].type == E820_USABLE_REGION)
@@ -114,8 +116,11 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
 STATUS AllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address)
 {
-    QWORD alignedAllocationSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
-    INT upperIdx = NEG_INF; // high addresses are more rarely to be in use on the computer startup, use them
+    QWORD alignedAllocationSize, unalignedCountBase, unalignedCountLength;
+    INT upperIdx;
+
+    alignedAllocationSize = ALIGN_UP(allocationSize, LARGE_PAGE_SIZE);
+    upperIdx = NEG_INF; // high addresses are more rarely to be in use on the computer startup, use them
     for(QWORD i = 0; i < memoryRegionsCount; i++)
     {
         if(memoryMap[i].type != E820_USABLE_REGION)
@@ -127,8 +132,8 @@ STATUS AllocateMemoryUsingMemoryMap
     }
     if(upperIdx == NEG_INF)
         return STATUS_NO_MEM_AVAILABLE;
-    QWORD unalignedCountBase = memoryMap[upperIdx].baseAddress % PAGE_SIZE;
-    QWORD unalignedCountLength = memoryMap[upperIdx].length % PAGE_SIZE;
+    unalignedCountBase = memoryMap[upperIdx].baseAddress % PAGE_SIZE;
+    unalignedCountLength = memoryMap[upperIdx].length % PAGE_SIZE;
     memoryMap[upperIdx].length -= (alignedAllocationSize + unalignedCountBase + unalignedCountLength);
     *address = memoryMap[upperIdx].baseAddress + memoryMap[upperIdx].length;
     return STATUS_SUCCESS;
@@ -146,7 +151,10 @@ VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count)
 STATUS HideCodeBase
     (IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength)
 {
-    QWORD codeRegionIdx = NEG_INF, count = *updatedCount;
+    QWORD codeRegionIdx, count;
+
+    codeRegionIdx = NEG_INF;
+    count = *updatedCount;
     for(QWORD i = 0; i < count; i++)
     {
         if(memoryMap[i].type == E820_USABLE_REGION && (codeBegin > memoryMap[i].baseAddress) 

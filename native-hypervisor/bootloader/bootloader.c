@@ -39,8 +39,10 @@ VOID BootloaderCopyMemory(BYTE_PTR dest, BYTE_PTR src, QWORD length)
 VOID BootloaderEnterRealModeRunFunction(IN BiosFunction functionBegin, IN BiosFunction functionEnd,
     OUT BYTE_PTR* outputBuffer)
 {
-    QWORD enterRealModeLength = BootloaderEnterRealModeEnd - BootloaderEnterRealMode;
-    QWORD functionLength = functionEnd - functionBegin;
+    QWORD enterRealModeLength, functionLength;
+
+    enterRealModeLength = BootloaderEnterRealModeEnd - BootloaderEnterRealMode;
+    functionLength = functionEnd - functionBegin;
     BootloaderCopyMemory((BYTE_PTR)REAL_MODE_CODE_START, BootloaderEnterRealMode, enterRealModeLength);
     BootloaderCopyMemory((BYTE_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
@@ -68,15 +70,18 @@ VOID BootloaderReadSector(IN BYTE diskIndex, IN QWORD sectorNumber, OUT BYTE_PTR
 
 VOID BootloaderSectorsLoader()
 {
-    BYTE diskIndex = *(BYTE_PTR)DISK_INDEX_ADDRESS;
-    QWORD lengthInSectors = HYPERVISOR_CODE_LENGTH / SECTOR_SIZE + 1,
-        firstSector = HYPERVISOR_CODE_BASE / SECTOR_SIZE;
-    BYTE_PTR dest = HYPERVISOR_CODE_BASE, realModeDest;
+    BYTE diskIndex;
+    QWORD lengthInSectors, firstSector;
+    BYTE_PTR dest, realModeDest;
 
+    diskIndex = *(BYTE_PTR)DISK_INDEX_ADDRESS;
+    lengthInSectors = HYPERVISOR_CODE_LENGTH / SECTOR_SIZE + 1;
+    firstSector = HYPERVISOR_CODE_BASE / SECTOR_SIZE;
+    dest = HYPERVISOR_CODE_BASE;
     for(QWORD sector = firstSector; sector <= firstSector + lengthInSectors; sector++)
     {
         BootloaderReadSector(diskIndex, sector, &dest);
-        BootloaderCopyMemory(dest, realModeDest, SECTOR_SIZE);
+        BootloaderCopyMemory(realModeDest, dest, SECTOR_SIZE);
         dest += SECTOR_SIZE;
     }
 }
