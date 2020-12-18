@@ -28,7 +28,6 @@
 
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
-struct _CURRENT_GUEST_STATE;
 
 typedef struct _STATIC_VARIABLES
 {

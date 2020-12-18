@@ -135,4 +135,7 @@ VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count);
 STATUS HideCodeBase(IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength);
 VOID Sleep(IN DWORD milliSeconds);
 
+struct _CURRENT_GUEST_STATE;
+STATUS HandleE820(IN struct _CURRENT_GUEST_STATE* data, IN PREGISTERS regs);
+
 #endif
