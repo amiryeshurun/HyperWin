@@ -10,7 +10,9 @@ QWORD BasicHashFunction(IN QWORD key)
 
 QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
 {
-    QWORD hash = map->hash(key);
+    QWORD hash;
+
+    hash = map->hash(key);
     if(map->keyArrays[hash].count == 1)
         return map->keyArrays[hash].arr[0]->value;
     else
@@ -22,7 +24,9 @@ QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
 
 VOID MapOverride(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
 {
-    QWORD hash = map->hash(key);
+    QWORD hash;
+
+    hash = map->hash(key);
     if(map->keyArrays[hash].size == 1)
         map->keyArrays[hash].arr[0]->value = value;
     else
@@ -40,9 +44,12 @@ VOID MapOverride(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
 
 VOID MapSet(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
 {
-    PHEAP heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    PHEAP heap;
     PQWORD_PAIR pair;
-    QWORD hash = map->hash(key);
+    QWORD hash;
+
+    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    hash = map->hash(key);
     // Check if the key already exist
     if(MapGet(map, key) == MAP_KEY_NOT_FOUND)
     {
@@ -75,7 +82,9 @@ VOID MapGetValues(IN PQWORD_MAP map, OUT QWORD_PTR values, OUT QWORD_PTR count)
 
 STATUS MapCreate(OUT PQWORD_MAP map, IN HASH_FUNC hasher, IN QWORD size, IN EQUALITY_FUNC equals)
 {
-    PHEAP heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    PHEAP heap;
+
+    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
     map->hash = hasher;
     map->innerSize = size;
     map->equals = equals;

@@ -5,12 +5,13 @@
 
 VOID CopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count)
 {
-    __movsb((BYTE_PTR)dest, (BYTE_PTR)src, count);
+    __movsb(dest, src, count);
 }
 
 CHAR ConvertHalfByteToHexChar(IN BYTE halfByte)
 {
     CHAR ch;
+
     switch(halfByte)
     {
         case 0:
@@ -70,14 +71,17 @@ CHAR ConvertHalfByteToHexChar(IN BYTE halfByte)
 
 QWORD pow(IN QWORD base, IN QWORD power)
 {
-    QWORD res = 1;
-    for(; power; res *= base, --power);
+    QWORD res;
+
+    for(res = 1; power; res *= base, --power);
     return res;
 }
 
 QWORD NumberOfDigits(IN QWORD number)
 {
-    QWORD digits = 0;
+    QWORD digits;
+    
+    digits = 0;
     do
     {
         number /= 10;
@@ -88,7 +92,9 @@ QWORD NumberOfDigits(IN QWORD number)
 
 QWORD StringLength(IN PCHAR str)
 {
-    QWORD length = 0;
+    QWORD length;
+    
+    length = 0;
     while(*(str++)) 
         length++;
     return length;
@@ -126,7 +132,9 @@ VOID DumpHostStack(IN QWORD_PTR stackAddress)
 
 BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange)
 {
-    BOOL result = (msrNumber >= 0 && msrNumber <= 0x1fff) || (msrNumber >= 0xc0000000 && msrNumber <= 0xc0001fff);
+    BOOL result;
+    
+    result = (msrNumber >= 0 && msrNumber <= 0x1fff) || (msrNumber >= 0xc0000000 && msrNumber <= 0xc0001fff);
     if(result)
         *msrRange = (msrNumber >= 0 && msrNumber <= 0x1fff) ? MSR_RANGE_FIRST : MSR_RANGE_SECOND;
     return result;
@@ -134,7 +142,9 @@ BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange)
 
 QWORD SumDigits(IN QWORD num)
 {
-    QWORD sum = 0;
+    QWORD sum;
+    
+    sum = 0;
     while(num)
     {
         sum += num % 10;

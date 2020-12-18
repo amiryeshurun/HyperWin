@@ -4,7 +4,9 @@
 
 STATUS SetInit(IN PQWORD_SET set, IN QWORD bucketsCount, IN HASH_FUNC hasher)
 {
-    PHEAP heap = &GetVMMStruct()->currentCPU->sharedData->heap;
+    PHEAP heap;
+
+    heap = &GetVMMStruct()->currentCPU->sharedData->heap;
     if(heap->allocate(heap, bucketsCount * sizeof(QWORD_ARRAY), &set->array) != STATUS_SUCCESS)
         return STATUS_NO_MEM_AVAILABLE;
     for(QWORD i = 0; i < bucketsCount; i++)
@@ -15,7 +17,9 @@ STATUS SetInit(IN PQWORD_SET set, IN QWORD bucketsCount, IN HASH_FUNC hasher)
 
 STATUS SetInsert(IN PQWORD_SET set, IN QWORD value)
 {
-    QWORD hash = set->hasher(value);
+    QWORD hash;
+
+    hash = set->hasher(value);
     if(IsInSet(set, value))
         return STATUS_KEY_ALREADY_EXISTS;
     return QArrayInsert(&(set->array[hash]), value);

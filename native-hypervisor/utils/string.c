@@ -10,7 +10,9 @@ BOOL UnicodeStringEquals(IN PUNICODE_STRING str1, IN PUNICODE_STRING str2)
 
 QWORD UnicodeStringHash(IN PUNICODE_STRING str)
 {
-    QWORD hash = 5381;
+    QWORD hash;
+
+    hash = 5381;
     for(QWORD i = 0; i < str->length; i++)
         hash = ((hash << 5) + hash) + (BYTE_PTR)(str->data)[i];
     return hash % BASIC_HASH_LEN;
