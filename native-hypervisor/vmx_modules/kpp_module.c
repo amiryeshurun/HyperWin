@@ -10,12 +10,15 @@
 
 STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
+    PKPP_MODULE_DATA extension;
+    PSYSCALLS_MODULE_EXTENSION syscallsExt;
+
     PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
     SetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
-    PKPP_MODULE_DATA extension = module->moduleExtension;
+    extension = module->moduleExtension;
     extension->syscallsData = &__ntDataStart;
-    PSYSCALLS_MODULE_EXTENSION syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
+    syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
     extension->syscallsMap = &syscallsExt->addressToSyscall;
     extension->addressSet = &syscallsExt->addressSet;
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
@@ -33,6 +36,7 @@ BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD add
     IN BYTE readLength, OUT BOOL* before, OUT PSYSCALL_DATA* entry, QWORD_PTR ext)
 {
     QWORD hookedSyscallsCount, hookedSyscalls[KPP_MODULE_MAX_COUNT];
+
     MapGetValues(kppData->syscallsMap, hookedSyscalls, &hookedSyscallsCount);
     for(QWORD i = 0; i < hookedSyscallsCount; i++)
     {
@@ -63,9 +67,11 @@ BOOL CheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD add
 VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength, 
     IN PKPP_MODULE_DATA kppData)
 {
-    QWORD hostVirtualAddress = TranslateGuestPhysicalToHostVirtual(guestPhysical), ext;
+    QWORD hostVirtualAddress, ext;
     PSYSCALL_DATA entry;
     BOOL isBefore;
+
+    hostVirtualAddress = TranslateGuestPhysicalToHostVirtual(guestPhysical);
     if(CheckIfAddressContainsInstruction(kppData, guestPhysical, readLength, &isBefore, 
         &entry, &ext))
     {
@@ -94,9 +100,10 @@ VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
 
 STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength)
 {
-    PREGISTERS regs = &(GetVMMStruct()->guestRegisters);
+    PREGISTERS regs;
     BYTE inst[X86_MAX_INSTRUCTION_LEN];
 
+    regs = &GetVMMStruct()->guestRegisters;
     CopyGuestMemory(inst, regs->rip, instructionLength);
     if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x02)
     {
@@ -188,8 +195,12 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
 
 STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-    QWORD address = vmread(GUEST_PHYSICAL_ADDRESS), instructionLength = vmread(VM_EXIT_INSTRUCTION_LEN);
-    PKPP_MODULE_DATA kppData = (PKPP_MODULE_DATA)module->moduleExtension;
+    QWORD address, instructionLength;
+    PKPP_MODULE_DATA kppData;
+
+    address = vmread(GUEST_PHYSICAL_ADDRESS);
+    instructionLength = vmread(VM_EXIT_INSTRUCTION_LEN);
+    kppData = (PKPP_MODULE_DATA)module->moduleExtension;
     if(!IsInSet(kppData->addressSet, ALIGN_DOWN(address, PAGE_SIZE)))
         return STATUS_VM_EXIT_NOT_HANDLED;
     return EmulatePatchGuardAction(kppData, address, instructionLength);

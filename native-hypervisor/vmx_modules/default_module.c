@@ -10,16 +10,22 @@
 #include <vmm/exit_reasons.h>
 #include <win_kernel/memory_manager.h>
 #include <bios/apic.h>
+#include <bios/bios_os_loader.h>
 #include <guest_communication/communication_block.h>
 
 STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
+    QWORD accessInformation, operation, cr3Value;
+    PREGISTERS regs;
+
     // Disable CR3 access after the first time
     __vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmread(CPU_BASED_VM_EXEC_CONTROL)
          & ~(CPU_BASED_CR3_LOAD_EXITING) & ~(CPU_BASED_CR3_STORE_EXITING));
-    QWORD accessInformation = vmread(EXIT_QUALIFICATION), 
-        operation = accessInformation & CR_ACCESS_TYPE_MASK;
-    PREGISTERS regs = &(data->guestRegisters);
+    
+    accessInformation = vmread(EXIT_QUALIFICATION);
+    operation = accessInformation & CR_ACCESS_TYPE_MASK;
+    regs = &data->guestRegisters;
+
     switch(accessInformation & CR_ACCESS_CR_NUMBER_MASK)
     {
         case 0:
@@ -93,7 +99,7 @@ STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
             }
             else if(operation == CR_ACCESS_TYPE_MOV_FROM_CR)
             {
-                QWORD cr3Value = vmread(GUEST_CR3);
+                cr3Value = vmread(GUEST_CR3);
                 switch(accessInformation & CR_ACCESS_REGISTER_MASK)
                 {
                     case CR_ACCESS_REGISTER_RAX:
@@ -161,8 +167,10 @@ STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     PrintDebugLevelDebug("XSETBV detected, emulating the instruction.\n");
 #endif
     // XSETBV ---> XCR[ECX] = EDX:EAX
-    PREGISTERS regs = &(data->guestRegisters);
+    PREGISTERS regs;
     QWORD eax, ebx, ecx, edx;
+
+    regs = &data->guestRegisters;
     __cpuid(1, 0, &eax, &ebx, &ecx, &edx);
 
     if((regs->rcx & 0xffffffffULL)
@@ -182,8 +190,9 @@ STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 
 STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {    
-    PREGISTERS regs = &(data->guestRegisters);
-
+    PREGISTERS regs;
+    
+    regs = &data->guestRegisters;
     if(regs->rax == VMCALL_SETUP_BASE_PROTECTION)
     {
         ASSERT(SetupHypervisorCodeProtection(data->currentCPU->sharedData, 
@@ -194,34 +203,11 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     }
     else if(regs->rip == E820_VMCALL_GATE)
     {
+        // This is an int 0x15
+        // GetMemoryMap operation
         if(regs->rax == 0xE820)
-        {
-            BOOL carrySet = FALSE;
-            if(regs->rbx >= data->currentCPU->sharedData->memoryRangesCount)
-            {
-                carrySet = TRUE;
-                goto EmulateIRET;
-            }
-            regs->rax = E820_MAGIC;
-            regs->rcx = (regs->rcx & ~(0xffULL)) | 20;
-            CopyMemory(vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL), 
-                &(data->currentCPU->sharedData->allRam[regs->rbx++]), sizeof(E820_LIST_ENTRY));
-            carrySet = FALSE;
-            if(regs->rbx == data->currentCPU->sharedData->memoryRangesCount)
-                regs->rbx = 0;
-EmulateIRET:
-            regs->rip = (DWORD)(*(DWORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp));
-            WORD csValue = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 2);
-            WORD flags = *(WORD_PTR)(vmread(GUEST_SS_BASE) + regs->rsp + 4);
-            if(carrySet) 
-                flags |= RFLAGS_CARRY;
-            else
-                flags &= ~(RFLAGS_CARRY);
-            __vmwrite(GUEST_CS_BASE, csValue << 4);
-            __vmwrite(GUEST_CS_SELECTOR, csValue);
-            regs->rsp += 6;
-            return STATUS_SUCCESS;
-        }
+            return HandleE820(data, regs);
+        // Other operations
         regs->rip = data->currentCPU->sharedData->int15Offset;
         __vmwrite(GUEST_CS_BASE, (data->currentCPU->sharedData->int15Segment));
         __vmwrite(GUEST_CS_SELECTOR, (data->currentCPU->sharedData->int15Segment) >> 4);
@@ -238,12 +224,13 @@ EmulateIRET:
 
 STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-	PREGISTERS regs = &(data->guestRegisters);
+	PREGISTERS regs;
+    QWORD msrNum, msrValue;
+
+    regs = &data->guestRegisters;
 	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-
-	QWORD msrNum = regs->rcx & 0xFFFFFFFFULL;
-	QWORD msrValue = __readmsr(msrNum);
-
+	msrNum = regs->rcx & 0xFFFFFFFFULL;
+	msrValue = __readmsr(msrNum);
 	regs->rax = (DWORD)msrValue;
 	regs->rdx = (DWORD)(msrValue >> 32);
     
@@ -252,11 +239,13 @@ STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 
 STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-	PREGISTERS regs = &(data->guestRegisters);
-	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+	PREGISTERS regs;
+    QWORD msrNum, msrValue;
 
-	QWORD msrNum = regs->rcx & 0xFFFFFFFFULL;
-	QWORD msrValue = (regs->rax & 0xFFFFFFFFULL) | ((regs->rdx & 0xFFFFFFFFULL) << 32);
+	regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
+    regs = &data->guestRegisters;
+	msrNum = regs->rcx & 0xFFFFFFFFULL;
+	msrValue = (regs->rax & 0xFFFFFFFFULL) | ((regs->rdx & 0xFFFFFFFFULL) << 32);
 	__writemsr(msrNum, msrValue);
 
     return STATUS_SUCCESS;
@@ -264,12 +253,16 @@ STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 
 STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-    PREGISTERS regs = &(data->guestRegisters);
-    QWORD eax, ebx, ecx, edx, leaf = regs->rax, subleaf = regs->rcx;
+    PREGISTERS regs;
+    QWORD eax, ebx, ecx, edx, leaf, subleaf, physicalCommunication;
+
+    regs = &data->guestRegisters;
+    leaf = regs->rax;
+    subleaf = regs->rcx;
     regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
     if(leaf == CPUID_GET_READ_PIPE)
     {
-        QWORD physicalCommunication = data->currentCPU->sharedData->readPipe.physicalAddress;
+        physicalCommunication = data->currentCPU->sharedData->readPipe.physicalAddress;
         Print("Received a request for read pipe base address: %8\n", physicalCommunication);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
@@ -278,7 +271,7 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     }
     else if(leaf == CPUID_GET_WRITE_PIPE)
     {
-        QWORD physicalCommunication = data->currentCPU->sharedData->writePipe.physicalAddress;
+        physicalCommunication = data->currentCPU->sharedData->writePipe.physicalAddress;
         Print("Received a request for write pipe base address: %8\n", physicalCommunication);
         regs->rdx = physicalCommunication >> 32;
         regs->rax = physicalCommunication & 0xffffffffULL;
@@ -364,10 +357,13 @@ STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 
 STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-    QWORD vector = vmread(EXIT_QUALIFICATION);
+    PREGISTERS regs;
+    QWORD vector;
+
+    vector = vmread(EXIT_QUALIFICATION);
     // See Intel SDM, Volume 3C, Section 25.2
     Print("SIPI detected on core: %d. Page number: %d\n", data->currentCPU->coreIdentifier, vector);
-    PREGISTERS regs = &(data->guestRegisters);
+    regs = &data->guestRegisters;
     SetMemory(regs, 0, sizeof(REGISTERS));
     // PM & PG must be disabled
     __vmwrite(GUEST_CR0, (__readmsr(MSR_IA32_VMX_CR0_FIXED0) & (~CR0_PM_ENABLED) 
@@ -414,7 +410,9 @@ STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 
 STATUS HandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-    QWORD vector = vmread(VM_EXIT_INTR_INFO);
+    QWORD vector;
+    
+    vector = vmread(VM_EXIT_INTR_INFO);
     if(vector & 0xff != INT_PAGE_FAULT)
         return STATUS_VM_EXIT_NOT_HANDLED;
     __writecr2(vmread(EXIT_QUALIFICATION));

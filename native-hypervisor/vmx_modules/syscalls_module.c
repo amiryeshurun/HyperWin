@@ -77,8 +77,9 @@ STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
     BYTE pattern[] = { 0x8B, 0xF8, 0xC1, 0xEF, 0x07, 0x83, 0xE7, 0x20, 0x25, 0xFF, 0x0F, 0x00, 0x00 };
     BYTE kernelChunk[13];
     BYTE_PTR patternAddress;
-    QWORD offset = 0x60C759; // MS updates ntoskrnl.exe's image from time to time. Previouse value is: 0x60D359;
+    QWORD offset;
 
+    offset = 0x60C759; // MS updates ntoskrnl.exe's image from time to time. Previouse value is: 0x60D359;
     PrintDebugLevelDebug("Starting to search for the pattern: %.b in kernel's address space\n", 13, pattern);
 
     for(; offset < 0xffffffff; offset++)
@@ -114,11 +115,12 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
 {
     va_list args;
     PSHARED_CPU_DATA shared;
-    PSYSCALLS_MODULE_EXTENSION ext = module->moduleExtension;
+    PSYSCALLS_MODULE_EXTENSION ext;
     QWORD syscallId, functionAddress, virtualFunctionAddress, physicalHookAddress, virtualHookAddress;
     DWORD offset;
     BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN];
 
+    ext = module->moduleExtension;
     va_start(args, count);
     shared = GetVMMStruct()->currentCPU->sharedData;
     while(count--)
@@ -189,10 +191,11 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 
 STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-    BYTE vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
+    BYTE vector;
     QWORD syscallId, ripPhysicalAddress;
     PSYSCALLS_MODULE_EXTENSION ext;
 
+    vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
     if(vector != INT_BREAKPOINT)
         return STATUS_VM_EXIT_NOT_HANDLED;
     

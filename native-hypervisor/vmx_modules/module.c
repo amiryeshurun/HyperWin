@@ -26,6 +26,7 @@ VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HAN
 VOID RegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
 {
     PMODULE* newArr;
+    
     sharedData->heap.allocate(&sharedData->heap, ++(sharedData->modulesCount) * sizeof(PMODULE), &newArr);
     CopyMemory(newArr, sharedData->modules, (sharedData->modulesCount - 1) * sizeof(PMODULE));
     newArr[sharedData->modulesCount - 1] = module;
@@ -43,8 +44,11 @@ VOID SetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHAR m
 
 STATUS GetModuleByName(OUT PMODULE* module, IN PCHAR name)
 {
-    PSHARED_CPU_DATA shared = GetVMMStruct()->currentCPU->sharedData;
-    QWORD nameLength = StringLength(name);
+    PSHARED_CPU_DATA shared;
+    QWORD nameLength;
+
+    shared = GetVMMStruct()->currentCPU->sharedData;
+    nameLength = StringLength(name);
     for(QWORD i = 0; i < shared->modulesCount; i++)
     {
         if(!CompareMemory(name, shared->modules[i]->moduleName, nameLength))
