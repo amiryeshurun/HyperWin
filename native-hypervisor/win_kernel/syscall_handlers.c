@@ -110,16 +110,22 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
 
 VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId)
 {
-    QWORD returnAddress = CALC_RETURN_HOOK_ADDR(syscallsData[syscallId].virtualHookedInstructionAddress);
+    QWORD returnAddress;
+    
+    returnAddress = CALC_RETURN_HOOK_ADDR(syscallsData[syscallId].virtualHookedInstructionAddress);
     CopyGuestMemory(&syscallEvents[threadId].returnAddress, rsp, sizeof(QWORD));
     CopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
 }
 
 STATUS HandleNtOpenPrcoess()
 {
-    PCURRENT_GUEST_STATE state = GetVMMStruct();
-    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
-    PREGISTERS regs = &state->guestRegisters;
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+
+    state = GetVMMStruct();
+    shared = state->currentCPU->sharedData;
+    regs = &state->guestRegisters;
     // Emulate replaced instruction: sub rsp,38h
     regs->rsp -= 0x38;
     regs->rip += syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
@@ -129,17 +135,25 @@ STATUS HandleNtOpenPrcoess()
 
 STATUS HandleNtOpenPrcoessReturn()
 {
-    PCURRENT_GUEST_STATE state = GetVMMStruct();
-    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
-    PREGISTERS regs = &state->guestRegisters;
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+
+    state = GetVMMStruct();
+    shared = state->currentCPU->sharedData;
+    regs = &state->guestRegisters;
     return STATUS_SUCCESS;
 }
 
 STATUS HandleNtCreateUserProcess()
 {
-    PCURRENT_GUEST_STATE state = GetVMMStruct();
-    PSHARED_CPU_DATA shared = state->currentCPU->sharedData;
-    PREGISTERS regs = &state->guestRegisters;
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+
+    state = GetVMMStruct();
+    shared = state->currentCPU->sharedData;
+    regs = &state->guestRegisters;
     // Emulate replaced instruction: push rbp
     ASSERT(CopyMemoryToGuest(regs->rsp - 8, &regs->rbp, sizeof(QWORD)) == STATUS_SUCCESS);
     regs->rsp -= 8;

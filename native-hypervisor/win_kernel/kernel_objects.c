@@ -17,6 +17,7 @@ STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread)
 STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess)
 {
     BYTE_PTR ethread;
+
     if(GetCurrent_ETHREAD(&ethread) != STATUS_SUCCESS)
         return STATUS_ETHREAD_NOT_AVAILABLE;
     return GetObjectField(ETHREAD, ethread, ETHREAD_KPROCESS, eprocess);
@@ -31,6 +32,7 @@ STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BY
     DWORD nextHandleNeedingPool;
     QWORD tableBase, tableLevel, res, tableResult, objectHeader;
     HANDLE handleBackup;
+    
     if(handle == -1ULL)
     {
         GetCurrent_EPROCESS(object);

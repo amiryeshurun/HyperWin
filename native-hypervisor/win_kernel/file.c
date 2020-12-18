@@ -6,6 +6,7 @@
 STATUS Translate_SCB_To_FCB(IN QWORD scb, OUT QWORD_PTR fcb)
 {
     STATUS status;
+    
     if((status = CopyGuestMemory(fcb, scb + SCB_FCB_OFFSET, sizeof(QWORD))) != STATUS_SUCCESS)
     {
         Print("Could not copy FCB address\n");
