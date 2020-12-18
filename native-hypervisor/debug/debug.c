@@ -17,9 +17,14 @@ VOID PrintNullTerminatedBuffer(IN PCHAR buffer)
 
 VOID PrintVaArg(IN PCHAR fmt, va_list args)
 {
-    CHAR buffer[BUFF_MAX_SIZE] = { 0 };
-    QWORD bufferPosition = 0, fmtLength = StringLength(fmt);
-
+    CHAR buffer[BUFF_MAX_SIZE] = { 0 }, currq;
+    QWORD bufferPosition, fmtLength, num, digits, delimiter, length, currQword, mask;
+    BYTE_PTR byteArr;
+    QWORD_PTR qwordArr;
+    BYTE currByte, numberOfBytes;
+    
+    bufferPosition = 0;
+    fmtLength = StringLength(fmt);
     for(QWORD i = 0; i < fmtLength; i++)
     {
         if(fmt[i] == '%')
@@ -28,7 +33,10 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
             {
                 case 'd': // %d
                 {
-                    QWORD num = va_arg(args, QWORD), digits = NumberOfDigits(num), delimiter = pow(10, digits - 1);
+                    num = va_arg(args, QWORD);
+                    digits = NumberOfDigits(num);
+                    delimiter = pow(10, digits - 1);
+
                     while(delimiter)
                     {
                         buffer[bufferPosition++] = (num / delimiter) % 10 + '0';
@@ -43,11 +51,11 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
                     {
                         case 'b': // %.b
                         {
-                            QWORD length = va_arg(args, QWORD);
-                            BYTE_PTR byteArr = (BYTE_PTR)va_arg(args, QWORD);
+                            length = va_arg(args, QWORD);
+                            byteArr = (BYTE_PTR)va_arg(args, QWORD);
                             for(QWORD j = 0; j < length; j++)
                             {
-                                BYTE currByte = byteArr[j];
+                                currByte = byteArr[j];
 
                                 buffer[bufferPosition++] = ConvertHalfByteToHexChar(currByte >> 4);
                                 buffer[bufferPosition++] = ConvertHalfByteToHexChar(currByte & 0xf);
@@ -57,12 +65,13 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
                         }
                         case 'q':
                         {
-                            QWORD length = va_arg(args, QWORD);
-                            QWORD_PTR qwordArr = (QWORD_PTR)va_arg(args, QWORD);
+                            length = va_arg(args, QWORD);
+                            qwordArr = (QWORD_PTR)va_arg(args, QWORD);
                             for(QWORD j = 0; j < length; j++)
                             {
-                                CHAR currq = 15;
-                                QWORD currQword = qwordArr[j], mask = 0xf << (currq * 4);
+                                currq = 15;
+                                currQword = qwordArr[j];
+                                mask = 0xf << (currq * 4);
                                 for(; currq >= 0; currq--, mask >>= 4)
                                     buffer[bufferPosition++] = ConvertHalfByteToHexChar((currQword & mask) >> (currq * 4));
                                 buffer[bufferPosition++] = ' ';
@@ -74,9 +83,9 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
                 }
                 default: // %<NUMBER>
                 {
-                    BYTE numberOfBytes = fmt[i + 1] - '0';
-                    CHAR currq = 2 * numberOfBytes - 1;
-                    QWORD num = va_arg(args, QWORD), mask = 0xf << (currq * 4);
+                    numberOfBytes = fmt[i + 1] - '0';
+                    currq = 2 * numberOfBytes - 1;
+                    num = va_arg(args, QWORD), mask = 0xf << (currq * 4);
                     for(; currq >= 0; currq--, mask >>= 4)
                         buffer[bufferPosition++] = ConvertHalfByteToHexChar((num & mask) >> (currq * 4));
                     i++;
