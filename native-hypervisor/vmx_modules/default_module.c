@@ -206,7 +206,7 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
         // This is an int 0x15
         // GetMemoryMap operation
         if(regs->rax == 0xE820)
-            return HandleE820(data, regs);
+            return BiosHandleE820(data, regs);
         // Other operations
         regs->rip = data->currentCPU->sharedData->int15Offset;
         __vmwrite(GUEST_CS_BASE, (data->currentCPU->sharedData->int15Segment));

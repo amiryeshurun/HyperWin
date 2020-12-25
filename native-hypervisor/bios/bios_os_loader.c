@@ -9,7 +9,7 @@
 BiosFunction functionsBegin[] = { DiskReader, GetMemoryMap, SleepAsm };
 BiosFunction functionsEnd[] = { DiskReaderEnd, GetMemoryMapEnd, SleepAsmEnd };
 
-VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
+VOID BiosEnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
 {
     BiosFunction functionBegin, functionEnd;
     QWORD enterRealModeLength, functionLength;
@@ -28,7 +28,7 @@ VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
         outputBuffer = (BYTE_PTR)REAL_MODE_OUTPUT_BUFFER_ADDRESS;
 }
 
-VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
+VOID BiosReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
 {
     PDISK_ADDRESS_PACKET packet = DAP_ADDRESS;
 
@@ -40,7 +40,7 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     packet->sectorNumberLowPart = 0;
     packet->sectorNumberHighPart = 0;
     *(BYTE_PTR)(DAP_ADDRESS + 0x10) = diskIndex;
-    EnterRealModeRunFunction(DISK_READER, NULL);
+    BiosEnterRealModeRunFunction(DISK_READER, NULL);
     if(!address)
     {
         Print("Output address was not specified as a destenation for int 13h\n");
@@ -49,13 +49,13 @@ VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address)
     *address = FIRST_SECTOR_DEST;
 }
 
-VOID LoadMBRToEntryPoint()
+VOID BiosLoadMBRToEntryPoint()
 {
     PMBR sectorAddress;
 
     for(BYTE diskIdx = 0x80; diskIdx < 0xff; diskIdx++)
     {
-        ReadFirstSectorToRam(diskIdx, &sectorAddress);
+        BiosReadFirstSectorToRam(diskIdx, &sectorAddress);
         if(*(WORD_PTR)((BYTE_PTR)sectorAddress + MBR_SIZE - sizeof(WORD)) == BOOTABLE_SIGNATURE)
         {
             Print("An MBR disk was found at disk #%d\n", diskIdx);
@@ -67,17 +67,17 @@ VOID LoadMBRToEntryPoint()
     // 0x7c00 now contains the MBR
 }
 
-VOID Sleep(IN DWORD milliSeconds)
+VOID BiosSleep(IN DWORD milliSeconds)
 {
     DWORD timeInMs;
 
     timeInMs = milliSeconds * 1000;
     *(WORD_PTR)SLEEP_TIME_FIRST_2 = timeInMs >> 16;
     *(WORD_PTR)SLEEP_TIME_SECOND_2 = timeInMs & 0xffff;
-    EnterRealModeRunFunction(SLEEP, NULL);
+    BiosEnterRealModeRunFunction(SLEEP, NULL);
 }
 
-STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
+STATUS BiosFindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
 {
     CHAR pattern[] = "RSD PTR ";
     BYTE_PTR ebdaAddress, rsdpBaseAddress;
@@ -128,7 +128,7 @@ RSDPFound:
     return STATUS_SUCCESS;
 }
 
-STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature)
+STATUS BiosLocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature)
 {
     QWORD sum, entriesCount;
     DWORD_PTR dwSectionsArrayBase;
@@ -171,7 +171,7 @@ STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWO
     return STATUS_APIC_NOT_FOUND;
 }
 
-STATUS HandleE820(IN PCURRENT_GUEST_STATE data, IN PREGISTERS regs)
+STATUS BiosHandleE820(IN PCURRENT_GUEST_STATE data, IN PREGISTERS regs)
 {
     BOOL carrySet;
     WORD csValue, flags;

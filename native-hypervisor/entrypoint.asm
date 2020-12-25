@@ -60,7 +60,7 @@
 ; 0x17000 - cr3 (PML4 base addr)
 ; 0x2800000 - stack (long mode)
 
-extern Initialize
+extern BiosInitialize
 
 global _start
 global SetupSystemAndHandleControlToBios
@@ -180,7 +180,7 @@ CompatibilityTo64:
     loop .setup_pds_long_mode
     
     mov rsp, 0x2800000
-    call Initialize ; goodbye assembly, hello C! (not really... just for a short time)
+    call BiosInitialize ; goodbye assembly, hello C! (not really... just for a short time)
     push 16
     mov rax, 0x25ff0
     push rax

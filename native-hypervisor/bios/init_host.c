@@ -9,16 +9,16 @@
 #include <guest_communication/communication_block.h>
 #include <utils/allocation.h>
 
-VOID Initialize()
+VOID BiosInitialize()
 {
     SetupVirtualAddress(__readcr3());
-    InitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
-    LoadMBRToEntryPoint();
+    BiosInitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
+    BiosLoadMBRToEntryPoint();
     CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, (BYTE_PTR)SetupSystemAndHandleControlToBios,
         SetupSystemAndHandleControlToBiosEnd - SetupSystemAndHandleControlToBios);
 }
 
-VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
+VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
 {
     BYTE rsdtType, numberOfCores, processorIdentifires[MAX_CORES];
     BYTE_PTR apicTable, rsdtTable, physicalHypervisorBase, physicalReadPipe, physicalWritePipe;
@@ -27,32 +27,32 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     DWORD validRamCount;
     PSHARED_CPU_DATA sharedData;
 
-    ASSERT(FindRSDT(&rsdtTable, &rsdtType) == STATUS_SUCCESS);
-    ASSERT(LocateSystemDescriptorTable(rsdtTable, &apicTable, rsdtType, "APIC") == STATUS_SUCCESS);
-    ASSERT(GetCoresData(apicTable, &numberOfCores, processorIdentifires) == STATUS_SUCCESS);
-    EnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
+    ASSERT(BiosFindRSDT(&rsdtTable, &rsdtType) == STATUS_SUCCESS);
+    ASSERT(BiosLocateSystemDescriptorTable(rsdtTable, &apicTable, rsdtType, "APIC") == STATUS_SUCCESS);
+    ASSERT(ApicGetCoresData(apicTable, &numberOfCores, processorIdentifires) == STATUS_SUCCESS);
+    BiosEnterRealModeRunFunction(GET_MEMORY_MAP, NULL);
     memoryRegionsCount = *((WORD_PTR)E820_OUTPUT_ADDRESS);
     PE820_LIST_ENTRY memoryMap = (PE820_LIST_ENTRY)(E820_OUTPUT_ADDRESS + 2);
     allocationSize = 0;
     allocationSize += ALIGN_UP(sizeof(SHARED_CPU_DATA), PAGE_SIZE);
     allocationSize += (ALIGN_UP(sizeof(SINGLE_CPU_DATA), PAGE_SIZE) * numberOfCores);
     allocationSize += (ALIGN_UP(sizeof(CURRENT_GUEST_STATE), PAGE_SIZE) * numberOfCores);
-    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize, &physicalHypervisorBase))
+    if(BiosAllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, allocationSize, &physicalHypervisorBase))
     {
         Print("Allocation of %8 bytes failed.\n", allocationSize);
         ASSERT(FALSE);
     }
-    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalReadPipe))
+    if(BiosAllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalReadPipe))
     {
         Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
         ASSERT(FALSE);
     }
-    if(AllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalWritePipe))
+    if(BiosAllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalWritePipe))
     {
         Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
         ASSERT(FALSE);
     }
-    ASSERT(HideCodeBase(memoryMap, &memoryRegionsCount, codeBase, codeLength) == STATUS_SUCCESS);
+    ASSERT(BiosHideCodeBase(memoryMap, &memoryRegionsCount, codeBase, codeLength) == STATUS_SUCCESS);
     hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     SetMemory(hypervisorBase, 0, allocationSize);
     sharedData = hypervisorBase;
@@ -102,10 +102,10 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     // Init heap before registering modules
     HeapInit(&(sharedData->heap), HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
     // Enable 2xAPIC
-    EnableX2APIC();
+    ApicEnableX2APIC();
     // Initialize hypervisor on all cores except the BSP
     for(QWORD i = 1; i < numberOfCores; i++)
-        ASSERT(ActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
+        ASSERT(ApicActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
             == STATUS_SUCCESS);
     // Initialize hypervisor on BSP
     InitializeSingleHypervisor(sharedData->cpuData[0]);
@@ -113,7 +113,7 @@ VOID InitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
 }
 
-STATUS AllocateMemoryUsingMemoryMap
+STATUS BiosAllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address)
 {
     QWORD alignedAllocationSize, unalignedCountBase, unalignedCountLength;
@@ -148,7 +148,7 @@ VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count)
                "Type: %d\n", i, start[i].baseAddress, start[i].length, start[i].type);
 }
 
-STATUS HideCodeBase
+STATUS BiosHideCodeBase
     (IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength)
 {
     QWORD codeRegionIdx, count;

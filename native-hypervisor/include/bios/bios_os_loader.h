@@ -124,18 +124,18 @@ extern VOID SetupSystemAndHandleControlToBiosEnd();
 extern VOID SleepAsm();
 extern VOID SleepAsmEnd();
 
-VOID EnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
-VOID ReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
-VOID LoadMBRToEntryPoint();
-STATUS FindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
-STATUS LocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature);
-STATUS AllocateMemoryUsingMemoryMap
+VOID BiosEnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer);
+VOID BiosReadFirstSectorToRam(IN BYTE diskIndex, OUT BYTE_PTR* address);
+VOID BiosLoadMBRToEntryPoint();
+STATUS BiosFindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type);
+STATUS BiosLocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN QWORD type, IN PCHAR signature);
+STATUS BiosAllocateMemoryUsingMemoryMap
     (IN PE820_LIST_ENTRY memoryMap, IN DWORD memoryRegionsCount, IN QWORD allocationSize, OUT BYTE_PTR* address);
 VOID PrintMemoryRanges(IN PE820_LIST_ENTRY start, IN QWORD count);
-STATUS HideCodeBase(IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength);
-VOID Sleep(IN DWORD milliSeconds);
+STATUS BiosHideCodeBase(IN PE820_LIST_ENTRY memoryMap, OUT WORD_PTR updatedCount, IN QWORD codeBegin, IN QWORD codeLength);
+VOID BiosSleep(IN DWORD milliSeconds);
 
 struct _CURRENT_GUEST_STATE;
-STATUS HandleE820(IN struct _CURRENT_GUEST_STATE* data, IN PREGISTERS regs);
+STATUS BiosHandleE820(IN struct _CURRENT_GUEST_STATE* data, IN PREGISTERS regs);
 
 #endif

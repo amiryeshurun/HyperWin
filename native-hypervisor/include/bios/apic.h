@@ -27,12 +27,12 @@
 extern VOID ApicStart();
 extern VOID ApicEnd();
 
-STATUS DetectX2APICAvailability();
-VOID EnableX2APIC();
-VOID EnableAPIC();
-STATUS GetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
-VOID X2APICIssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode, IN QWORD lvl);
-STATUS ActivateHypervisorOnProcessor(IN QWORD processorId, IN PSINGLE_CPU_DATA cpuData);
-VOID APICGetBaseAddress();
+STATUS ApicDetectX2APICAvailability();
+VOID ApicEnableX2APIC();
+VOID ApicEnableAPIC();
+STATUS ApicGetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT BYTE_PTR processorsIdentifiers);
+VOID ApicX2APICIssueIPI(IN QWORD destenation, IN QWORD vector, IN QWORD deliveryMode, IN QWORD lvl);
+STATUS ApicActivateHypervisorOnProcessor(IN QWORD processorId, IN PSINGLE_CPU_DATA cpuData);
+VOID ApicGetBaseAddress();
 
 #endif
