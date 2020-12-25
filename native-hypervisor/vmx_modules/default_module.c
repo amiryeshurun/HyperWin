@@ -216,7 +216,7 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     else if(regs->rax == VMCALL_COMMUNICATION_BLOCK)
     {
         regs->rip += vmread(VM_EXIT_INSTRUCTION_LEN);
-        return HandleVmCallCommunication(data);
+        return ComHandleVmCallCommunication(data);
     } 
 
     return STATUS_UNKNOWN_VMCALL;

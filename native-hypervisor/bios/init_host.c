@@ -65,9 +65,9 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->codeBaseSize = ALIGN_UP(codeLength, PAGE_SIZE);
     // Save communication block area in global memory & initialize
     SetMemory(PhysicalToVirtual(physicalReadPipe), 0, LARGE_PAGE_SIZE);
-    InitPipe(&sharedData->readPipe, physicalReadPipe, PhysicalToVirtual(physicalReadPipe), 0);
+    ComInitPipe(&sharedData->readPipe, physicalReadPipe, PhysicalToVirtual(physicalReadPipe), 0);
     SetMemory(PhysicalToVirtual(physicalWritePipe), 0 , LARGE_PAGE_SIZE);
-    InitPipe(&sharedData->writePipe, physicalWritePipe, PhysicalToVirtual(physicalWritePipe), 0);
+    ComInitPipe(&sharedData->writePipe, physicalWritePipe, PhysicalToVirtual(physicalWritePipe), 0);
     // Initialize cores data
     for(BYTE i = 0; i < numberOfCores; i++)
     {

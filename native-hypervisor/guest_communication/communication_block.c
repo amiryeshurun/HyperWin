@@ -7,7 +7,7 @@
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/syscall_handlers.h>
 
-STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
+STATUS ComHandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs;
     OPERATION operation;
@@ -18,13 +18,13 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     regs = &data->guestRegisters;
     offsetWithinPipe = regs->rbx;
     
-    if((status = ValidateCaller()) != STATUS_SUCCESS)
+    if((status = ComValidateCaller()) != STATUS_SUCCESS)
     {
         Print("Could not validate the VMCALL caller: %d\n", status);
         return status;
     }
 
-    if(ParseCommunicationBlock(data->currentCPU->sharedData->readPipe.virtualAddress, offsetWithinPipe,
+    if(ComParseCommunicationBlock(data->currentCPU->sharedData->readPipe.virtualAddress, offsetWithinPipe,
         &operation, &args))
         return STATUS_COMMUNICATION_PARSING_FAILED;
 
@@ -32,17 +32,17 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     {
         case OPERATION_INIT:
         {
-            regs->rax = HandleCommunicationInit(args);
+            regs->rax = ComHandleCommunicationInit(args);
             break;
         }
         case OPERATION_PROTECTED_PROCESS:
         {
-            regs->rax = HandleCommunicationProtect(args);
+            regs->rax = ComHandleCommunicationProtect(args);
             break;
         }
         case OPERATION_PROTECT_FILE_DATA:
         {
-            regs->rax = HandleCommunicationHideData(args);
+            regs->rax = ComHandleCommunicationHideData(args);
             break;
         }
         default:
@@ -56,7 +56,7 @@ STATUS HandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
 }
 
 
-VOID InitPipe(OUT PCOMMUNICATION_PIPE pipe, IN QWORD physicalAddress, IN BYTE_PTR virtualAddress,
+VOID ComInitPipe(OUT PCOMMUNICATION_PIPE pipe, IN QWORD physicalAddress, IN BYTE_PTR virtualAddress,
     IN QWORD currentOffset)
 {
     pipe->physicalAddress = physicalAddress;
@@ -64,7 +64,7 @@ VOID InitPipe(OUT PCOMMUNICATION_PIPE pipe, IN QWORD physicalAddress, IN BYTE_PT
     pipe->currentOffset = currentOffset;
 }
 
-STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress, IN QWORD offsetWithinPipe,
+STATUS ComParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress, IN QWORD offsetWithinPipe,
      OUT POPERATION operation, OUT PGENERIC_COM_STRUCT* arguments)
 {
     *arguments = (comminucationBlockAddress + offsetWithinPipe);
@@ -72,7 +72,7 @@ STATUS ParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress, IN QWORD o
     return STATUS_SUCCESS;
 }
 
-STATUS ValidateCaller()
+STATUS ComValidateCaller()
 {
     QWORD eprocess;
     CHAR name[20], applicationName[] = { 0x48, 0x79, 0x70, 0x65, 0x72, 0x57, 0x69, 0x6E, 0x2D, 0x43, 0x6F, 0x6E,
@@ -88,7 +88,7 @@ STATUS ValidateCaller()
 
 // Handlers
 
-STATUS HandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
+STATUS ComHandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
 {
     if(args->argumentsUnion.initArgs.isMessageAvailable)
     {
@@ -102,7 +102,7 @@ STATUS HandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
     return STATUS_SUCCESS; 
 }
 
-STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
+STATUS ComHandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
 {
     QWORD eprocess, handleTable, protectedProcessEprocess;
 
@@ -116,7 +116,7 @@ STATUS HandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
+STATUS ComHandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
 {
     HANDLE fileHandle;
     BYTE content;
