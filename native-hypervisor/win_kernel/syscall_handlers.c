@@ -79,7 +79,7 @@ VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE 
 
 VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
 {
-    PREGISTERS regs = &GetVMMStruct()->guestRegisters;
+    PREGISTERS regs = &VmmGetVmmStruct()->guestRegisters;
     QWORD paramsStart = regs->rsp + 4 * sizeof(QWORD);
     switch(count)
     {
@@ -123,7 +123,7 @@ STATUS HandleNtOpenPrcoess()
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
 
-    state = GetVMMStruct();
+    state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
     // Emulate replaced instruction: sub rsp,38h
@@ -139,7 +139,7 @@ STATUS HandleNtOpenPrcoessReturn()
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
 
-    state = GetVMMStruct();
+    state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
     return STATUS_SUCCESS;
@@ -151,7 +151,7 @@ STATUS HandleNtCreateUserProcess()
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
 
-    state = GetVMMStruct();
+    state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
     // Emulate replaced instruction: push rbp
@@ -176,7 +176,7 @@ STATUS HandleNtReadFile()
     WORD fileType;
     STATUS status;
 
-    state = GetVMMStruct();
+    state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     module = shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module;
     regs = &state->guestRegisters;
@@ -240,7 +240,7 @@ STATUS HandleNtReadFileReturn()
     BYTE readDataBuffer[BUFF_MAX_SIZE];
     STATUS status;
 
-    state = GetVMMStruct();
+    state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     module = shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn.module;
     regs = &state->guestRegisters;

@@ -66,7 +66,7 @@ STATUS ApicActivateHypervisorOnProcessor(IN QWORD processorId, IN PSINGLE_CPU_DA
     ApicX2APICIssueIPI(processorId, 0, APIC_INIT_INTERRUPT, APIC_LEVEL_DEASSERT);
     BiosSleep(50);
     *(QWORD_PTR)CPU_DATA_ADDRESS = cpuData;
-    *(QWORD_PTR)(CPU_DATA_ADDRESS + sizeof(QWORD)) = InitializeSingleHypervisor;
+    *(QWORD_PTR)(CPU_DATA_ADDRESS + sizeof(QWORD)) = VmmInitializeSingleHypervisor;
     *(BYTE_PTR)SEMAPHORE_LOCATION = 0;
     ApicX2APICIssueIPI(processorId, APIC_FUNC_ADDRESS / PAGE_SIZE, APIC_SIPI_INTERRUPT, APIC_LEVEL_ASSERT);
     BiosSleep(50);

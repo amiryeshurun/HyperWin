@@ -6,7 +6,7 @@ STATUS QPArrayInit(OUT PQWORD_PAIRS_ARRAY array)
 {
     PHEAP heap;
 
-    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     if(heap->allocate(heap, sizeof(PQWORD_PAIR), &array->arr))
     {
         Print("Could not initialize array\n");
@@ -22,7 +22,7 @@ STATUS QPArrayInsert(IN PQWORD_PAIRS_ARRAY array, IN PQWORD_PAIR value)
     PHEAP heap;
     PQWORD_PAIR* newArr;
 
-    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     if(array->size == array->count)
     {
         if(heap->allocate(heap, array->size * 2 * sizeof(PQWORD_PAIR), &newArr) != STATUS_SUCCESS)
@@ -46,7 +46,7 @@ STATUS QArrayInit(OUT PQWORD_ARRAY array)
 {
     PHEAP heap;
 
-    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    heap = &(VmmGetVmmStruct()->currentCPU->sharedData->heap);
     if(heap->allocate(heap, sizeof(QWORD), &array->arr))
     {
         Print("Could not initialize array\n");
@@ -62,7 +62,7 @@ STATUS QArrayInsert(IN PQWORD_ARRAY array, IN QWORD value)
     PHEAP heap;
     QWORD_PTR newArr;
 
-    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    heap = &(VmmGetVmmStruct()->currentCPU->sharedData->heap);
     if(array->size == array->count)
     {
         if(heap->allocate(heap, array->size * 2 * sizeof(QWORD), &newArr) != STATUS_SUCCESS)

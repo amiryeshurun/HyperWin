@@ -48,7 +48,7 @@ VOID MapSet(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
     PQWORD_PAIR pair;
     QWORD hash;
 
-    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     hash = map->hash(key);
     // Check if the key already exist
     if(MapGet(map, key) == MAP_KEY_NOT_FOUND)
@@ -84,7 +84,7 @@ STATUS MapCreate(OUT PQWORD_MAP map, IN HASH_FUNC hasher, IN QWORD size, IN EQUA
 {
     PHEAP heap;
 
-    heap = &(GetVMMStruct()->currentCPU->sharedData->heap);
+    heap = &(VmmGetVmmStruct()->currentCPU->sharedData->heap);
     map->hash = hasher;
     map->innerSize = size;
     map->equals = equals;

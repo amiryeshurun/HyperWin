@@ -110,20 +110,20 @@ typedef struct _CURRENT_GUEST_STATE
 } CURRENT_GUEST_STATE, *PCURRENT_GUEST_STATE;
 
 extern VOID VmmToVm();
-extern VOID HandleVmExit();
-extern QWORD SetupCompleteBackToGuestState();
+extern VOID VmmHandleVmExit();
+extern QWORD VmmSetupCompleteBackToGuestState();
 
 VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength);
-VOID InitializeSingleHypervisor(IN PVOID data);
-DWORD AdjustControls(IN DWORD control, IN QWORD msr);
-VOID HandleVmExitEx();
-PCURRENT_GUEST_STATE GetVMMStruct();
-STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength);
-STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
-BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
-STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData);
+VOID VmmInitializeSingleHypervisor(IN PVOID data);
+DWORD VmmAdjustControls(IN DWORD control, IN QWORD msr);
+VOID VmmHandleVmExitEx();
+PCURRENT_GUEST_STATE VmmGetVmmStruct();
+STATUS VmmSetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength);
+STATUS VmmUpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
+BOOL VmmCheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
+STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData);
 VOID RegisterAllModules(IN PSINGLE_CPU_DATA sharedData);
-STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write);
-STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode);
+STATUS VmmUpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write);
+STATUS VmmInjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode);
 
 #endif

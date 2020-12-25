@@ -103,7 +103,7 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
     PREGISTERS regs;
     BYTE inst[X86_MAX_INSTRUCTION_LEN];
 
-    regs = &GetVMMStruct()->guestRegisters;
+    regs = &VmmGetVmmStruct()->guestRegisters;
     CopyGuestMemory(inst, regs->rip, instructionLength);
     if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x02)
     {

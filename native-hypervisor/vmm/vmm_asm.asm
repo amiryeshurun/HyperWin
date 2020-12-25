@@ -18,13 +18,13 @@
 SECTION .text
 
 global VmmToVm
-global HandleVmExit
-global SetupCompleteBackToGuestState
+global VmmHandleVmExit
+global VmmSetupCompleteBackToGuestState
 
-extern HandleVmExitEx
+extern VmmHandleVmExitEx
 extern DumpHostStack
 
-SetupCompleteBackToGuestState:
+VmmSetupCompleteBackToGuestState:
     mov rax, 0x0000681c
     vmwrite rax, rsp
     vmlaunch
@@ -35,7 +35,7 @@ VmmToVm:
     mov rax, STATUS_SUCCESS
     ret
 
-HandleVmExit:
+VmmHandleVmExit:
     mov qword [fs:0], rax
     mov qword [fs:8], rbx
     mov qword [fs:16], rcx
@@ -59,7 +59,7 @@ HandleVmExit:
     mov qword [fs:128], rbx
 
     ; Run handler function
-    call HandleVmExitEx
+    call VmmHandleVmExitEx
 
     ; Change guest registers according to current state
     mov rcx, qword [fs:16]

@@ -80,11 +80,11 @@ typedef union _EPT_PTE
 	}bitFields;
 }__attribute__((__packed__)) EPT_PTE, *PEPT_PTE;
 
-VOID SetupVirtualAddress(IN QWORD pml4BaseAddress);
+VOID VmmSetupVirtualAddress(IN QWORD pml4BaseAddress);
 QWORD VirtualToPhysical(IN QWORD address);
 QWORD PhysicalToVirtual(IN QWORD address);
-QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
-QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData);
-QWORD CreateEPTEntry(IN QWORD physicalAddress, IN QWORD access);
+QWORD VmmInitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
+QWORD VmmInitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData);
+QWORD VmmCreateEptEntry(IN QWORD physicalAddress, IN QWORD access);
 
 #endif

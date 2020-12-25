@@ -1,7 +1,7 @@
 #include <vmm/memory_manager.h>
 #include <vmm/vmm.h>
 
-VOID SetupVirtualAddress(IN QWORD pml4BaseAddress)
+VOID VmmSetupVirtualAddress(IN QWORD pml4BaseAddress)
 {
     ((QWORD_PTR)pml4BaseAddress)[200] = ((QWORD_PTR)pml4BaseAddress)[0];
 }
@@ -16,7 +16,7 @@ QWORD PhysicalToVirtual(IN QWORD address)
     return address + VIRTUAL_ADDRESS_OFFET;
 }
 
-QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)
+QWORD VmmInitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)
 {
     QWORD physicalAddress;
 
@@ -33,7 +33,7 @@ QWORD InitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData)
     return VirtualToPhysical(cpuData->pageMapLevel4s);
 }
 
-QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData)
+QWORD VmmInitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData)
 {
     QWORD eptp, physicalAddress;
     
@@ -51,7 +51,7 @@ QWORD InitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData)
     return eptp;
 }
 
-QWORD CreateEPTEntry(IN QWORD physicalAddress, IN QWORD access)
+QWORD VmmCreateEptEntry(IN QWORD physicalAddress, IN QWORD access)
 {
     return physicalAddress | access | (EPT_POINTER_WB << 3);
 }

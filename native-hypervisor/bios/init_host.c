@@ -11,7 +11,7 @@
 
 VOID BiosInitialize()
 {
-    SetupVirtualAddress(__readcr3());
+    VmmSetupVirtualAddress(__readcr3());
     BiosInitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
     BiosLoadMBRToEntryPoint();
     CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, (BYTE_PTR)SetupSystemAndHandleControlToBios,
@@ -108,9 +108,9 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         ASSERT(ApicActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
             == STATUS_SUCCESS);
     // Initialize hypervisor on BSP
-    InitializeSingleHypervisor(sharedData->cpuData[0]);
+    VmmInitializeSingleHypervisor(sharedData->cpuData[0]);
     // Hook E820
-    ASSERT(SetupE820Hook(sharedData) == STATUS_SUCCESS);
+    ASSERT(VmmSetupE820Hook(sharedData) == STATUS_SUCCESS);
 }
 
 STATUS BiosAllocateMemoryUsingMemoryMap

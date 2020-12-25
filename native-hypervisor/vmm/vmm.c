@@ -14,7 +14,7 @@
 #include <vmx_modules/syscalls_module.h>
 #include <vmx_modules/kpp_module.h>
 
-VOID InitializeSingleHypervisor(IN PVOID data)
+VOID VmmInitializeSingleHypervisor(IN PVOID data)
 {
     PSINGLE_CPU_DATA cpuData;
     GDT gdt;
@@ -110,9 +110,9 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     
     // Initialize host area
     __vmwrite(HOST_CR0, __readcr0());
-    __vmwrite(HOST_CR3, InitializeHypervisorPaging(cpuData));
+    __vmwrite(HOST_CR3, VmmInitializeHypervisorPaging(cpuData));
     __vmwrite(HOST_CR4, __readcr4() | CR4_OSXSAVE | (1 << 9));
-    __vmwrite(HOST_RIP, HandleVmExit);
+    __vmwrite(HOST_RIP, VmmHandleVmExit);
     __vmwrite(HOST_RSP, cpuData->stack + sizeof(cpuData->stack)); // from high addresses to lower
     __vmwrite(HOST_FS_BASE, cpuData->sharedData->currentState[cpuData->coreIdentifier]);
     __vmwrite(HOST_GS_BASE, 0);
@@ -140,19 +140,19 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     __vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
     __vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
     __vmwrite(VM_ENTRY_INTR_INFO, 0);
-    __vmwrite(CPU_BASED_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_ACTIVATE_MSR_BITMAP | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS, MSR_IA32_VMX_PROCBASED_CTLS));
-    __vmwrite(SECONDARY_VM_EXEC_CONTROL, AdjustControls(CPU_BASED_CTL2_ENABLE_INVPCID | CPU_BASED_CTL2_RDTSCP  | CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
-    __vmwrite(PIN_BASED_VM_EXEC_CONTROL, AdjustControls(0, MSR_IA32_VMX_PINBASED_CTLS));
-    __vmwrite(VM_EXIT_CONTROLS, AdjustControls(VM_EXIT_SAVE_EFER | VM_EXIT_LOAD_EFER | VM_EXIT_IA32E_MODE, MSR_IA32_VMX_EXIT_CTLS));
-    __vmwrite(VM_ENTRY_CONTROLS, AdjustControls(VM_ENTRY_LOAD_EFER | VM_ENTRY_IA32E_MODE, MSR_IA32_VMX_ENTRY_CTLS));
-    __vmwrite(EPT_POINTER, InitializeExtendedPageTable(cpuData));
+    __vmwrite(CPU_BASED_VM_EXEC_CONTROL, VmmAdjustControls(CPU_BASED_ACTIVATE_MSR_BITMAP | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS, MSR_IA32_VMX_PROCBASED_CTLS));
+    __vmwrite(SECONDARY_VM_EXEC_CONTROL, VmmAdjustControls(CPU_BASED_CTL2_ENABLE_INVPCID | CPU_BASED_CTL2_RDTSCP  | CPU_BASED_CTL2_ENABLE_EPT | CPU_BASED_CTL2_UNRESTRICTED_GUEST, MSR_IA32_VMX_PROCBASED_CTLS2));
+    __vmwrite(PIN_BASED_VM_EXEC_CONTROL, VmmAdjustControls(0, MSR_IA32_VMX_PINBASED_CTLS));
+    __vmwrite(VM_EXIT_CONTROLS, VmmAdjustControls(VM_EXIT_SAVE_EFER | VM_EXIT_LOAD_EFER | VM_EXIT_IA32E_MODE, MSR_IA32_VMX_EXIT_CTLS));
+    __vmwrite(VM_ENTRY_CONTROLS, VmmAdjustControls(VM_ENTRY_LOAD_EFER | VM_ENTRY_IA32E_MODE, MSR_IA32_VMX_ENTRY_CTLS));
+    __vmwrite(EPT_POINTER, VmmInitializeExtendedPageTable(cpuData));
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
     __vmwrite(VIRTUAL_PROCESSOR_ID, 1);
     
     // Modules must be initiated while running in VMX-root operation
     RegisterAllModules(cpuData);
 
-    if(SetupCompleteBackToGuestState() != STATUS_SUCCESS)
+    if(VmmSetupCompleteBackToGuestState() != STATUS_SUCCESS)
     {
         // Should never arrive here
         Print("FLAGS: %8, instruction error: %8\n", __readflags(), vmread(VM_INSTRUCTION_ERROR));
@@ -161,7 +161,7 @@ VOID InitializeSingleHypervisor(IN PVOID data)
     Print("Initialization completed on core #%d\n", cpuData->coreIdentifier);
 }
 
-DWORD AdjustControls(IN DWORD control, IN QWORD msr)
+DWORD VmmAdjustControls(IN DWORD control, IN QWORD msr)
 {
 	QWORD msrValue;
     
@@ -171,7 +171,7 @@ DWORD AdjustControls(IN DWORD control, IN QWORD msr)
 	return control;
 }
 
-VOID HandleVmExitEx()
+VOID VmmHandleVmExitEx()
 {
     QWORD exitReason, exitQualification;
     PCURRENT_GUEST_STATE data;
@@ -191,7 +191,7 @@ VOID HandleVmExitEx()
         goto DefaultModule;
     }
     exitReason &= 0xffff; // 0..15, Intel SDM 26.7
-    data = GetVMMStruct();
+    data = VmmGetVmmStruct();
     shared = data->currentCPU->sharedData;
     
     // First run default handlers of all modules 
@@ -230,12 +230,12 @@ DefaultModule:
 #endif
 }
 
-PCURRENT_GUEST_STATE GetVMMStruct()
+PCURRENT_GUEST_STATE VmmGetVmmStruct()
 {
     return (PCURRENT_GUEST_STATE)vmread(HOST_FS_BASE);
 }
 
-STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength)
+STATUS VmmSetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase, IN QWORD codeLength)
 {
     QWORD codeSizeInPages, hypervisorBaseSizeInPages;
 
@@ -249,22 +249,22 @@ STATUS SetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeBase
     hypervisorBaseSizeInPages = data->hypervisorBaseSize / PAGE_SIZE;
     for(QWORD i = 0; i < data->numberOfCores; i++)
     {
-        ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalCodeBase, data->codeBaseSize,
+        ASSERT(VmmUpdateEptAccessPolicy(data->cpuData[i], data->physicalCodeBase, data->codeBaseSize,
             0) == STATUS_SUCCESS);
-        ASSERT(UpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase,
+        ASSERT(VmmUpdateEptAccessPolicy(data->cpuData[i], data->physicalHypervisorBase,
             data->hypervisorBaseSize, 0) == STATUS_SUCCESS);
     }
     PrintDebugLevelDebug("Done mapping\n");
     return STATUS_SUCCESS;
 }
 
-BOOL CheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress)
+BOOL VmmCheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress)
 {
     return (accessedAddress >= data->physicalHypervisorBase) && (accessedAddress <= data->physicalHypervisorBase 
         + data->hypervisorBaseSize) ? STATUS_ACCESS_TO_HIDDEN_BASE : STATUS_SUCCESS;
 }
 
-STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access)
+STATUS VmmUpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access)
 {
     QWORD lengthInPages;
 
@@ -288,7 +288,7 @@ STATUS UpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD l
     return STATUS_SUCCESS;
 }
 
-STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
+STATUS VmmUpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write)
 {
     BYTE range;
     QWORD msrReadIdx, msrWriteIdx;
@@ -310,7 +310,7 @@ STATUS UpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BO
     return STATUS_SUCCESS;
 }
 
-STATUS SetupE820Hook(IN PSHARED_CPU_DATA sharedData)
+STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 {
     DWORD_PTR ivtAddress;
     QWORD segment, offset;
@@ -343,20 +343,20 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         // Default module
         InitModule(sharedData, &sharedData->defaultModule, NULL, NULL, NULL);
         SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, HandleMsrRead);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, HandleMsrWrite);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, HandleInvalidGuestState);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, EmulateXSETBV);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, HandleCpuId);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, HandleCrAccess);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, HandleEptViolation);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, HandleVmCall);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, HandleInvalidMsrLoading);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, HandleMachineCheckFailure);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, HandleTripleFault);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, HandleApicInit);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, HandleApicSipi);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, HandleException);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, DfltHandleMsrRead);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, DfltHandleMsrWrite);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, DfltHandleInvalidGuestState);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, DfltEmulateXSETBV);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, DfltHandleCpuId);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, DfltHandleCrAccess);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, DfltHandleEptViolation);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, DfltHandleVmCall);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, DfltHandleInvalidMsrLoading);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, DfltHandleMachineCheckFailure);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, DfltHandleTripleFault);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, DfltHandleApicInit);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, DfltHandleApicSipi);
+        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, DfltHandleException);
         Print("Successfully registered defualt module\n");
         // Dynamic modules initialozation
         // Allocation
@@ -395,7 +395,7 @@ BOOL HasErrorCode(IN BYTE vector)
         || vector == INT_ALIGNMENT || vector == INT_SECURITY;
 }
 
-STATUS InjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
+STATUS VmmInjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
 {
     DWORD interruptInformation;
     

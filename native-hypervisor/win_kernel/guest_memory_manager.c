@@ -96,7 +96,7 @@ QWORD TranslateGuestPhysicalToPhysicalAddress(IN QWORD address)
     Print("Translated to physical address: %8\n", 
         (GetVMMStruct()->currentCPU->eptPageTables[address / PAGE_SIZE] & REMOVE_PAGE_BITS) + (address % PAGE_SIZE));
 #endif
-    return (GetVMMStruct()->currentCPU->eptPageTables[address / PAGE_SIZE] & REMOVE_PAGE_BITS) + (address % PAGE_SIZE);
+    return (VmmGetVmmStruct()->currentCPU->eptPageTables[address / PAGE_SIZE] & REMOVE_PAGE_BITS) + (address % PAGE_SIZE);
 }
 
 QWORD TranslateGuestPhysicalToHostVirtual(IN QWORD address)

@@ -47,7 +47,7 @@ STATUS GetModuleByName(OUT PMODULE* module, IN PCHAR name)
     PSHARED_CPU_DATA shared;
     QWORD nameLength;
 
-    shared = GetVMMStruct()->currentCPU->sharedData;
+    shared = VmmGetVmmStruct()->currentCPU->sharedData;
     nameLength = StringLength(name);
     for(QWORD i = 0; i < shared->modulesCount; i++)
     {

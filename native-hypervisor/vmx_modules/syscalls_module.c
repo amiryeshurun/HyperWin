@@ -40,7 +40,7 @@ STATUS SyscallsModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
 {
     PrintDebugLevelDebug("Starting initialization of syscalls module on core #%d\n", data->coreIdentifier);
     // Hook the event of writing to the LSTAR MSR
-    UpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
+    VmmUpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
     __vmwrite(EXCEPTION_BITMAP, vmread(EXCEPTION_BITMAP) | (1 << INT_BREAKPOINT));
     PrintDebugLevelDebug("Finished initialization of syscalls module on core #%d\n", data->coreIdentifier);
     return STATUS_SUCCESS;
@@ -122,7 +122,7 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
 
     ext = module->moduleExtension;
     va_start(args, count);
-    shared = GetVMMStruct()->currentCPU->sharedData;
+    shared = VmmGetVmmStruct()->currentCPU->sharedData;
     while(count--)
     {
         // Get the syscall id from va_arg
@@ -157,7 +157,7 @@ STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrn
                  syscallId | RETURN_EVENT_FLAG);
         // Mark the page as unreadable & unwritable
         for(QWORD i = 0; i < shared->numberOfCores; i++)
-            UpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE), 
+            VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE), 
                 PAGE_SIZE, EPT_EXECUTE);
     }
     va_end(args);
@@ -210,7 +210,7 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
             ASSERT(ext->syscallsData[syscallId].handler() == STATUS_SUCCESS);
     }
     else
-        InjectGuestInterrupt(INT_BREAKPOINT, 0);
+        VmmInjectGuestInterrupt(INT_BREAKPOINT, 0);
     return STATUS_SUCCESS;
 }
 
@@ -224,7 +224,7 @@ STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD c
     QWORD fileObject, scb, fcb, eprocess, handleTable, fileIndex;
     STATUS status;
 
-    shared = GetVMMStruct()->currentCPU->sharedData;
+    shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
     module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
     if(!module)

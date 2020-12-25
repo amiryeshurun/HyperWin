@@ -13,7 +13,7 @@
 #include <bios/bios_os_loader.h>
 #include <guest_communication/communication_block.h>
 
-STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     QWORD accessInformation, operation, cr3Value;
     PREGISTERS regs;
@@ -161,7 +161,7 @@ STATUS HandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltEmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 #ifdef DEBUG_XSETBV
     PrintDebugLevelDebug("XSETBV detected, emulating the instruction.\n");
@@ -188,14 +188,14 @@ STATUS EmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {    
     PREGISTERS regs;
     
     regs = &data->guestRegisters;
     if(regs->rax == VMCALL_SETUP_BASE_PROTECTION)
     {
-        ASSERT(SetupHypervisorCodeProtection(data->currentCPU->sharedData, 
+        ASSERT(VmmSetupHypervisorCodeProtection(data->currentCPU->sharedData, 
             data->currentCPU->sharedData->physicalCodeBase, 
             data->currentCPU->sharedData->codeBaseSize) == STATUS_SUCCESS);
         regs->rip = MBR_ADDRESS;
@@ -222,7 +222,7 @@ STATUS HandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_UNKNOWN_VMCALL;
 }
 
-STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 	PREGISTERS regs;
     QWORD msrNum, msrValue;
@@ -237,7 +237,7 @@ STATUS HandleMsrRead(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
 	PREGISTERS regs;
     QWORD msrNum, msrValue;
@@ -251,7 +251,7 @@ STATUS HandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleCpuId(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     PREGISTERS regs;
     QWORD eax, ebx, ecx, edx, leaf, subleaf, physicalCommunication;
@@ -311,9 +311,9 @@ STATUS HandleCpuId(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
-    if(CheckAccessToHiddenBase(data->currentCPU->sharedData, vmread(GUEST_PHYSICAL_ADDRESS)))
+    if(VmmCheckAccessToHiddenBase(data->currentCPU->sharedData, vmread(GUEST_PHYSICAL_ADDRESS)))
     {
         Print("!!! DETECTED ACCESS TO HYPERVISOR AREA !!!\n");
         return STATUS_ACCESS_TO_HIDDEN_BASE;
@@ -323,31 +323,31 @@ STATUS HandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_UNHANDLED_EPT_VIOLATION;
 }
 
-STATUS HandleInvalidGuestState(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleInvalidGuestState(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("Invalid Guest State!\n");
     return STATUS_INVALID_GUEST_STATE;
 }
 
-STATUS HandleInvalidMsrLoading(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleInvalidMsrLoading(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("INVALID MSR LOADING!\n");
     return STATUS_INVALID_MSR_LOADING;
 }
 
-STATUS HandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleMachineCheckFailure(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("Failure due to machine-check event!\n");
     return STATUS_MACHINE_CHECK_FAILURE;
 }
 
-STATUS HandleTripleFault(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleTripleFault(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     Print("!!! TRIPLE FAULT !!!\n");
     return STATUS_TRIPLE_FAULT;
 }
 
-STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleApicInit(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     // Intel SDM, Volume 3C, Section 33.5
     Print("INIT interrupt detected on core %d\n", data->currentCPU->coreIdentifier);
@@ -355,7 +355,7 @@ STATUS HandleApicInit(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     PREGISTERS regs;
     QWORD vector;
@@ -408,7 +408,7 @@ STATUS HandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS HandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS DfltHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     QWORD vector;
     
@@ -416,6 +416,6 @@ STATUS HandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     if(vector & 0xff != INT_PAGE_FAULT)
         return STATUS_VM_EXIT_NOT_HANDLED;
     __writecr2(vmread(EXIT_QUALIFICATION));
-    ASSERT(InjectGuestInterrupt(INT_PAGE_FAULT, vmread(VM_EXIT_INTR_ERROR_CODE)) == STATUS_SUCCESS);
+    ASSERT(VmmInjectGuestInterrupt(INT_PAGE_FAULT, vmread(VM_EXIT_INTR_ERROR_CODE)) == STATUS_SUCCESS);
     return STATUS_SUCCESS;
 }

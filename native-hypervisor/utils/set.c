@@ -6,7 +6,7 @@ STATUS SetInit(IN PQWORD_SET set, IN QWORD bucketsCount, IN HASH_FUNC hasher)
 {
     PHEAP heap;
 
-    heap = &GetVMMStruct()->currentCPU->sharedData->heap;
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     if(heap->allocate(heap, bucketsCount * sizeof(QWORD_ARRAY), &set->array) != STATUS_SUCCESS)
         return STATUS_NO_MEM_AVAILABLE;
     for(QWORD i = 0; i < bucketsCount; i++)
