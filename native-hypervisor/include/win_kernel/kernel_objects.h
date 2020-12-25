@@ -50,13 +50,13 @@ enum
     FILE_OBJECT_SCB = 0x18
 };
 
-STATUS GetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
-STATUS GetCurrent_EPROCESS(OUT BYTE_PTR* eprocess);
-STATUS Get_ETHREAD_field(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS Get_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS Get_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS GetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS TranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object);
+STATUS ObjGetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
+STATUS ObjGetCurrent_EPROCESS(OUT BYTE_PTR* eprocess);
+STATUS ObjGet_ETHREAD_field(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS ObjGet_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS ObjGet_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS ObjTranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object);
 
 typedef struct _WIN_KERNEL_UNICODE_STRING
 {

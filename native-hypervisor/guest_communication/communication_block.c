@@ -78,8 +78,8 @@ STATUS ComValidateCaller()
     CHAR name[20], applicationName[] = { 0x48, 0x79, 0x70, 0x65, 0x72, 0x57, 0x69, 0x6E, 0x2D, 0x43, 0x6F, 0x6E,
          0x73, 0x6F, 0x00 };
          
-    GetCurrent_EPROCESS(&eprocess);
-    GetObjectField(EPROCESS, eprocess, EPROCESS_EXE_NAME, name);
+    ObjGetCurrent_EPROCESS(&eprocess);
+    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_EXE_NAME, name);
     // Yes, this is a very shitty way to validate caller's identity. Will be improved later...
     if(!CompareMemory(name, applicationName, 15))
         return STATUS_SUCCESS;
@@ -106,9 +106,9 @@ STATUS ComHandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
 {
     QWORD eprocess, handleTable, protectedProcessEprocess;
 
-    GetCurrent_EPROCESS(&eprocess);
-    GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    TranslateHandleToObject(args->argumentsUnion.protectProcess.handle, handleTable, &protectedProcessEprocess);
+    ObjGetCurrent_EPROCESS(&eprocess);
+    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
+    ObjTranslateHandleToObject(args->argumentsUnion.protectProcess.handle, handleTable, &protectedProcessEprocess);
     if(MarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
         return STATUS_PROTECTED_PROCESS_FAILED;
     
@@ -123,7 +123,7 @@ STATUS ComHandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
 
     fileHandle = args->argumentsUnion.protectFileData.fileHandle;
     content = args->argumentsUnion.protectFileData.content;
-    AddNewProtectedFile(fileHandle, content, args->argumentsUnion.protectFileData.contentLength);
+    SyscallsAddNewProtectedFile(fileHandle, content, args->argumentsUnion.protectFileData.contentLength);
     Print("The content of the file will be hidden from now on\n");
 
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;

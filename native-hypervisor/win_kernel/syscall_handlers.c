@@ -183,7 +183,7 @@ STATUS HandleNtReadFile()
     // First get the syscalls module pointer
     if(!module)
     {
-        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        if((status = MdlGetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             goto NtReadFileEmulateInstruction;
@@ -195,28 +195,28 @@ STATUS HandleNtReadFile()
     // Receive syscall parameters
     GetParameters(params, syscallsData[NT_READ_FILE].params);
     // Translate the first parameter (file handle) to the corresponding _FILE_OBJECT structure
-    GetCurrent_EPROCESS(&eprocess);
-    GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    if(TranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
+    ObjGetCurrent_EPROCESS(&eprocess);
+    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
+    if(ObjTranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
     {
         Print("Could not translate handle to object, skipping...\n");
         goto NtReadFileEmulateInstruction;
     }
     // Check if this is a file object (See MSDN file object page)
-    GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_TYPE, &fileType);
+    ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_TYPE, &fileType);
     if(fileType != 5)
         goto NtReadFileEmulateInstruction;
     // Get the MFTIndex of the current file
-    GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
-    Translate_SCB_To_FCB(scb, &fcb);
-    Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex);
+    ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
+    FileTranslateScbToFcb(scb, &fcb);
+    FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex);
     Print("Idx: %8\n", fileIndex);
     // Check if the current file is protected
     if((hiddenFileRule = MapGet(filesData, fileIndex)) != MAP_KEY_NOT_FOUND)
     {
         // The file is a protected file
-        GetCurrent_ETHREAD(&ethread);
-        GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
+        ObjGetCurrent_ETHREAD(&ethread);
+        ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
         HookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
         syscallEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
         // Need to save the IoStatusBlock & UserBuffer
@@ -247,7 +247,7 @@ STATUS HandleNtReadFileReturn()
     // First get the syscalls module pointer
     if(!module)
     {
-        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        if((status = MdlGetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             return status;
@@ -255,8 +255,8 @@ STATUS HandleNtReadFileReturn()
         shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn
             .module = module;
     }
-    GetCurrent_ETHREAD(&ethread);
-    GetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
+    ObjGetCurrent_ETHREAD(&ethread);
+    ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     Print("Thread %d hooken the return event of NtReadFile\n", threadId);
     // Get the rule found in the hashmap
     rule = syscallEvents[threadId].dataUnion.NtReadFile.rule;

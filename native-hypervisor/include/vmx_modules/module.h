@@ -39,11 +39,11 @@ typedef struct _GENETIC_MODULE_DATA
 
 typedef STATUS (*MODULE_INITIALIZER)(struct _SHARED_CPU_DATA*, struct _MODULE*, IN PGENERIC_MODULE_DATA);
 
-VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler);
-VOID RegisterModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module);
-VOID InitModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer, 
+VOID MdlRegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler);
+VOID MdlRegisterModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module);
+VOID MdlInitModule(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer, 
     IN PGENERIC_MODULE_DATA moduleData, IN VMEXIT_HANDLER defaultHandler);
-VOID SetModuleName(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN PCHAR name);
-STATUS GetModuleByName(OUT PMODULE* module, IN PCHAR name);
+VOID MdlSetModuleName(IN struct _SHARED_CPU_DATA* sharedData, IN PMODULE module, IN PCHAR name);
+STATUS MdlGetModuleByName(OUT PMODULE* module, IN PCHAR name);
 
 #endif

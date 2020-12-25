@@ -56,9 +56,9 @@ STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE mod
     {
         // perform lock-checking
         module->hasDefaultHandler = FALSE;
-        LocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
-        GetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(HookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS) 
+        SyscallsLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
+        SyscallsGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
+        ASSERT(SyscallsHookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS) 
             == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
@@ -67,7 +67,7 @@ NotHandled:
     return STATUS_VM_EXIT_NOT_HANDLED;
 }
 
-STATUS LocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
+STATUS SyscallsLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
 {
     // Pattern:
     // mov edi,eax
@@ -104,13 +104,13 @@ SSDTFound:
     return STATUS_SUCCESS;
 }
 
-VOID GetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
+VOID SyscallsGetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
 {
     ASSERT(CopyGuestMemory(ntoskrnl, ssdt, sizeof(QWORD)) == STATUS_SUCCESS);
     ASSERT(CopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
 }
 
-STATUS HookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
+STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
     IN QWORD count, ...)
 {
     va_list args;
@@ -214,7 +214,7 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength)
+STATUS SyscallsAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength)
 {
     PSHARED_CPU_DATA shared;
     PMODULE module;
@@ -229,7 +229,7 @@ STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD c
     module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
     if(!module)
     {
-        if((status = GetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        if((status = MdlGetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             return status;
@@ -246,13 +246,13 @@ STATUS AddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD c
     // Get the module extension
     ext = module->moduleExtension;
     // Translate the Handle to an object
-    GetCurrent_EPROCESS(&eprocess);
-    GetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    ASSERT(TranslateHandleToObject(fileHandle, handleTable, &fileObject) == STATUS_SUCCESS);
+    ObjGetCurrent_EPROCESS(&eprocess);
+    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
+    ASSERT(ObjTranslateHandleToObject(fileHandle, handleTable, &fileObject) == STATUS_SUCCESS);
     // Get the MFTIndex field
-    ASSERT(GetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb) == STATUS_SUCCESS);
-    ASSERT(Translate_SCB_To_FCB(scb, &fcb) == STATUS_SUCCESS);
-    ASSERT(Get_FCB_Field(fcb, FCB_MFT_INDEX, &fileIndex) == STATUS_SUCCESS);
+    ASSERT(ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb) == STATUS_SUCCESS);
+    ASSERT(FileTranslateScbToFcb(scb, &fcb) == STATUS_SUCCESS);
+    ASSERT(FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex) == STATUS_SUCCESS);
     Print("File Idx: %8\n", fileIndex);
     // Map the file to a rule
     // MapSet(&ext->filesData, fileIndex , rule);
