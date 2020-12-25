@@ -17,7 +17,7 @@ enum
     PS_PROTECTED_SIGNER_WINTCB = 0x6
 };
 
-STATUS MarkProcessProtected(IN QWORD eprocess, IN BYTE protectionLevel, IN BYTE signLevel, 
+STATUS PspMarkProcessProtected(IN QWORD eprocess, IN BYTE protectionLevel, IN BYTE signLevel, 
     IN BYTE sectionSignLevel);
 
 #endif
