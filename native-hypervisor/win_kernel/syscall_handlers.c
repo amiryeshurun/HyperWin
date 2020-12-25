@@ -77,7 +77,7 @@ VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BY
     syscallsData[syscallId].returnHandler = returnHandler;
 }
 
-VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
+VOID ShdGetParameters(OUT QWORD_PTR params, IN BYTE count)
 {
     PREGISTERS regs = &VmmGetVmmStruct()->guestRegisters;
     QWORD paramsStart = regs->rsp + 4 * sizeof(QWORD);
@@ -193,7 +193,7 @@ STATUS ShdHandleNtReadFile()
     ext = module->moduleExtension;
     filesData = &ext->filesData;
     // Receive syscall parameters
-    GetParameters(params, syscallsData[NT_READ_FILE].params);
+    ShdGetParameters(params, syscallsData[NT_READ_FILE].params);
     // Translate the first parameter (file handle) to the corresponding _FILE_OBJECT structure
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
