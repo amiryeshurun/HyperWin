@@ -319,7 +319,7 @@ STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData)
     ivtAddress = PhysicalToVirtual(0);
     segment = (ivtAddress[0x15] >> 16) & 0xffffULL;
     offset = ivtAddress[0x15] & 0xffffULL;
-    CopyMemory(E820_VMCALL_GATE, vmcall, 3);
+    HwCopyMemory(E820_VMCALL_GATE, vmcall, 3);
     ivtAddress[0x15] = E820_VMCALL_GATE;
     sharedData->int15Offset = offset;
     sharedData->int15Segment = (segment << 4);

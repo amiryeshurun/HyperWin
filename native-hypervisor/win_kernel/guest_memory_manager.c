@@ -125,11 +125,11 @@ STATUS WinMmCopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length)
         alignedLengthUntilNextPage = (src + offset) % PAGE_SIZE ? ALIGN_UP(src + offset, PAGE_SIZE) - src : PAGE_SIZE;
         if(length <= alignedLengthUntilNextPage)
         {
-            CopyMemory(dest, hostVirtual, length);
+            HwCopyMemory(dest, hostVirtual, length);
             break;
         }
         // Copy the current page (part/whole)
-        CopyMemory(dest, hostVirtual, alignedLengthUntilNextPage);
+        HwCopyMemory(dest, hostVirtual, alignedLengthUntilNextPage);
         increament = alignedLengthUntilNextPage;
         dest += alignedLengthUntilNextPage;
         length -= alignedLengthUntilNextPage;
@@ -148,11 +148,11 @@ STATUS WinMmCopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length)
         alignedLengthUntilNextPage = (dest + offset) % PAGE_SIZE ? ALIGN_UP(dest + offset, PAGE_SIZE) - dest : PAGE_SIZE;
         if(length <= alignedLengthUntilNextPage)
         {
-            CopyMemory(hostVirtual, src, length);
+            HwCopyMemory(hostVirtual, src, length);
             break;
         }
         // Copy the current page (part/whole)
-        CopyMemory(hostVirtual, src, alignedLengthUntilNextPage);
+        HwCopyMemory(hostVirtual, src, alignedLengthUntilNextPage);
         increament = alignedLengthUntilNextPage;
         src += alignedLengthUntilNextPage;
         length -= alignedLengthUntilNextPage;

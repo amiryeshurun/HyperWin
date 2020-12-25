@@ -62,7 +62,7 @@ VOID ApicGetBaseAddress()
 
 STATUS ApicActivateHypervisorOnProcessor(IN QWORD processorId, IN PSINGLE_CPU_DATA cpuData)
 {
-    CopyMemory(APIC_FUNC_ADDRESS, ApicStart, ApicEnd - ApicStart);
+    HwCopyMemory(APIC_FUNC_ADDRESS, ApicStart, ApicEnd - ApicStart);
     ApicX2APICIssueIPI(processorId, 0, APIC_INIT_INTERRUPT, APIC_LEVEL_DEASSERT);
     BiosSleep(50);
     *(QWORD_PTR)CPU_DATA_ADDRESS = cpuData;

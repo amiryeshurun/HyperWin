@@ -17,8 +17,8 @@
 #define BASIC_HASH_LEN 11
 #define IDX_NOT_FOUND (-1ULL)
 
-VOID CopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count);
-INT CompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length);
+VOID HwCopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count);
+INT HwCompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length);
 CHAR ConvertHalfByteToHexChar(IN BYTE halfByte);
 QWORD pow(IN QWORD base, IN QWORD power);
 QWORD NumberOfDigits(IN QWORD number);

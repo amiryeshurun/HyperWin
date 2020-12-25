@@ -14,7 +14,7 @@ VOID BiosInitialize()
     VmmSetupVirtualAddress(__readcr3());
     BiosInitializeHypervisorsSharedData(CODE_BEGIN_ADDRESS, 0x000fffffULL);
     BiosLoadMBRToEntryPoint();
-    CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, (BYTE_PTR)SetupSystemAndHandleControlToBios,
+    HwCopyMemory((BYTE_PTR)REAL_MODE_CODE_START, (BYTE_PTR)SetupSystemAndHandleControlToBios,
         SetupSystemAndHandleControlToBiosEnd - SetupSystemAndHandleControlToBios);
 }
 

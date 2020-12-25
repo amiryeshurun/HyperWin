@@ -81,7 +81,7 @@ STATUS ComValidateCaller()
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_EXE_NAME, name);
     // Yes, this is a very shitty way to validate caller's identity. Will be improved later...
-    if(!CompareMemory(name, applicationName, 15))
+    if(!HwCompareMemory(name, applicationName, 15))
         return STATUS_SUCCESS;
     return STATUS_UNKNOWN_VMCALL_CALLER;
 }

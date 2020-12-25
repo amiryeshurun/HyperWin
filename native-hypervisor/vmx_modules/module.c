@@ -28,7 +28,7 @@ VOID MdlRegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
     PMODULE* newArr;
     
     sharedData->heap.allocate(&sharedData->heap, ++(sharedData->modulesCount) * sizeof(PMODULE), &newArr);
-    CopyMemory(newArr, sharedData->modules, (sharedData->modulesCount - 1) * sizeof(PMODULE));
+    HwCopyMemory(newArr, sharedData->modules, (sharedData->modulesCount - 1) * sizeof(PMODULE));
     newArr[sharedData->modulesCount - 1] = module;
     if(sharedData->modules)
         sharedData->heap.deallocate(&sharedData->heap, sharedData->modules);
@@ -39,7 +39,7 @@ VOID MdlSetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHA
 {
     sharedData->heap.allocate(&sharedData->heap, (StringLength(moduleName) + 1) * sizeof(CHAR),
         &(module->moduleName));
-    CopyMemory(module->moduleName, moduleName, StringLength(moduleName) + 1);
+    HwCopyMemory(module->moduleName, moduleName, StringLength(moduleName) + 1);
 }
 
 STATUS MdlGetModuleByName(OUT PMODULE* module, IN PCHAR name)
@@ -51,7 +51,7 @@ STATUS MdlGetModuleByName(OUT PMODULE* module, IN PCHAR name)
     nameLength = StringLength(name);
     for(QWORD i = 0; i < shared->modulesCount; i++)
     {
-        if(!CompareMemory(name, shared->modules[i]->moduleName, nameLength))
+        if(!HwCompareMemory(name, shared->modules[i]->moduleName, nameLength))
         {
             *module = shared->modules[i];
             return STATUS_SUCCESS;

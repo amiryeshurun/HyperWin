@@ -18,8 +18,8 @@ VOID BiosEnterRealModeRunFunction(IN BYTE function, OUT BYTE_PTR* outputBuffer)
     functionEnd = functionsEnd[function];
     functionLength = functionEnd - functionBegin;
     enterRealModeLength = EnterRealModeEnd - EnterRealMode;
-    CopyMemory((BYTE_PTR)REAL_MODE_CODE_START, EnterRealMode, enterRealModeLength);
-    CopyMemory((BYTE_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
+    HwCopyMemory((BYTE_PTR)REAL_MODE_CODE_START, EnterRealMode, enterRealModeLength);
+    HwCopyMemory((BYTE_PTR)REAL_MODE_CODE_START + enterRealModeLength, 
                functionBegin, 
                functionLength);
     AsmEnterRealModeRunFunction();
@@ -59,7 +59,7 @@ VOID BiosLoadMBRToEntryPoint()
         if(*(WORD_PTR)((BYTE_PTR)sectorAddress + MBR_SIZE - sizeof(WORD)) == BOOTABLE_SIGNATURE)
         {
             Print("An MBR disk was found at disk #%d\n", diskIdx);
-            CopyMemory(MBR_ADDRESS, sectorAddress, MBR_SIZE);
+            HwCopyMemory(MBR_ADDRESS, sectorAddress, MBR_SIZE);
             *(BYTE_PTR)(WINDOWS_DISK_INDEX) = diskIdx;
             break;
         }
@@ -86,7 +86,7 @@ STATUS BiosFindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
     ebdaAddress = (*(WORD_PTR)EBDA_POINTER_ADDRESS) >> 4;
     for(QWORD i = 0; i < 0x1024; i += 16)
     {
-        if(!CompareMemory(ebdaAddress + i, pattern, 8))
+        if(!HwCompareMemory(ebdaAddress + i, pattern, 8))
         {
             rsdpBaseAddress = (ebdaAddress + i);
             goto RSDPFound;
@@ -95,7 +95,7 @@ STATUS BiosFindRSDT(OUT BYTE_PTR* address, OUT QWORD_PTR type)
 
     for(QWORD start = 0xE0000; start < 0xFFFFF; start += 16)
     {
-        if(!CompareMemory(start, pattern, 8))
+        if(!HwCompareMemory(start, pattern, 8))
         {
             rsdpBaseAddress = start;
             goto RSDPFound;
@@ -146,7 +146,7 @@ STATUS BiosLocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN
 
         for(QWORD i = 0; i < entriesCount; i++)
         {
-            if(!CompareMemory(signature, dwSectionsArrayBase[i], 4))
+            if(!HwCompareMemory(signature, dwSectionsArrayBase[i], 4))
             {
                 *table = dwSectionsArrayBase[i];
                 return STATUS_SUCCESS;
@@ -160,7 +160,7 @@ STATUS BiosLocateSystemDescriptorTable(IN BYTE_PTR rsdt, OUT BYTE_PTR* table, IN
         qwSectionsArrayBase = rsdt + ACPI_SDT_HEADER_SIZE;
         for(QWORD i = 0; i < entriesCount; i++)
         {
-            if(!CompareMemory(signature, qwSectionsArrayBase[i], 4))
+            if(!HwCompareMemory(signature, qwSectionsArrayBase[i], 4))
             {
                 *table = qwSectionsArrayBase[i];
                 return STATUS_SUCCESS;
@@ -184,7 +184,7 @@ STATUS BiosHandleE820(IN PCURRENT_GUEST_STATE data, IN PREGISTERS regs)
     }
     regs->rax = E820_MAGIC;
     regs->rcx = (regs->rcx & ~(0xffULL)) | 20;
-    CopyMemory(vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL), 
+    HwCopyMemory(vmread(GUEST_ES_BASE) + (regs->rdi & 0xffffULL), 
         &(data->currentCPU->sharedData->allRam[regs->rbx++]), sizeof(E820_LIST_ENTRY));
     carrySet = FALSE;
     if(regs->rbx == data->currentCPU->sharedData->memoryRangesCount)

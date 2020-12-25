@@ -79,10 +79,10 @@ VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
         if(!isBefore)
         {
             // ext = offset from the beggining of the hidden instruction
-            CopyMemory(val, entry->hookedInstrucion + ext, entry->hookedInstructionLength - ext 
+            HwCopyMemory(val, entry->hookedInstrucion + ext, entry->hookedInstructionLength - ext 
                 <= readLength ? entry->hookedInstructionLength - ext : readLength);
             if(entry->hookedInstructionLength - ext < readLength)
-                CopyMemory((BYTE_PTR)val + (entry->hookedInstructionLength - ext), 
+                HwCopyMemory((BYTE_PTR)val + (entry->hookedInstructionLength - ext), 
                     WinMmTranslateGuestPhysicalToHostVirtual(guestPhysical + entry->hookedInstructionLength 
                         - ext), readLength - (entry->hookedInstructionLength - ext));
         }
@@ -90,12 +90,12 @@ VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
         else
         {
             // ext = the number of bytes before the beggining of the hidden instruction
-            CopyMemory(val, hostVirtualAddress, ext);
-            CopyMemory((BYTE_PTR)val + ext, entry->hookedInstrucion, readLength - ext);
+            HwCopyMemory(val, hostVirtualAddress, ext);
+            HwCopyMemory((BYTE_PTR)val + ext, entry->hookedInstrucion, readLength - ext);
         }      
     }
     else
-        CopyMemory(val, hostVirtualAddress, readLength);
+        HwCopyMemory(val, hostVirtualAddress, readLength);
 }
 
 STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength)

@@ -3,7 +3,7 @@
 #include <debug.h>
 #include <vmm/msr.h>
 
-VOID CopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count)
+VOID HwCopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count)
 {
     __movsb(dest, src, count);
 }
@@ -100,7 +100,7 @@ QWORD StringLength(IN PCHAR str)
     return length;
 }
 
-INT CompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length)
+INT HwCompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length)
 {
     for(QWORD i = 0; i < length; i++)
     {
@@ -156,7 +156,7 @@ QWORD SumDigits(IN QWORD num)
 QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2)
 {
     for(QWORD i = 0; i < size1 - size2; i++)
-        if(!CompareMemory(buff1 + i, buff2, size2))
+        if(!HwCompareMemory(buff1 + i, buff2, size2))
             return i;
     return IDX_NOT_FOUND;
 }

@@ -86,7 +86,7 @@ STATUS SyscallsLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestC
     {
         if(WinMmCopyGuestMemory(kernelChunk, lstar - offset, 13) != STATUS_SUCCESS)
             continue;
-        if(!CompareMemory(kernelChunk, pattern, 13))
+        if(!HwCompareMemory(kernelChunk, pattern, 13))
         {
             Print("Pattern found in kernel's address space %8\n", offset);
             patternAddress = lstar - offset;
@@ -140,14 +140,14 @@ STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR
         virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
-        CopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
+        HwCopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
             WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
         hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
         SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
         // Inject the hooked instruction to the guest
-        CopyMemory(WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
+        HwCopyMemory(WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Save the translation between the address and the syscall id
         MapSet(&ext->addressToSyscall, physicalHookAddress, syscallId);
@@ -239,7 +239,7 @@ STATUS SyscallsAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN
     // Allocate memory for storing the rule
     heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
     heap->allocate(heap, sizeof(BYTE) * contentLength, &rule->content);
-    CopyMemory(rule->content.data, content, contentLength);
+    HwCopyMemory(rule->content.data, content, contentLength);
     // Set the rule
     rule->content.length = contentLength;
     rule->rule = FILE_HIDE_CONTENT;
