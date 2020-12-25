@@ -112,6 +112,16 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
         BuildKppResult(&val, address, 4, kppData);
         regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
     }
+    // 41 8B 94 80 90 5B 5E 00
+    if(instructionLength == 8 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x94 && 
+        inst[3] == 0x80 && inst[4] == 0x90 && inst[5] == 0x5b && inst[6] == 0x5e && 
+        inst[7] == 0x00)
+    {
+        // mov edx,DWORD PTR [r8+rax*4+0x5e5b90]
+        DWORD val;
+        BuildKppResult(&val, address, 4, kppData);
+        regs->rdx = (regs->rdx & 0xffffffff00000000ULL) | val;
+    }
     else if((instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8a && inst[2] == 0x02) ||
         (instructionLength == 2 && inst[0] == 0x8a && inst[1] == 0x00))
     {
@@ -125,6 +135,15 @@ STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN
         // movzx eax,WORD PTR [r10]
         WORD val;
         BuildKppResult(&val, address, 2, kppData);
+        regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
+    }
+    else if(instructionLength == 9 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb6 && 
+        inst[3] == 0x84 && inst[4] == 0x00 && inst[5] == 0xa0 && inst[6] == 0x5b &&
+        inst[7] == 0x5e && inst[8] == 0x00)
+    {
+        // movzx eax,BYTE PTR [r8+rax*1+0x5e5ba0]
+        BYTE val;
+        BuildKppResult(&val, address, 1, kppData);
         regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
     }
     else if(instructionLength == 3 && inst[0] == 0x49 && inst[1] == 0x8b && inst[2] == 0x01)
