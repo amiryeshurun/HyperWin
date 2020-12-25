@@ -28,9 +28,9 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
     SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
-    InitSyscallData(NT_OPEN_PROCESS, 0, 4, HandleNtOpenPrcoess, FALSE, NULL);
-    InitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, HandleNtCreateUserProcess, FALSE, NULL);
-    InitSyscallData(NT_READ_FILE, 0, 3, HandleNtReadFile, TRUE, HandleNtReadFileReturn);
+    ShdInitSyscallData(NT_OPEN_PROCESS, 0, 4, ShdHandleNtOpenPrcoess, FALSE, NULL);
+    ShdInitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, ShdHandleNtCreateUserProcess, FALSE, NULL);
+    ShdInitSyscallData(NT_READ_FILE, 0, 3, ShdHandleNtReadFile, TRUE, ShdHandleNtReadFileReturn);
     /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
     return STATUS_SUCCESS;
@@ -84,7 +84,7 @@ STATUS SyscallsLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestC
 
     for(; offset < 0xffffffff; offset++)
     {
-        if(CopyGuestMemory(kernelChunk, lstar - offset, 13) != STATUS_SUCCESS)
+        if(WinMmCopyGuestMemory(kernelChunk, lstar - offset, 13) != STATUS_SUCCESS)
             continue;
         if(!CompareMemory(kernelChunk, pattern, 13))
         {
@@ -99,15 +99,15 @@ STATUS SyscallsLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestC
 SSDTFound:
     patternAddress += 13; // pattern
     patternAddress += 7;  // lea r10,[nt!KeServiceDescriptorTable]
-    ASSERT(CopyGuestMemory(&offset, patternAddress + 3, sizeof(DWORD)) == STATUS_SUCCESS);
+    ASSERT(WinMmCopyGuestMemory(&offset, patternAddress + 3, sizeof(DWORD)) == STATUS_SUCCESS);
     *ssdt = (patternAddress + 7) + offset;
     return STATUS_SUCCESS;
 }
 
 VOID SyscallsGetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
 {
-    ASSERT(CopyGuestMemory(ntoskrnl, ssdt, sizeof(QWORD)) == STATUS_SUCCESS);
-    ASSERT(CopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
+    ASSERT(WinMmCopyGuestMemory(ntoskrnl, ssdt, sizeof(QWORD)) == STATUS_SUCCESS);
+    ASSERT(WinMmCopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
 }
 
 STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
@@ -128,11 +128,11 @@ STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR
         // Get the syscall id from va_arg
         syscallId = va_arg(args, QWORD);
         // Get the offset of the syscall handler (in ntoskrnl.exe) from the shadowed SSDT
-        ASSERT(CopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
+        ASSERT(WinMmCopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
         // Get the guest physical address of the syscall handler
         virtualFunctionAddress = ntoskrnl + (offset >> 4);
-        ASSERT(TranslateGuestVirtualToGuestPhysical(ntoskrnl + (offset >> 4), &functionAddress) == STATUS_SUCCESS);
+        ASSERT(WinMmTranslateGuestVirtualToGuestPhysical(ntoskrnl + (offset >> 4), &functionAddress) == STATUS_SUCCESS);
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
         // Save hook information in system calls database
@@ -141,13 +141,13 @@ STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
         CopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
-            TranslateGuestPhysicalToHostVirtual(physicalHookAddress),
+            WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
         hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
         SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
         // Inject the hooked instruction to the guest
-        CopyMemory(TranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
+        CopyMemory(WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Save the translation between the address and the syscall id
         MapSet(&ext->addressToSyscall, physicalHookAddress, syscallId);
@@ -200,7 +200,7 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
         return STATUS_VM_EXIT_NOT_HANDLED;
     
     ext = module->moduleExtension;
-    ASSERT(TranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
+    ASSERT(WinMmTranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
         == STATUS_SUCCESS);
     if((syscallId = MapGet(&ext->addressToSyscall, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
     {

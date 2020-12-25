@@ -71,7 +71,7 @@ VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
     PSYSCALL_DATA entry;
     BOOL isBefore;
 
-    hostVirtualAddress = TranslateGuestPhysicalToHostVirtual(guestPhysical);
+    hostVirtualAddress = WinMmTranslateGuestPhysicalToHostVirtual(guestPhysical);
     if(CheckIfAddressContainsInstruction(kppData, guestPhysical, readLength, &isBefore, 
         &entry, &ext))
     {
@@ -83,7 +83,7 @@ VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
                 <= readLength ? entry->hookedInstructionLength - ext : readLength);
             if(entry->hookedInstructionLength - ext < readLength)
                 CopyMemory((BYTE_PTR)val + (entry->hookedInstructionLength - ext), 
-                    TranslateGuestPhysicalToHostVirtual(guestPhysical + entry->hookedInstructionLength 
+                    WinMmTranslateGuestPhysicalToHostVirtual(guestPhysical + entry->hookedInstructionLength 
                         - ext), readLength - (entry->hookedInstructionLength - ext));
         }
         // The hidden instruction is a suffix of the current checked instruction
@@ -98,13 +98,13 @@ VOID BuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
         CopyMemory(val, hostVirtualAddress, readLength);
 }
 
-STATUS EmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength)
+STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength)
 {
     PREGISTERS regs;
     BYTE inst[X86_MAX_INSTRUCTION_LEN];
 
     regs = &VmmGetVmmStruct()->guestRegisters;
-    CopyGuestMemory(inst, regs->rip, instructionLength);
+    WinMmCopyGuestMemory(inst, regs->rip, instructionLength);
     if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x02)
     {
         // mov eax,DWORD PTR [r10]
@@ -222,5 +222,5 @@ STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;
     if(!IsInSet(kppData->addressSet, ALIGN_DOWN(address, PAGE_SIZE)))
         return STATUS_VM_EXIT_NOT_HANDLED;
-    return EmulatePatchGuardAction(kppData, address, instructionLength);
+    return KppEmulatePatchGuardAction(kppData, address, instructionLength);
 }

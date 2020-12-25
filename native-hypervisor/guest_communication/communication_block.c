@@ -109,7 +109,7 @@ STATUS ComHandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
     ObjTranslateHandleToObject(args->argumentsUnion.protectProcess.handle, handleTable, &protectedProcessEprocess);
-    if(MarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
+    if(PspMarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
         return STATUS_PROTECTED_PROCESS_FAILED;
     
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;

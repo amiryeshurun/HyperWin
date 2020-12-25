@@ -67,7 +67,7 @@ static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { N
 
 static __attribute__((section(".nt_sycalls_events"))) SYSCALL_EVENT syscallEvents[25000];
 
-VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
+VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler)
 {
     syscallsData[syscallId].hookInstructionOffset = hookInstructionOffset;
@@ -96,7 +96,7 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
         case 7:
         case 6:
         case 5:
-            CopyGuestMemory(params + 4, paramsStart, (count - 4) * sizeof(QWORD));
+            WinMmCopyGuestMemory(params + 4, paramsStart, (count - 4) * sizeof(QWORD));
         case 4:
             params[3] = regs->r9;
         case 3:
@@ -108,16 +108,16 @@ VOID GetParameters(OUT QWORD_PTR params, IN BYTE count)
     }
 }
 
-VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId)
+VOID ShdHookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId)
 {
     QWORD returnAddress;
     
     returnAddress = CALC_RETURN_HOOK_ADDR(syscallsData[syscallId].virtualHookedInstructionAddress);
-    CopyGuestMemory(&syscallEvents[threadId].returnAddress, rsp, sizeof(QWORD));
-    CopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
+    WinMmCopyGuestMemory(&syscallEvents[threadId].returnAddress, rsp, sizeof(QWORD));
+    WinMmCopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
 }
 
-STATUS HandleNtOpenPrcoess()
+STATUS ShdHandleNtOpenPrcoess()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
@@ -133,7 +133,7 @@ STATUS HandleNtOpenPrcoess()
     return STATUS_SUCCESS;
 }
 
-STATUS HandleNtOpenPrcoessReturn()
+STATUS ShdHandleNtOpenPrcoessReturn()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
@@ -145,7 +145,7 @@ STATUS HandleNtOpenPrcoessReturn()
     return STATUS_SUCCESS;
 }
 
-STATUS HandleNtCreateUserProcess()
+STATUS ShdHandleNtCreateUserProcess()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
@@ -155,14 +155,14 @@ STATUS HandleNtCreateUserProcess()
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
     // Emulate replaced instruction: push rbp
-    ASSERT(CopyMemoryToGuest(regs->rsp - 8, &regs->rbp, sizeof(QWORD)) == STATUS_SUCCESS);
+    ASSERT(WinMmCopyMemoryToGuest(regs->rsp - 8, &regs->rbp, sizeof(QWORD)) == STATUS_SUCCESS);
     regs->rsp -= 8;
     regs->rip += syscallsData[NT_CREATE_USER_PROCESS].hookedInstructionLength;
     // End emulation
     return STATUS_SUCCESS;
 }
 
-STATUS HandleNtReadFile()
+STATUS ShdHandleNtReadFile()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
@@ -217,7 +217,7 @@ STATUS HandleNtReadFile()
         // The file is a protected file
         ObjGetCurrent_ETHREAD(&ethread);
         ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
-        HookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
+        ShdHookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
         syscallEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
         // Need to save the IoStatusBlock & UserBuffer
     }
@@ -229,7 +229,7 @@ NtReadFileEmulateInstruction:
     return STATUS_SUCCESS;
 }
 
-STATUS HandleNtReadFileReturn()
+STATUS ShdHandleNtReadFileReturn()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
@@ -261,11 +261,11 @@ STATUS HandleNtReadFileReturn()
     // Get the rule found in the hashmap
     rule = syscallEvents[threadId].dataUnion.NtReadFile.rule;
     // Copy the readen data length
-    CopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock,
+    WinMmCopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock,
         sizeof(QWORD));
     Print("The size of the data returned in buffer is %d\n", bufferLength);
     // Copy the readon data itself
-    CopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
+    WinMmCopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
     // Replace hidden content (if exist)
     if(bufferLength >= rule->content.length && (idx = MemoryContains(readDataBuffer, bufferLength, rule->content.data,
         rule->content.length)) != IDX_NOT_FOUND)
@@ -273,7 +273,7 @@ STATUS HandleNtReadFileReturn()
         for(QWORD i = idx; i < idx + rule->content.length; i++)
             readDataBuffer[i] = '0';
     }
-    CopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
+    WinMmCopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
     // Put back the saved address in the RIP register
     regs->rip = syscallEvents[threadId].returnAddress;
     return STATUS_SUCCESS;
