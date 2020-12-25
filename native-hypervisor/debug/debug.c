@@ -3,19 +3,19 @@
 #include <utils/utils.h>
 
 
-VOID PrintBuffer(IN PCHAR buffer, IN QWORD length)
+VOID DbgPrintBuffer(IN PCHAR buffer, IN QWORD length)
 {
     for(QWORD i = 0; i < length; i++)
         __outbyte(DEBUG_PORT, buffer[i]);
 }
 
-VOID PrintNullTerminatedBuffer(IN PCHAR buffer)
+VOID DbgPrintNullTerminatedBuffer(IN PCHAR buffer)
 {
     for(; *buffer; buffer++)
         __outbyte(DEBUG_PORT, *buffer);
 }
 
-VOID PrintVaArg(IN PCHAR fmt, va_list args)
+VOID DbgPrintVaArg(IN PCHAR fmt, va_list args)
 {
     CHAR buffer[BUFF_MAX_SIZE] = { 0 }, currq;
     QWORD bufferPosition, fmtLength, num, digits, delimiter, length, currQword, mask;
@@ -95,44 +95,44 @@ VOID PrintVaArg(IN PCHAR fmt, va_list args)
         else
             buffer[bufferPosition++] = fmt[i];
     }
-    PrintBuffer(buffer, bufferPosition);
+    DbgPrintBuffer(buffer, bufferPosition);
 }
 
 
-VOID Print(IN PCHAR fmt, ...)
+VOID DbgPrint(IN PCHAR fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    PrintVaArg(fmt, args);
+    DbgPrintVaArg(fmt, args);
     va_end(args);
 }
 
-VOID PrintDebugLevelDebug(IN PCHAR fmt, ...)
+VOID DbgPrintDebugLevelDebug(IN PCHAR fmt, ...)
 {
 #if DEBUG_LVL <= 3
     va_list args;
     va_start(args, fmt);
-    PrintVaArg(fmt, args);
+    DbgPrintVaArg(fmt, args);
     va_end(args);
 #endif
 }
 
-VOID PrintDebugLevelWarning(IN PCHAR fmt, ...)
+VOID DbgPrintDebugLevelWarning(IN PCHAR fmt, ...)
 {
 #if DEBUG_LVL <= 2
     va_list args;
     va_start(args, fmt);
-    PrintVaArg(fmt, args);
+    DbgPrintVaArg(fmt, args);
     va_end(args);
 #endif
 }
 
-VOID PrintDebugLevelInfo(IN PCHAR fmt, ...)
+VOID DbgPrintDebugLevelInfo(IN PCHAR fmt, ...)
 {
 #if DEBUG_LVL <= 1
     va_list args;
     va_start(args, fmt);
-    PrintVaArg(fmt, args);
+    DbgPrintVaArg(fmt, args);
     va_end(args);
 #endif
 }

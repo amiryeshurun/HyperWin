@@ -1,5 +1,6 @@
 #include <utils/array.h>
 #include <vmm/vmm.h>
+#include <debug.h>
 
 STATUS QPArrayInit(OUT PQWORD_PAIRS_ARRAY array)
 {

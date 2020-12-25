@@ -24,13 +24,15 @@
 // #define DEBUG_XSETBV
 // #define DEBUG_ALL_VM_EXIT
 
-VOID PrintBuffer(IN PCHAR buffer, IN QWORD length);
-VOID PrintNullTerminatedBuffer(IN PCHAR buffer);
-VOID Print(IN PCHAR fmt, ...);
-VOID PrintDebugLevelDebug(IN PCHAR fmt, ...);
-VOID PrintDebugLevelWarning(IN PCHAR fmt, ...);
-VOID PrintDebugLevelInfo(IN PCHAR fmt, ...);
+VOID DbgPrintBuffer(IN PCHAR buffer, IN QWORD length);
+VOID DbgPrintNullTerminatedBuffer(IN PCHAR buffer);
+VOID DbgPrint(IN PCHAR fmt, ...);
+VOID DbgPrintDebugLevelDebug(IN PCHAR fmt, ...);
+VOID DbgPrintDebugLevelWarning(IN PCHAR fmt, ...);
+VOID DbgPrintDebugLevelInfo(IN PCHAR fmt, ...);
 
+#define Print DbgPrint
+#define PrintDebugLevelDebug DbgPrintDebugLevelDebug
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
