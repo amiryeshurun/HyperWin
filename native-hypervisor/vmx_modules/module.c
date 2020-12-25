@@ -2,7 +2,7 @@
 #include <vmx_modules/module.h>
 #include <debug.h>
 
-VOID InitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer,
+VOID MdlInitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer,
     IN PGENERIC_MODULE_DATA moduleData, IN VMEXIT_HANDLER defaultHandler)
 {
     for(QWORD i = 0; i < VMEXIT_HANDLERS_MAX; module->isHandledOnVmExit[i] = FALSE,
@@ -17,13 +17,13 @@ VOID InitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INI
         ASSERT(moduleInitializer(sharedData, module, moduleData) == STATUS_SUCCESS);
 }
 
-VOID RegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
+VOID MdlRegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
 {
     module->isHandledOnVmExit[exitReason] = TRUE;
     module->vmExitHandlers[exitReason] = handler;
 }
 
-VOID RegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
+VOID MdlRegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
 {
     PMODULE* newArr;
     
@@ -35,14 +35,14 @@ VOID RegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
     sharedData->modules = newArr;
 }
 
-VOID SetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHAR moduleName)
+VOID MdlSetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHAR moduleName)
 {
     sharedData->heap.allocate(&sharedData->heap, (StringLength(moduleName) + 1) * sizeof(CHAR),
         &(module->moduleName));
     CopyMemory(module->moduleName, moduleName, StringLength(moduleName) + 1);
 }
 
-STATUS GetModuleByName(OUT PMODULE* module, IN PCHAR name)
+STATUS MdlGetModuleByName(OUT PMODULE* module, IN PCHAR name)
 {
     PSHARED_CPU_DATA shared;
     QWORD nameLength;

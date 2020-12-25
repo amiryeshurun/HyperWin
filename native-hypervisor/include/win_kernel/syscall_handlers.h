@@ -43,14 +43,14 @@ typedef struct _SYSCALL_EVENT
     } dataUnion;
 } SYSCALL_EVENT, *PSYSCALL_EVENT;
 
-VOID InitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
+VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler);
-VOID HookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId);
-STATUS HandleNtOpenPrcoess();
-STATUS HandleNtCreateUserProcess();
-STATUS HandleNtOpenPrcoessReturn();
-STATUS HandleNtReadFile();
-STATUS HandleNtReadFileReturn();
+VOID ShdHookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId);
+STATUS ShdHandleNtOpenPrcoess();
+STATUS ShdHandleNtCreateUserProcess();
+STATUS ShdHandleNtOpenPrcoessReturn();
+STATUS ShdHandleNtReadFile();
+STATUS ShdHandleNtReadFileReturn();
 
 extern QWORD __ntDataStart;
 

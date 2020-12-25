@@ -43,12 +43,12 @@ typedef union _VIRTUAL_ADDRESS_PARTITIONING
     QWORD address;
 }VIRTUAL_ADDRESS_PARTITIONING, PVIRTUAL_ADDRESS_PARTITIONING;
 
-STATUS CopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length);
-STATUS TranslateGuestVirtualToGuestPhysicalUsingCr3(IN QWORD address, OUT QWORD_PTR translatedAddress,
+STATUS WinMmCopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length);
+STATUS WinMmTranslateGuestVirtualToGuestPhysicalUsingCr3(IN QWORD address, OUT QWORD_PTR translatedAddress,
     IN QWORD guestCr3);
-STATUS TranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR translatedAddress);
-QWORD TranslateGuestPhysicalToPhysicalAddress(IN QWORD address);
-QWORD TranslateGuestPhysicalToHostVirtual(IN QWORD address);
-STATUS CopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length);
+STATUS WinMmTranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR translatedAddress);
+QWORD WinMmTranslateGuestPhysicalToPhysicalAddress(IN QWORD address);
+QWORD WinMmTranslateGuestPhysicalToHostVirtual(IN QWORD address);
+STATUS WinMmCopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length);
 
 #endif

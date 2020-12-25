@@ -33,7 +33,7 @@ typedef struct _HIDDEN_FILES_DATA
     HIDDEN_FILE_RULE rule;
 } HIDDEN_FILES_DATA, *PHIDDEN_FILES_DATA;
 
-STATUS Translate_SCB_To_FCB(IN QWORD scb, OUT QWORD_PTR fcb);
-STATUS Get_FCB_Field(IN QWORD fcb, IN QWORD field, OUT PVOID value);
+STATUS FileTranslateScbToFcb(IN QWORD scb, OUT QWORD_PTR fcb);
+STATUS FileGetFcbField(IN QWORD fcb, IN QWORD field, OUT PVOID value);
 
 #endif

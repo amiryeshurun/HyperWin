@@ -341,40 +341,40 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         sharedData->modules = NULL;
         sharedData->modulesCount = 0;
         // Default module
-        InitModule(sharedData, &sharedData->defaultModule, NULL, NULL, NULL);
-        SetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, DfltHandleMsrRead);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, DfltHandleMsrWrite);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, DfltHandleInvalidGuestState);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, DfltEmulateXSETBV);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, DfltHandleCpuId);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, DfltHandleCrAccess);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, DfltHandleEptViolation);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, DfltHandleVmCall);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, DfltHandleInvalidMsrLoading);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, DfltHandleMachineCheckFailure);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, DfltHandleTripleFault);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, DfltHandleApicInit);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, DfltHandleApicSipi);
-        RegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, DfltHandleException);
+        MdlInitModule(sharedData, &sharedData->defaultModule, NULL, NULL, NULL);
+        MdlSetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, DfltHandleMsrRead);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, DfltHandleMsrWrite);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, DfltHandleInvalidGuestState);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, DfltEmulateXSETBV);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, DfltHandleCpuId);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, DfltHandleCrAccess);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, DfltHandleEptViolation);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, DfltHandleVmCall);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, DfltHandleInvalidMsrLoading);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, DfltHandleMachineCheckFailure);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, DfltHandleTripleFault);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, DfltHandleApicInit);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, DfltHandleApicSipi);
+        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, DfltHandleException);
         Print("Successfully registered defualt module\n");
         // Dynamic modules initialozation
         // Allocation
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
         // Syscalls Module
-        InitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, NULL, SyscallsDefaultHandler);
-        SetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
-        RegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
-        RegisterVmExitHandler(syscallsModule, EXIT_REASON_EXCEPTION_NMI, SyscallsHandleException);
-        RegisterModule(sharedData, syscallsModule);
+        MdlInitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, NULL, SyscallsDefaultHandler);
+        MdlSetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
+        MdlRegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
+        MdlRegisterVmExitHandler(syscallsModule, EXIT_REASON_EXCEPTION_NMI, SyscallsHandleException);
+        MdlRegisterModule(sharedData, syscallsModule);
         Print("Successfully registered syscalls module\n");
         // KPP Module
         kppInitData.kppModule.syscallsModule = syscallsModule;
-        InitModule(sharedData, kppModule, KppModuleInitializeAllCores, &kppInitData, NULL);
-        SetModuleName(sharedData, kppModule, "KPP Module");
-        RegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
-        RegisterModule(sharedData, kppModule);
+        MdlInitModule(sharedData, kppModule, KppModuleInitializeAllCores, &kppInitData, NULL);
+        MdlSetModuleName(sharedData, kppModule, "KPP Module");
+        MdlRegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
+        MdlRegisterModule(sharedData, kppModule);
         Print("Successfully registered KPP module\n");
         // Mark modules as initiated
         sharedData->wereModulesInitiated = TRUE;
