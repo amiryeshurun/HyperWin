@@ -223,7 +223,6 @@ STATUS ShdHandleNtReadFile()
     }
 NtReadFileEmulateInstruction:
     // Emulate replaced instruction: mov rax,rsp
-    Print("Emulation\n");
     regs->rax = regs->rsp;
     regs->rip += syscallsData[NT_READ_FILE].hookedInstructionLength;
     // End emulation

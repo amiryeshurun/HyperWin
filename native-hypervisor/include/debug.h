@@ -22,6 +22,7 @@
 // #define DEBUG_ADDRESS_TRANSLATION
 // #define DEBUG_EPT_TRANSLATION
 // #define DEBUG_XSETBV
+// #define DEBUG_KPP_COMMANDS
 // #define DEBUG_ALL_VM_EXIT
 
 VOID DbgPrintBuffer(IN PCHAR buffer, IN QWORD length);

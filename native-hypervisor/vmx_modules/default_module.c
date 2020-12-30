@@ -364,7 +364,7 @@ STATUS DfltHandleApicSipi(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     // See Intel SDM, Volume 3C, Section 25.2
     Print("SIPI detected on core: %d. Page number: %d\n", data->currentCPU->coreIdentifier, vector);
     regs = &data->guestRegisters;
-    SetMemory(regs, 0, sizeof(REGISTERS));
+    HwSetMemory(regs, 0, sizeof(REGISTERS));
     // PM & PG must be disabled
     __vmwrite(GUEST_CR0, (__readmsr(MSR_IA32_VMX_CR0_FIXED0) & (~CR0_PM_ENABLED) 
         & (~CR0_PG_ENABLED)) & __readmsr(MSR_IA32_VMX_CR0_FIXED1));
