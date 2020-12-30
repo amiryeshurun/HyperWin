@@ -18,8 +18,8 @@ typedef struct _SYSCALL_DATA
 {
     // Statically defined
     SYSCALL_HANDLER handler;
-    SYSCALL_HANDLER returnHandler;
     BYTE params;
+    SYSCALL_HANDLER returnHandler;
     BYTE hookInstructionOffset;
     BOOL hookReturnEvent;
     QWORD hookedInstructionLength;

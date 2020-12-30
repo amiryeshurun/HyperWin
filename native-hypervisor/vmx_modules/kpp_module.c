@@ -78,7 +78,6 @@ VOID KppBuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLengt
         // The hidden instruction is a prefix of the current checked instruction
         if(!isBefore)
         {
-            Print("After\n");
             // ext = offset from the beggining of the hidden instruction
             HwCopyMemory(val, entry->hookedInstrucion + ext, entry->hookedInstructionLength - ext 
                 <= readLength ? entry->hookedInstructionLength - ext : readLength);
@@ -90,17 +89,13 @@ VOID KppBuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLengt
         // The hidden instruction is a suffix of the current checked instruction
         else
         {
-            Print("Before\n");
             // ext = the number of bytes before the beggining of the hidden instruction
             HwCopyMemory(val, hostVirtualAddress, ext);
             HwCopyMemory((BYTE_PTR)val + ext, entry->hookedInstrucion, readLength - ext);
         }      
     }
     else
-    {
         HwCopyMemory(val, hostVirtualAddress, readLength);
-        Print("Not both\n");
-    }
 }
 
 STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength)

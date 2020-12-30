@@ -199,7 +199,7 @@ STATUS ShdHandleNtReadFile()
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
     if(ObjTranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
     {
-        Print("Could not translate handle to object, skipping...\n");
+        Print("Could not translate handle to object, skipping... (Handle value: %8)\n", params[0]);
         goto NtReadFileEmulateInstruction;
     }
     // Check if this is a file object (See MSDN file object page)
