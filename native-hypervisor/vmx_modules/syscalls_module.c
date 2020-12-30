@@ -18,7 +18,7 @@ STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODU
 
     PrintDebugLevelDebug("Starting initialization of syscalls module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(SYSCALLS_MODULE_EXTENSION), &module->moduleExtension);
-    SetMemory(module->moduleExtension, 0, sizeof(SYSCALLS_MODULE_EXTENSION));
+    HwSetMemory(module->moduleExtension, 0, sizeof(SYSCALLS_MODULE_EXTENSION));
     extension = module->moduleExtension;
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
@@ -58,7 +58,7 @@ STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE mod
         module->hasDefaultHandler = FALSE;
         SyscallsLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         SyscallsGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(SyscallsHookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_OPEN_PROCESS) 
+        ASSERT(SyscallsHookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE) 
             == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
@@ -145,8 +145,14 @@ STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
         hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
-        SetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
-        // Inject the hooked instruction to the guest
+        HwSetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
+        // Inject the hooked instruction to the guest and print current stored instruction at address
+        Print("Injecting a hook instruction of length %d to %8. Current instruction is: %.b\n", 
+                ext->syscallsData[syscallId].hookedInstructionLength,
+                physicalHookAddress,
+                ext->syscallsData[syscallId].hookedInstructionLength,
+                WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress)
+            );
         HwCopyMemory(WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Save the translation between the address and the syscall id

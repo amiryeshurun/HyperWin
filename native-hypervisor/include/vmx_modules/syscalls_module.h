@@ -10,7 +10,7 @@
 #include <win_kernel/file.h>
 
 // Used to determine how many vm-exits should occur before hooking the system calls
-#define COUNT_UNTIL_HOOK 1000
+#define COUNT_UNTIL_HOOK 1500
 
 // Used to determine if a physical address is assosiated with a return event or not
 #define RETURN_EVENT_FLAG (1 << 30)

@@ -23,7 +23,7 @@ CHAR ConvertHalfByteToHexChar(IN BYTE halfByte);
 QWORD pow(IN QWORD base, IN QWORD power);
 QWORD NumberOfDigits(IN QWORD number);
 QWORD StringLength(IN PCHAR str);
-VOID SetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length);
+VOID HwSetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length);
 VOID DumpHostStack(IN QWORD_PTR stackAddress);
 BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange);
 QWORD SumDigits(IN QWORD num);

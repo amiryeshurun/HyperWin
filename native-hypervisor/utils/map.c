@@ -93,7 +93,7 @@ STATUS MapCreate(OUT PQWORD_MAP map, IN HASH_FUNC hasher, IN QWORD size, IN EQUA
         Print("Could not initialize map\n");
         return STATUS_NO_MEM_AVAILABLE;
     }
-    SetMemory(map->keyArrays, 0, size * sizeof(QWORD_PAIRS_ARRAY));
+    HwSetMemory(map->keyArrays, 0, size * sizeof(QWORD_PAIRS_ARRAY));
     for(QWORD i = 0; i < size; i++)
         QPArrayInit(&(map->keyArrays[i]));
     map->size = 0;
