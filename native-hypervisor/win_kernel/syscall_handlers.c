@@ -199,7 +199,9 @@ STATUS ShdHandleNtReadFile()
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
     if(ObjTranslateHandleToObject(params[0], handleTable, &fileObject) != STATUS_SUCCESS)
     {
+#ifdef DEBUG_HANDLE_TRANSLATION_FAILURE
         Print("Could not translate handle to object, skipping... (Handle value: %8)\n", params[0]);
+#endif
         goto NtReadFileEmulateInstruction;
     }
     // Check if this is a file object (See MSDN file object page)
@@ -210,7 +212,6 @@ STATUS ShdHandleNtReadFile()
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
     FileTranslateScbToFcb(scb, &fcb);
     FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex);
-    Print("Idx: %8\n", fileIndex);
     // Check if the current file is protected
     if((hiddenFileRule = MapGet(filesData, fileIndex)) != MAP_KEY_NOT_FOUND)
     {

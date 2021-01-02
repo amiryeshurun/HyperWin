@@ -36,13 +36,14 @@ STATUS HeapAllocate(IN PHEAP heap, IN QWORD size, OUT BYTE_PTR* ptr)
         return STATUS_SUCCESS;
     }
     heapEntry->length = size + sizeof(HEAP_ENTRY);
-    heapEntry->next = heapEntry->base + heapEntry->length;
     heapEntry->status = HEAP_ALLOCATED;
     *ptr = heapEntry->base + sizeof(HEAP_ENTRY);
+    heapEntry->next = heapEntry->base + heapEntry->length;
     heapEntry->next->base = heapEntry->next;
     heapEntry->next->length = currentEntryLength - heapEntry->length;
     heapEntry->next->status = HEAP_FREE;
     heapEntry->next->next = currentNext;
+    
     return STATUS_SUCCESS;
 }
 

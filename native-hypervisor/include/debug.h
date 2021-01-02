@@ -24,6 +24,7 @@
 // #define DEBUG_XSETBV
 // #define DEBUG_KPP_COMMANDS
 // #define DEBUG_ALL_VM_EXIT
+// #define DEBUG_HANDLE_TRANSLATION_FAILURE
 
 VOID DbgPrintBuffer(IN PCHAR buffer, IN QWORD length);
 VOID DbgPrintNullTerminatedBuffer(IN PCHAR buffer);
