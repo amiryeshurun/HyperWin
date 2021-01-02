@@ -1,4 +1,4 @@
-#include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/hooking_module.h>
 #include <vmx_modules/kpp_module.h>
 #include <vmm/msr.h>
 #include <debug.h>
@@ -12,53 +12,52 @@
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/file.h>
 
-STATUS SyscallsModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
+STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
-    PSYSCALLS_MODULE_EXTENSION extension;
+    PHOOKING_MODULE_EXTENSION extension;
 
-    PrintDebugLevelDebug("Starting initialization of syscalls module for all cores\n");
-    sharedData->heap.allocate(&sharedData->heap, sizeof(SYSCALLS_MODULE_EXTENSION), &module->moduleExtension);
-    HwSetMemory(module->moduleExtension, 0, sizeof(SYSCALLS_MODULE_EXTENSION));
+    PrintDebugLevelDebug("Starting initialization of hooking module for all cores\n");
+    sharedData->heap.allocate(&sharedData->heap, sizeof(HOOKING_MODULE_EXTENSION), &module->moduleExtension);
+    HwSetMemory(module->moduleExtension, 0, sizeof(HOOKING_MODULE_EXTENSION));
     extension = module->moduleExtension;
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
-    MapCreate(&extension->addressToSyscall, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+    MapCreate(&extension->addressToContext, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
     MapCreate(&extension->filesData, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
-    SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
     ShdInitSyscallData(NT_OPEN_PROCESS, 0, 4, ShdHandleNtOpenPrcoess, FALSE, NULL);
     ShdInitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, ShdHandleNtCreateUserProcess, FALSE, NULL);
     ShdInitSyscallData(NT_READ_FILE, 0, 3, ShdHandleNtReadFile, TRUE, ShdHandleNtReadFileReturn);
     /* System calls data initialization - END */
-    PrintDebugLevelDebug("Shared cores data successfully initialized for syscalls module\n");
+    PrintDebugLevelDebug("Shared cores data successfully initialized for hooking module\n");
     return STATUS_SUCCESS;
 }
 
-STATUS SyscallsModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
+STATUS HookingModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
 {
-    PrintDebugLevelDebug("Starting initialization of syscalls module on core #%d\n", data->coreIdentifier);
+    PrintDebugLevelDebug("Starting initialization of hooking module on core #%d\n", data->coreIdentifier);
     // Hook the event of writing to the LSTAR MSR
     VmmUpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
     __vmwrite(EXCEPTION_BITMAP, vmread(EXCEPTION_BITMAP) | (1 << INT_BREAKPOINT));
-    PrintDebugLevelDebug("Finished initialization of syscalls module on core #%d\n", data->coreIdentifier);
+    PrintDebugLevelDebug("Finished initialization of hooking module on core #%d\n", data->coreIdentifier);
     return STATUS_SUCCESS;
 }
 
-STATUS SyscallsDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE module)
+STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE module)
 {
-    PSYSCALLS_MODULE_EXTENSION ext;
+    PHOOKING_MODULE_EXTENSION ext;
     BYTE_PTR ssdt, ntoskrnl, win32k;
 
-    ext = (PSYSCALLS_MODULE_EXTENSION)module->moduleExtension;
+    ext = (PHOOKING_MODULE_EXTENSION)module->moduleExtension;
     if(ext->exitCount++ >= COUNT_UNTIL_HOOK)
     {
         // perform lock-checking
         module->hasDefaultHandler = FALSE;
-        SyscallsLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
-        SyscallsGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
-        ASSERT(SyscallsHookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE) 
+        HookingLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
+        HookingGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
+        ASSERT(HookingHookSystemCalls(module, ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE) 
             == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
@@ -67,7 +66,7 @@ NotHandled:
     return STATUS_VM_EXIT_NOT_HANDLED;
 }
 
-STATUS SyscallsLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
+STATUS HookingLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
 {
     // Pattern:
     // mov edi,eax
@@ -104,25 +103,30 @@ SSDTFound:
     return STATUS_SUCCESS;
 }
 
-VOID SyscallsGetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
+VOID HookingGetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3)
 {
     ASSERT(WinMmCopyGuestMemory(ntoskrnl, ssdt, sizeof(QWORD)) == STATUS_SUCCESS);
     ASSERT(WinMmCopyGuestMemory(win32k, ssdt + 32, sizeof(QWORD)) == STATUS_SUCCESS);
 }
 
-STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
+STATUS HookingHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
     IN QWORD count, ...)
 {
     va_list args;
     PSHARED_CPU_DATA shared;
-    PSYSCALLS_MODULE_EXTENSION ext;
+    PHOOKING_MODULE_EXTENSION ext;
     QWORD syscallId, functionAddress, virtualFunctionAddress, physicalHookAddress, virtualHookAddress;
     DWORD offset;
     BYTE hookInstruction[X86_MAX_INSTRUCTION_LEN];
+    BYTE hookedInstruction[X86_MAX_INSTRUCTION_LEN];
+    PHOOK_CONTEXT hookContext;
+    PHEAP heap;
+    STATUS status;
 
     ext = module->moduleExtension;
     va_start(args, count);
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
+    heap = &shared->heap;
     while(count--)
     {
         // Get the syscall id from va_arg
@@ -140,8 +144,7 @@ STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR
         virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
-        HwCopyMemory(ext->syscallsData[syscallId].hookedInstrucion,
-            WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress),
+        HwCopyMemory(hookedInstruction, WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress),
             ext->syscallsData[syscallId].hookedInstructionLength);
         // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
         hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
@@ -152,30 +155,43 @@ STATUS SyscallsHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR
                 physicalHookAddress,
                 ext->syscallsData[syscallId].hookedInstructionLength,
                 WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress)
-            );
+             );
         HwCopyMemory(WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
             ext->syscallsData[syscallId].hookedInstructionLength);
-        // Save the translation between the address and the syscall id
-        MapSet(&ext->addressToSyscall, physicalHookAddress, syscallId);
-        SetInsert(&ext->addressSet, ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE));
+        // Translate address to hook context
+        if((status = heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext)) != STATUS_SUCCESS)
+        {
+            Print("Could not allocate memory for hook context\n");
+            return status;
+        }
+        hookContext->handler = ext->syscallsData[syscallId].handler;
+        hookContext->additionalData = syscallId;
+        MapSet(&ext->addressToContext, physicalHookAddress, hookContext);
         if(ext->syscallsData[syscallId].hookReturnEvent)
-            MapSet(&ext->addressToSyscall, CALC_RETURN_HOOK_ADDR(physicalHookAddress),
-                 syscallId | RETURN_EVENT_FLAG);
-        // Mark the page as unreadable & unwritable
-        for(QWORD i = 0; i < shared->numberOfCores; i++)
-            VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)physicalHookAddress, PAGE_SIZE), 
-                PAGE_SIZE, EPT_EXECUTE);
+        {
+            if((status = heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext)) != STATUS_SUCCESS)
+            {
+                Print("Could not allocate memory for hook context\n");
+                return status;
+            }
+            hookContext->handler = ext->syscallsData[syscallId].returnHandler;
+            hookContext->additionalData = syscallId;
+            MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(physicalHookAddress), hookContext);
+            HeapDump(heap);
+        }
+        ASSERT(KppAddNewEntry(physicalHookAddress, ext->syscallsData[syscallId].hookedInstructionLength, hookedInstruction) 
+            == STATUS_SUCCESS);
     }
     va_end(args);
     return STATUS_SUCCESS;
 }
 
-STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS HookingHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     // PatchGaurd might put a fake LSTAR value later, hence we save it now
     PREGISTERS regs;
     QWORD msrValue;
-    PSYSCALLS_MODULE_EXTENSION ext;
+    PHOOKING_MODULE_EXTENSION ext;
 
     regs = &data->guestRegisters;
     if(regs->rcx != MSR_IA32_LSTAR)
@@ -195,11 +211,12 @@ STATUS SyscallsHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     return STATUS_SUCCESS;
 }
 
-STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
+STATUS HookingHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     BYTE vector;
     QWORD syscallId, ripPhysicalAddress;
-    PSYSCALLS_MODULE_EXTENSION ext;
+    PHOOKING_MODULE_EXTENSION ext;
+    PHOOK_CONTEXT hookContext;
 
     vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
     if(vector != INT_BREAKPOINT)
@@ -208,13 +225,8 @@ STATUS SyscallsHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     ext = module->moduleExtension;
     ASSERT(WinMmTranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
         == STATUS_SUCCESS);
-    if((syscallId = MapGet(&ext->addressToSyscall, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
-    {
-        if(syscallId & RETURN_EVENT_FLAG)
-            ASSERT(ext->syscallsData[syscallId & ~(RETURN_EVENT_FLAG)].returnHandler() == STATUS_SUCCESS);
-        else
-            ASSERT(ext->syscallsData[syscallId].handler() == STATUS_SUCCESS);
-    }
+    if((hookContext = MapGet(&ext->addressToContext, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
+        ASSERT(hookContext->handler() == STATUS_SUCCESS);
     else
         VmmInjectGuestInterrupt(INT_BREAKPOINT, 0);
     return STATUS_SUCCESS;
