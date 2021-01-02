@@ -42,7 +42,6 @@ STATUS ListInsert(IN PLIST list, IN QWORD data)
     }
     newEntry->data = data;
     list->size++;
-
     return STATUS_SUCCESS;
 }
 

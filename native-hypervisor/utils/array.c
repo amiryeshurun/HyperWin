@@ -62,7 +62,7 @@ STATUS QArrayInsert(IN PQWORD_ARRAY array, IN QWORD value)
     PHEAP heap;
     QWORD_PTR newArr;
 
-    heap = &(VmmGetVmmStruct()->currentCPU->sharedData->heap);
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     if(array->size == array->count)
     {
         if(heap->allocate(heap, array->size * 2 * sizeof(QWORD), &newArr) != STATUS_SUCCESS)

@@ -177,7 +177,6 @@ STATUS HookingHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR 
             hookContext->handler = ext->syscallsData[syscallId].returnHandler;
             hookContext->additionalData = syscallId;
             MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(physicalHookAddress), hookContext);
-            HeapDump(heap);
         }
         ASSERT(KppAddNewEntry(physicalHookAddress, ext->syscallsData[syscallId].hookedInstructionLength, hookedInstruction) 
             == STATUS_SUCCESS);

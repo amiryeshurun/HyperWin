@@ -1,6 +1,7 @@
 #include <utils/set.h>
 #include <vmm/vmm.h>
 #include <utils/allocation.h>
+#include <debug.h>
 
 STATUS SetInit(IN PQWORD_SET set, IN QWORD bucketsCount, IN HASH_FUNC hasher)
 {
@@ -18,7 +19,6 @@ STATUS SetInit(IN PQWORD_SET set, IN QWORD bucketsCount, IN HASH_FUNC hasher)
 STATUS SetInsert(IN PQWORD_SET set, IN QWORD value)
 {
     QWORD hash;
-
     hash = set->hasher(value);
     if(IsInSet(set, value))
         return STATUS_KEY_ALREADY_EXISTS;

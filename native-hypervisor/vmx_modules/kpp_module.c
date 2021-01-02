@@ -12,14 +12,13 @@
 STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
     PKPP_MODULE_DATA extension;
-    PHOOKING_MODULE_EXTENSION syscallsExt;
 
     PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
     HwSetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
     extension = module->moduleExtension;
     SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
-    ListCreate(&extension->addressSet); 
+    ListCreate(&extension->entriesList); 
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
     return STATUS_SUCCESS;
 }
@@ -31,7 +30,7 @@ STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
     return STATUS_SUCCESS;
 }
 
-STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstrucion)
+STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstruction)
 {
     PKPP_ENTRY_CONTEXT kppContext;
     PHEAP heap;
@@ -51,6 +50,7 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
         }
         shared->staticVariables.kppAddNewEntry.staticContent.kppAddNewEntry.module = module;
     }
+    heap = &shared->heap;
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;
     if((status = heap->allocate(heap, sizeof(KPP_ENTRY_CONTEXT), &kppContext)) != STATUS_SUCCESS)
     {
@@ -59,7 +59,7 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
     }
     kppContext->hookedInstructionAddress = hookedInstructionAddress;
     kppContext->hookedInstructionLength = hookedInstructionLength;
-    HwCopyMemory(kppContext->hookedInstrucion, hookedInstrucion, hookedInstructionLength);    
+    HwCopyMemory(kppContext->hookedInstrucion, hookedInstruction, hookedInstructionLength);    
     if((status = ListInsert(&kppData->entriesList, kppContext)) != STATUS_SUCCESS)
     {
         Print("Could not insert a new KPP context to list of contexts\n");
@@ -71,7 +71,6 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
     for(QWORD i = 0; i < shared->numberOfCores; i++)
         VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)hookedInstructionAddress, PAGE_SIZE), 
             PAGE_SIZE, EPT_EXECUTE);
-    
     return STATUS_SUCCESS;
 }
 
