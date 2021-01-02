@@ -4,7 +4,7 @@
 #include <vmm/vmcs.h>
 #include <vmm/vm_operations.h>
 #include <win_kernel/kernel_objects.h>
-#include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/hooking_module.h>
 
 static __attribute__((section(".nt_data"))) SYSCALL_DATA syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
  { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
@@ -168,7 +168,7 @@ STATUS ShdHandleNtReadFile()
     PSHARED_CPU_DATA shared;
     PMODULE module;
     PREGISTERS regs;
-    PSYSCALLS_MODULE_EXTENSION ext;
+    PHOOKING_MODULE_EXTENSION ext;
     PQWORD_MAP filesData;
     QWORD params[17];
     QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex;
@@ -183,7 +183,7 @@ STATUS ShdHandleNtReadFile()
     // First get the syscalls module pointer
     if(!module)
     {
-        if((status = MdlGetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             goto NtReadFileEmulateInstruction;
@@ -248,7 +248,7 @@ STATUS ShdHandleNtReadFileReturn()
     // First get the syscalls module pointer
     if(!module)
     {
-        if((status = MdlGetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             return status;

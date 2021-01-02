@@ -1,4 +1,4 @@
-#include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/hooking_module.h>
 #include <vmx_modules/kpp_module.h>
 #include <vmm/msr.h>
 #include <debug.h>
@@ -41,7 +41,7 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     PSHARED_CPU_DATA shared;
     PMODULE module;
     PHEAP heap;
-    PSYSCALLS_MODULE_EXTENSION ext;
+    PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
     QWORD fileObject, scb, fcb, eprocess, handleTable, fileIndex;
     STATUS status;
@@ -51,7 +51,7 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
     if(!module)
     {
-        if((status = MdlGetModuleByName(&module, "Windows System Calls Module")) != STATUS_SUCCESS)
+        if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
         {
             Print("Could not find the desired module\n");
             return status;

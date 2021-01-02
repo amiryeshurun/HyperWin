@@ -6,21 +6,20 @@
 #include <win_kernel/memory_manager.h>
 #include <debug.h>
 #include <intrinsics.h>
-#include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/hooking_module.h>
+#include <vmm/memory_manager.h>
 
 STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
 {
     PKPP_MODULE_DATA extension;
-    PSYSCALLS_MODULE_EXTENSION syscallsExt;
+    PHOOKING_MODULE_EXTENSION syscallsExt;
 
     PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
     HwSetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
     extension = module->moduleExtension;
-    extension->syscallsData = &__ntDataStart;
-    syscallsExt = initData->kppModule.syscallsModule->moduleExtension;
-    extension->syscallsMap = &syscallsExt->addressToSyscall;
-    extension->addressSet = &syscallsExt->addressSet;
+    SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
+    ListCreate(&extension->addressSet); 
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
     return STATUS_SUCCESS;
 }
@@ -32,43 +31,85 @@ STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
     return STATUS_SUCCESS;
 }
 
-BOOL KppCheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
-    IN BYTE readLength, OUT BOOL* before, OUT PSYSCALL_DATA* entry, QWORD_PTR ext)
+STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstrucion)
 {
-    QWORD hookedSyscallsCount, hookedSyscalls[KPP_MODULE_MAX_COUNT];
+    PKPP_ENTRY_CONTEXT kppContext;
+    PHEAP heap;
+    STATUS status;
+    PMODULE module;
+    PKPP_MODULE_DATA kppData;
+    PSHARED_CPU_DATA shared;
 
-    MapGetValues(kppData->syscallsMap, hookedSyscalls, &hookedSyscallsCount);
-    for(QWORD i = 0; i < hookedSyscallsCount; i++)
+    shared = VmmGetVmmStruct()->currentCPU->sharedData;
+    module = shared->staticVariables.kppAddNewEntry.staticContent.kppAddNewEntry.module;
+    if(!module)
     {
-        if(hookedSyscalls[i] & RETURN_EVENT_FLAG)
-            continue;
-        // if(address >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
-        //      && address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress
-        //       + kppData->syscallsData[hookedSyscalls[i]].hookedInstructionLength)
-        if(address - kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress <= readLength)
+        if((status = MdlGetModuleByName(&module, "KPP Module")) != STATUS_SUCCESS)
+        {
+            Print("Could not find the desired module\n");
+            return status;
+        }
+        shared->staticVariables.kppAddNewEntry.staticContent.kppAddNewEntry.module = module;
+    }
+    kppData = (PKPP_MODULE_DATA)module->moduleExtension;
+    if((status = heap->allocate(heap, sizeof(KPP_ENTRY_CONTEXT), &kppContext)) != STATUS_SUCCESS)
+    {
+        Print("Could not allocate memory for a new KPP context\n");
+        return status;
+    }
+    kppContext->hookedInstructionAddress = hookedInstructionAddress;
+    kppContext->hookedInstructionLength = hookedInstructionLength;
+    HwCopyMemory(kppContext->hookedInstrucion, hookedInstrucion, hookedInstructionLength);    
+    if((status = ListInsert(&kppData->entriesList, kppContext)) != STATUS_SUCCESS)
+    {
+        Print("Could not insert a new KPP context to list of contexts\n");
+        return status;
+    }
+    // Save the address in the addresses set
+    SetInsert(&kppData->addressSet, ALIGN_DOWN((QWORD)hookedInstructionAddress, PAGE_SIZE));
+    // Mark the page as unreadable & unwritable
+    for(QWORD i = 0; i < shared->numberOfCores; i++)
+        VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)hookedInstructionAddress, PAGE_SIZE), 
+            PAGE_SIZE, EPT_EXECUTE);
+    
+    return STATUS_SUCCESS;
+}
+
+BOOL KppCheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
+    IN BYTE readLength, OUT BOOL* before, OUT PKPP_ENTRY_CONTEXT* entry, QWORD_PTR ext)
+{
+    PLIST_ENTRY kppEntry;
+    PKPP_ENTRY_CONTEXT kppContext;
+
+    kppEntry = kppData->entriesList.head;
+    while(kppEntry)
+    {
+        kppContext = (PKPP_ENTRY_CONTEXT)kppEntry->data;
+        if(address - kppContext->hookedInstructionLength <= readLength)
         {
             *before = FALSE;
-            *entry = &(kppData->syscallsData[hookedSyscalls[i]]);
-            *ext = address - kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress;
+            *entry = kppContext;
+            *ext = address - kppContext->hookedInstructionAddress;
             return TRUE;
         }
-        else if((address <= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress)
-         && ((address + readLength) >= kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress))
+        else if((address <= kppContext->hookedInstructionAddress)
+         && ((address + readLength) >= kppContext->hookedInstructionAddress))
         {
             *before = TRUE;
-            *entry = &(kppData->syscallsData[hookedSyscalls[i]]);
-            *ext = kppData->syscallsData[hookedSyscalls[i]].hookedInstructionAddress - address;
+            *entry = kppContext;
+            *ext = kppContext->hookedInstructionAddress - address;
             return TRUE;
         }
+        kppEntry = kppEntry->next;
     }
     return FALSE;
 }
 
-VOID KppBuildKppResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength, 
+VOID KppBuildResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength, 
     IN PKPP_MODULE_DATA kppData)
 {
     QWORD hostVirtualAddress, ext;
-    PSYSCALL_DATA entry;
+    PKPP_ENTRY_CONTEXT entry;
     BOOL isBefore;
 
     hostVirtualAddress = WinMmTranslateGuestPhysicalToHostVirtual(guestPhysical);
@@ -115,7 +156,7 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
     {
         // mov edx,DWORD PTR [r8+rax*4+0x5e5b90]
         DWORD val;
-        KppBuildKppResult(&val, address, 4, kppData);
+        KppBuildResult(&val, address, 4, kppData);
         regs->rdx = val;
     }
     else if(instructionLength == 9 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb6 && 
@@ -124,14 +165,14 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
     {
         // movzx eax,BYTE PTR [r8+rax*1+0x5e5ba0]
         BYTE val;
-        KppBuildKppResult(&val, address, 1, kppData);
+        KppBuildResult(&val, address, 1, kppData);
         regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
     }
     else if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x02)
     {
         // mov eax,DWORD PTR [r10]
         DWORD val;
-        KppBuildKppResult(&val, address, 4, kppData);
+        KppBuildResult(&val, address, 4, kppData);
         regs->rax = val;
     }
     else if((instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x8a && inst[2] == 0x02) ||
@@ -139,21 +180,21 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
     {
         // mov al,BYTE PTR [r10]
         BYTE val;
-        KppBuildKppResult(&val, address, 1, kppData);
+        KppBuildResult(&val, address, 1, kppData);
         regs->rax = (regs->rax & 0xffffffffffffff00ULL) | val;
     }
     else if(instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb7 && inst[3] == 0x02)
     {
         // movzx eax,WORD PTR [r10]
         WORD val;
-        KppBuildKppResult(&val, address, 2, kppData);
+        KppBuildResult(&val, address, 2, kppData);
         regs->rax = (regs->rax & 0xffffffff00000000ULL) | val;
     }
     else if(instructionLength == 3 && inst[0] == 0x49 && inst[1] == 0x8b && inst[2] == 0x01)
     {
         // mov rax,QWORD PTR [r9]
         QWORD val;
-        KppBuildKppResult(&val, address, 8, kppData);
+        KppBuildResult(&val, address, 8, kppData);
         regs->rax = val;
     }
     else if((instructionLength == 3 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x18)
@@ -162,7 +203,7 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         // xor rbx,QWORD PTR [r8]
         // xor rbx,QWORD PTR [r8+0x8]
         QWORD val;
-        KppBuildKppResult(&val, address, 8, kppData);
+        KppBuildResult(&val, address, 8, kppData);
         regs->rbx ^= val;
     }
     else if((instructionLength == 4 && inst[0] == 0x41 && inst[1] == 0x0f && inst[2] == 0xb6 && inst[3] == 0x00)
@@ -171,14 +212,14 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         // movzx eax,BYTE PTR [r8]
         // movzx eax,BYTE PTR [r9]
         BYTE val;
-        KppBuildKppResult(&val, address, 1, kppData);
+        KppBuildResult(&val, address, 1, kppData);
         regs->rax = (regs->rax & 0xffffffff00000000) | val;
     }
     else if(instructionLength == 4 && inst[0] == 0x4d && inst[1] == 0x8b && inst[2] == 0x41 && inst[3] == 0x08)
     {
         // mov r8,QWORD PTR [r9+0x8]
         QWORD val;
-        KppBuildKppResult(&val, address, 8, kppData);
+        KppBuildResult(&val, address, 8, kppData);
         regs->r8 = val;
     }
     else if((instructionLength == 3 && inst[0] == 0x4d && inst[1] == 0x33 && inst[2] == 0x01)
@@ -189,21 +230,21 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         // xor r8,QWORD PTR [r10]
         // xor r8,QWORD PTR [r10+0x8]
         QWORD val;
-        KppBuildKppResult(&val, address, 8, kppData);
+        KppBuildResult(&val, address, 8, kppData);
         regs->r8 ^= val;
     }
     else if(instructionLength == 4 && inst[0] == 0xc5 && inst[1] == 0xfe && inst[2] == 0x6f && inst[3] == 0x00)
     {
         // vmovdqu ymm0,YMMWORD PTR [rax]
         BYTE val[16];
-        KppBuildKppResult(&val, address, 16, kppData);
+        KppBuildResult(&val, address, 16, kppData);
         __vmovdqu_ymm0(val);
     }
     else if(instructionLength == 3 && inst[0] == 0x48 && inst[1] == 0x33 && inst[2] == 0x1f)
     {
         // xor rbx,QWORD PTR [rdi]
         QWORD val;
-        KppBuildKppResult(&val, address, 8, kppData);
+        KppBuildResult(&val, address, 8, kppData);
         regs->rbx ^= val;
     }
     else
@@ -223,7 +264,7 @@ STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     address = vmread(GUEST_PHYSICAL_ADDRESS);
     instructionLength = vmread(VM_EXIT_INSTRUCTION_LEN);
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;
-    if(!IsInSet(kppData->addressSet, ALIGN_DOWN(address, PAGE_SIZE)))
+    if(!IsInSet(&kppData->addressSet, ALIGN_DOWN(address, PAGE_SIZE)))
         return STATUS_VM_EXIT_NOT_HANDLED;
     return KppEmulatePatchGuardAction(kppData, address, instructionLength);
 }
