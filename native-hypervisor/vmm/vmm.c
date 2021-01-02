@@ -11,7 +11,7 @@
 #include <win_kernel/memory_manager.h>
 #include <bios/apic.h>
 #include <vmx_modules/default_module.h>
-#include <vmx_modules/syscalls_module.h>
+#include <vmx_modules/hooking_module.h>
 #include <vmx_modules/kpp_module.h>
 
 VOID VmmInitializeSingleHypervisor(IN PVOID data)
@@ -331,8 +331,7 @@ STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
 {
     PSHARED_CPU_DATA sharedData;
-    PMODULE kppModule, syscallsModule;
-    GENERIC_MODULE_DATA kppInitData;
+    PMODULE kppModule, hookingModule;
 
     sharedData = data->sharedData;
     if(!sharedData->wereModulesInitiated)
@@ -360,18 +359,17 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         Print("Successfully registered defualt module\n");
         // Dynamic modules initialozation
         // Allocation
-        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &syscallsModule);
+        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &hookingModule);
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
         // Syscalls Module
-        MdlInitModule(sharedData, syscallsModule, SyscallsModuleInitializeAllCores, NULL, SyscallsDefaultHandler);
-        MdlSetModuleName(sharedData, syscallsModule, "Windows System Calls Module");
-        MdlRegisterVmExitHandler(syscallsModule, EXIT_REASON_MSR_WRITE, SyscallsHandleMsrWrite);
-        MdlRegisterVmExitHandler(syscallsModule, EXIT_REASON_EXCEPTION_NMI, SyscallsHandleException);
-        MdlRegisterModule(sharedData, syscallsModule);
+        MdlInitModule(sharedData, hookingModule, HookingModuleInitializeAllCores, NULL, HookingDefaultHandler);
+        MdlSetModuleName(sharedData, hookingModule, "Windows Hooking Module");
+        MdlRegisterVmExitHandler(hookingModule, EXIT_REASON_MSR_WRITE, HookingHandleMsrWrite);
+        MdlRegisterVmExitHandler(hookingModule, EXIT_REASON_EXCEPTION_NMI, HookingHandleException);
+        MdlRegisterModule(sharedData, hookingModule);
         Print("Successfully registered syscalls module\n");
         // KPP Module
-        kppInitData.kppModule.syscallsModule = syscallsModule;
-        MdlInitModule(sharedData, kppModule, KppModuleInitializeAllCores, &kppInitData, NULL);
+        MdlInitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL, NULL);
         MdlSetModuleName(sharedData, kppModule, "KPP Module");
         MdlRegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
         MdlRegisterModule(sharedData, kppModule);
@@ -380,15 +378,15 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         sharedData->wereModulesInitiated = TRUE;
     }
     KppModuleInitializeSingleCore(data);
-    SyscallsModuleInitializeSingleCore(data);
+    HookingModuleInitializeSingleCore(data);
 }
 
-BOOL IsSoftwareInterrupt(IN BYTE vector)
+BOOL VmmIsSoftwareInterrupt(IN BYTE vector)
 {
     return vector == INT_BREAKPOINT || vector == INT_OVERFLOW;
 }
 
-BOOL HasErrorCode(IN BYTE vector)
+BOOL VmmHasErrorCode(IN BYTE vector)
 {
     return vector == INT_DOUBLE_FAULT || vector == INT_INVALID_TSS || vector == INT_SEGMENT
         || vector == INT_STACK_FAULT || vector == INT_GENERAL_PROTECT || vector == INT_PAGE_FAULT
@@ -401,14 +399,14 @@ STATUS VmmInjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode)
     
     interruptInformation = vector;
     // Currently only software & hardware interrupt are supported
-    if(IsSoftwareInterrupt(vector))
+    if(VmmIsSoftwareInterrupt(vector))
     {
         interruptInformation |= (4 << 8);
         __vmwrite(VM_ENTRY_INSTRUCTION_LEN, vmread(VM_EXIT_INSTRUCTION_LEN));
     }
     else
         interruptInformation |= (3 << 8);
-    if(HasErrorCode(vector))
+    if(VmmHasErrorCode(vector))
     {
         if(errorCode == -1)
             return STATUS_ERROR_CODE_MUST_BE_SPECIFIED;

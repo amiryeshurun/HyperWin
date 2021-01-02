@@ -26,13 +26,13 @@ typedef struct _GENETIC_MODULE_DATA
 {
     union
     {
-        struct _SYSCALLS_MODULE_DATA
+        struct _HOOKING_MODULE_DATA
         {
             PMODULE kppModule;
-        } syscallsModule;
+        } hookingModule;
         struct _KPP_INIT_MODULE_DATA
         {
-            PMODULE syscallsModule;
+            PMODULE hookingModule;
         } kppModule;
     };
 } GENERIC_MODULE_DATA, *PGENERIC_MODULE_DATA;
