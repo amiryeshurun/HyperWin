@@ -80,7 +80,7 @@ VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BY
 VOID ShdGetParameters(OUT QWORD_PTR params, IN BYTE count)
 {
     PREGISTERS regs = &VmmGetVmmStruct()->guestRegisters;
-    QWORD paramsStart = regs->rsp + 4 * sizeof(QWORD);
+    QWORD paramsStart = regs->rsp + 5 * sizeof(QWORD);
     switch(count)
     {
         case 17:
@@ -220,7 +220,8 @@ STATUS ShdHandleNtReadFile()
         ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
         ShdHookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
         syscallEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
-        // Need to save the IoStatusBlock & UserBuffer
+        syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock = params[4];
+        syscallEvents[threadId].dataUnion.NtReadFile.userBuffer = params[5];
     }
 NtReadFileEmulateInstruction:
     // Emulate replaced instruction: mov rax,rsp
@@ -236,7 +237,7 @@ STATUS ShdHandleNtReadFileReturn()
     PSHARED_CPU_DATA shared;
     PMODULE module;
     PREGISTERS regs;
-    QWORD threadId, ethread, bufferLength, idx;
+    QWORD threadId, ethread, bufferLength, idx, pid, eprocess;
     PHIDDEN_FILE_RULE rule;
     BYTE readDataBuffer[BUFF_MAX_SIZE];
     STATUS status;
@@ -257,22 +258,25 @@ STATUS ShdHandleNtReadFileReturn()
             .module = module;
     }
     ObjGetCurrent_ETHREAD(&ethread);
+    ObjGetCurrent_EPROCESS(&eprocess);
+    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_PID, &pid);
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
-    Print("Thread %d hooken the return event of NtReadFile\n", threadId);
+    Print("Process %d, Thread %d hooken the return event of NtReadFile\n", pid, threadId);
     // Get the rule found in the hashmap
     rule = syscallEvents[threadId].dataUnion.NtReadFile.rule;
-    // Copy the readen data length
-    WinMmCopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock,
+    // Copy the readen data length (stored in the inforamtion member of IoStatusBlock)
+    WinMmCopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock + sizeof(PVOID),
         sizeof(QWORD));
     Print("The size of the data returned in buffer is %d\n", bufferLength);
     // Copy the readon data itself
     WinMmCopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
+    Print("Data: %.b", bufferLength, readDataBuffer);
     // Replace hidden content (if exist)
     if(bufferLength >= rule->content.length && (idx = MemoryContains(readDataBuffer, bufferLength, rule->content.data,
         rule->content.length)) != IDX_NOT_FOUND)
     {
         for(QWORD i = idx; i < idx + rule->content.length; i++)
-            readDataBuffer[i] = '0';
+            readDataBuffer[i] = L'0';
     }
     WinMmCopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
     // Put back the saved address in the RIP register
