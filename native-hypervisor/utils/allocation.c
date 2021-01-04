@@ -1,5 +1,6 @@
 #include <utils/allocation.h>
 #include <debug.h>
+#include <utils/utils.h>
 
 VOID HeapInit(IN PHEAP heap, IN QWORD length, IN QWORD freesCycle, IN ALLOCATION_FUNCTION allocFunc,
     IN DEALLOCATION_FUNCTION deallocFunc, IN DEFRAGMENT_HEAP defragFunc)
@@ -23,6 +24,7 @@ STATUS HeapAllocate(IN PHEAP heap, IN QWORD size, OUT BYTE_PTR* ptr)
     QWORD currentEntryLength;
     BYTE_PTR currentNext;
 
+    size = ALIGN_UP(size, sizeof(QWORD));
     for(heapEntry = heap->heap; (heapEntry->status != HEAP_FREE || (size + sizeof(HEAP_ENTRY)) > heapEntry->length) && heapEntry->next;
          heapEntry = heapEntry->next->base);
     if(heapEntry->status != HEAP_FREE)

@@ -13,7 +13,7 @@ QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
     QWORD hash;
 
     hash = map->hash(key);
-    if(map->keyArrays[hash].count == 1)
+    if(map->keyArrays[hash].count == 1 && map->equals(map->keyArrays[hash].arr[0]->key, key))
         return map->keyArrays[hash].arr[0]->value;
     else
         for(QWORD i = 0; i < map->keyArrays[hash].count; i++)
