@@ -5,7 +5,7 @@
 
 typedef struct _UNICODE_STRING
 {
-    PWCHAR data;
+    BYTE_PTR data;
     QWORD length;
 } UNICODE_STRING, *PUNICODE_STRING;
 

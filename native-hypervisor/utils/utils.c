@@ -153,10 +153,14 @@ QWORD SumDigits(IN QWORD num)
     return sum;
 }
 
-QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2)
+QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2,
+    OUT QWORD_PTR indecies)
 {
-    for(QWORD i = 0; i < size1 - size2; i++)
+    QWORD count = 0;
+
+    for(QWORD i = 0; i < size1 - size2 + 1; i++)
         if(!HwCompareMemory(buff1 + i, buff2, size2))
-            return i;
-    return IDX_NOT_FOUND;
+            indecies[count++] = i;
+    
+    return count;
 }
