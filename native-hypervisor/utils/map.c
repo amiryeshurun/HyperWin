@@ -11,7 +11,6 @@ QWORD BasicHashFunction(IN QWORD key)
 QWORD MapGet(IN PQWORD_MAP map, IN QWORD key)
 {
     QWORD hash;
-
     hash = map->hash(key);
     if(map->keyArrays[hash].count == 1 && map->equals(map->keyArrays[hash].arr[0]->key, key))
         return map->keyArrays[hash].arr[0]->value;

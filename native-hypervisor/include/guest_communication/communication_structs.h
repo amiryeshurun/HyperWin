@@ -35,6 +35,7 @@ typedef struct _GENERIC_COM_STRUCT
             QWORD contentLength;
             BYTE content[FILE_PATH_MAX_LENGTH];
             DWORD protectionOperation;
+            DWORD encodingType;
         } protectFileData;
     } argumentsUnion;
 } GENERIC_COM_STRUCT, *PGENERIC_COM_STRUCT;

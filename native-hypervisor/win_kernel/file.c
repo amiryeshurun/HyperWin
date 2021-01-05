@@ -36,7 +36,8 @@ STATUS FileGetFcbField(IN QWORD fcb, IN QWORD field, OUT PVOID value)
     }
 }
 
-STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength)
+STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength, 
+    IN BYTE encodingType)
 {
     PSHARED_CPU_DATA shared;
     PMODULE module;
@@ -61,11 +62,11 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     // Allocate memory for storing the rule
     heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
     heap->allocate(heap, contentLength, &rule->content.data);
-    // protect-file-data -p c:\users\amir\desktop\fd.txt -h j
     HwCopyMemory(rule->content.data, content, contentLength);
     // Set the rule
     rule->content.length = contentLength;
     rule->rule = FILE_HIDE_CONTENT;
+    rule->encoding = encodingType;
     // Get the module extension
     ext = module->moduleExtension;
     // Translate the Handle to an object
@@ -78,6 +79,6 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     ASSERT(FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex) == STATUS_SUCCESS);
     // Map the file to a rule
     MapSet(&ext->filesData, fileIndex, rule);
-    Print("File rule added for file idx: %8, data: %.b\n", contentLength, content, fileIndex);
+    Print("File rule added for file idx: %8, data: %.b\n", fileIndex, contentLength, content);
     return STATUS_SUCCESS;
 }

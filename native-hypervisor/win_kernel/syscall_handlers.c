@@ -237,9 +237,10 @@ STATUS ShdHandleNtReadFileReturn()
     PSHARED_CPU_DATA shared;
     PMODULE module;
     PREGISTERS regs;
-    QWORD threadId, ethread, bufferLength, idx, pid, eprocess;
+    QWORD threadId, ethread, bufferLength, idx, pid, eprocess, count, indecies[10];
     PHIDDEN_FILE_RULE rule;
     BYTE readDataBuffer[BUFF_MAX_SIZE];
+    PWCHAR utf16Ptr;
     STATUS status;
 
     state = VmmGetVmmStruct();
@@ -265,20 +266,32 @@ STATUS ShdHandleNtReadFileReturn()
     // Get the rule found in the hashmap
     rule = syscallEvents[threadId].dataUnion.NtReadFile.rule;
     // Copy the readen data length (stored in the inforamtion member of IoStatusBlock)
-    WinMmCopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock + sizeof(PVOID),
-        sizeof(QWORD));
-    Print("The size of the data returned in buffer is %d\n", bufferLength);
+    WinMmCopyGuestMemory(&bufferLength, syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock
+     + sizeof(PVOID), sizeof(QWORD));
+    if(!bufferLength)
+        goto NtReadFilePutReturnAddress;
     // Copy the readon data itself
     WinMmCopyGuestMemory(readDataBuffer, syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
-    Print("Data: %.b", bufferLength, readDataBuffer);
     // Replace hidden content (if exist)
-    if(bufferLength >= rule->content.length && (idx = MemoryContains(readDataBuffer, bufferLength, rule->content.data,
-        rule->content.length)) != IDX_NOT_FOUND)
+    if(bufferLength >= rule->content.length && 
+        (count = MemoryContains(readDataBuffer, bufferLength, rule->content.data, rule->content.length, indecies)) 
+            != 0)
     {
-        for(QWORD i = idx; i < idx + rule->content.length; i++)
-            readDataBuffer[i] = L'0';
+        if(rule->encoding == ENCODING_TYPE_UTF_16)
+        {
+            utf16Ptr = readDataBuffer;
+            for(QWORD k = 0; k < count; k++)
+                for(QWORD i = indecies[k] / 2; i < (indecies[k] + rule->content.length) / 2; i++)
+                    utf16Ptr[i] = L'*';
+        }
+        else if(rule->encoding == ENCODING_TYPE_UTF_8)
+            for(QWORD k = 0; k < count; k++)
+                for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
+                    readDataBuffer[i] = '*';
     }
+    Print("Final output: %.b", bufferLength, readDataBuffer);
     WinMmCopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
+NtReadFilePutReturnAddress:
     // Put back the saved address in the RIP register
     regs->rip = syscallEvents[threadId].returnAddress;
     return STATUS_SUCCESS;

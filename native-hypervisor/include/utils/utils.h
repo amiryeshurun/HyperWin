@@ -27,6 +27,7 @@ VOID HwSetMemory(IN BYTE_PTR base, IN BYTE value, IN QWORD length);
 VOID DumpHostStack(IN QWORD_PTR stackAddress);
 BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange);
 QWORD SumDigits(IN QWORD num);
-QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2);
+QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2,
+    OUT QWORD_PTR indecies);
 
 #endif

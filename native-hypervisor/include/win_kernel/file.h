@@ -24,17 +24,18 @@ typedef struct _HIDDEN_FILE_RULE
 {
     UNICODE_STRING content;
     BYTE rule;
+    BYTE encoding;
     UNICODE_STRING optional;
 } HIDDEN_FILE_RULE, *PHIDDEN_FILE_RULE;
 
-typedef struct _HIDDEN_FILES_DATA
+enum
 {
-    UNICODE_STRING filePath;
-    HIDDEN_FILE_RULE rule;
-} HIDDEN_FILES_DATA, *PHIDDEN_FILES_DATA;
+    ENCODING_TYPE_UTF_8 = 0x1,
+    ENCODING_TYPE_UTF_16 = 0x2
+};
 
 STATUS FileTranslateScbToFcb(IN QWORD scb, OUT QWORD_PTR fcb);
 STATUS FileGetFcbField(IN QWORD fcb, IN QWORD field, OUT PVOID value);
-STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength);
-
+STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength, 
+    IN BYTE encodingType);
 #endif

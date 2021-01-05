@@ -119,11 +119,13 @@ STATUS ComHandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
 STATUS ComHandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
 {
     HANDLE fileHandle;
-    BYTE content;
+    BYTE_PTR content;
 
     fileHandle = args->argumentsUnion.protectFileData.fileHandle;
     content = args->argumentsUnion.protectFileData.content;
-    FileAddNewProtectedFile(fileHandle, content, args->argumentsUnion.protectFileData.contentLength);
+    FileAddNewProtectedFile(fileHandle, content,
+        args->argumentsUnion.protectFileData.contentLength,
+        args->argumentsUnion.protectFileData.encodingType);
     Print("The content of the file will be hidden from now on\n");
 
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
