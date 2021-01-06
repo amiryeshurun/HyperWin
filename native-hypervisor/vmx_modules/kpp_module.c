@@ -148,7 +148,6 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
 #ifdef DEBUG_KPP_COMMANDS
     Print("Running at (RIP)%8, referencing (PA)%8, %.b\n", regs->rip, address, instructionLength, inst);
 #endif
-    // 41 8B 94 80 90 5B 5E 00
     if(instructionLength == 8 && inst[0] == 0x41 && inst[1] == 0x8b && inst[2] == 0x94 && 
         inst[3] == 0x80 && inst[4] == 0x90 && inst[5] == 0x5b && inst[6] == 0x5e && 
         inst[7] == 0x00)
@@ -197,10 +196,12 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         regs->rax = val;
     }
     else if((instructionLength == 3 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x18)
-        || (instructionLength == 4 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x58 && inst[3] == 0x8))
+        || (instructionLength == 4 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x58 && inst[3] == 0x8)
+        || (instructionLength == 3 && inst[0] == 0x48 && inst[1] == 0x33 && inst[2] == 0x1f))
     {
         // xor rbx,QWORD PTR [r8]
         // xor rbx,QWORD PTR [r8+0x8]
+        // xor rbx,QWORD PTR [rdi]
         QWORD val;
         KppBuildResult(&val, address, 8, kppData);
         regs->rbx ^= val;
@@ -239,12 +240,12 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         KppBuildResult(&val, address, 16, kppData);
         __vmovdqu_ymm0(val);
     }
-    else if(instructionLength == 3 && inst[0] == 0x48 && inst[1] == 0x33 && inst[2] == 0x1f)
+    else if(instructionLength == 4 && inst[0] == 0x49 && inst[1] == 0x8b && inst[2] == 0x59 && inst[3] == 0x08)
     {
-        // xor rbx,QWORD PTR [rdi]
+        // mov rbx,QWORD PTR [r9+0x8]
         QWORD val;
         KppBuildResult(&val, address, 8, kppData);
-        regs->rbx ^= val;
+        regs->rbx = val;
     }
     else
     {

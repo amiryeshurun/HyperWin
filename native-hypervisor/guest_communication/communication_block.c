@@ -109,14 +109,11 @@ STATUS ComHandleInit(IN PGENERIC_COM_STRUCT args)
 
 STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args)
 {
-    QWORD eprocess, handleTable, protectedProcessEprocess;
     STATUS status;
 
-    ObjGetCurrent_EPROCESS(&eprocess);
-    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    ObjTranslateHandleToObject(args->argumentsUnion.protectProcess.handle, handleTable, &protectedProcessEprocess);
-    if((status = PspMarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc)) != STATUS_SUCCESS)
-        return STATUS_PROTECTED_PROCESS_FAILED;
+    if((status = PspMarkProcessProtected(args->argumentsUnion.protectProcess.handle,
+         PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc)) != STATUS_SUCCESS)
+        return status;
     
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return status;
@@ -133,9 +130,7 @@ STATUS ComHandleHideFileData(IN PGENERIC_COM_STRUCT args)
     if((status = FileAddNewProtectedFile(fileHandle, content,
         args->argumentsUnion.protectFileData.contentLength,
         args->argumentsUnion.protectFileData.encodingType)) == STATUS_SUCCESS)
-    {
         Print("The content of the file will be hidden from now on\n");
-    }
 
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return status;
