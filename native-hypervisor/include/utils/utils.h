@@ -8,7 +8,6 @@
 #define ALIGN_DOWN(x, y) ((x) & (~((y) - 1)))
 
 #define FIELD_OFFSET(type, field) (&((type)(0)->field))
-#define KSPIN_LOCK_ACQUIRE(kslock)
 
 #define INF 0xffffffffffffffffULL
 // Should be enough
@@ -16,6 +15,17 @@
 
 #define BASIC_HASH_LEN 11
 #define IDX_NOT_FOUND (-1ULL)
+#define VALUE_NOT_FOUND (-1ULL)
+
+// Spinlock (for multiprocessing)
+typedef struct _SPIN_LOCK
+{
+	volatile QWORD lockValue;
+}SPIN_LOCK, *PSPIN_LOCK;
+
+#define SPIN_LOCK_INIT(slock) (slock)->lockValue = 0
+#define SPIN_LOCK(slock) while(!__sync_bool_compare_and_swap(&((slock)->lock), 0, 1))
+#define SPIN_UNLOCK(slock) (slock)->lockValue = 0
 
 VOID HwCopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count);
 INT HwCompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length);
