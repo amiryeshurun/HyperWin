@@ -18,8 +18,8 @@ STATUS ComParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress,
     IN QWORD offsetWithinPipe, OUT POPERATION operation, OUT PGENERIC_COM_STRUCT* arguments);
 
 // Operations
-STATUS ComHandleCommunicationInit(IN PGENERIC_COM_STRUCT args);
-STATUS ComHandleCommunicationProtect(IN PGENERIC_COM_STRUCT args);
-STATUS ComHandleCommunicationHideData(IN PGENERIC_COM_STRUCT args);
+STATUS ComHandleInit(IN PGENERIC_COM_STRUCT args);
+STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args);
+STATUS ComHandleHideFileData(IN PGENERIC_COM_STRUCT args);
 
 #endif

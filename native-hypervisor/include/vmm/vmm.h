@@ -49,6 +49,10 @@ typedef struct _STATIC_VARIABLES
         {
             PMODULE module;
         } kppAddNewEntry;
+        struct
+        {
+            PMODULE module;
+        } removeProtectedFile;
     } staticContent;
 } STATIC_VARIABLES, *PSTATIC_VARIABLES;
 
@@ -58,6 +62,7 @@ typedef struct _STATIC_HV_VARIABLES
     STATIC_VARIABLES handleNtReadFile;
     STATIC_VARIABLES handleNtReadFileReturn;
     STATIC_VARIABLES kppAddNewEntry;
+    STATIC_VARIABLES removeProtectedFile;
 } STATIC_HV_VARIABLES, *PSTATIC_HV_VARIABLES;
 
 typedef struct _SHARED_CPU_DATA

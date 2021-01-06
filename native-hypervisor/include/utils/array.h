@@ -13,6 +13,7 @@ typedef struct _QWORD_PAIRS_ARRAY
 
 STATUS QPArrayInit(OUT PQWORD_PAIRS_ARRAY array);
 STATUS QPArrayInsert(IN PQWORD_PAIRS_ARRAY array, IN PQWORD_PAIR value);
+QWORD QPArrayRemove(IN PQWORD_PAIRS_ARRAY array, IN QWORD key);
 
 typedef struct _QWORD_ARRAY
 {
