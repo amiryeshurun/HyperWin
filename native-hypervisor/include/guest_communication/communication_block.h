@@ -21,5 +21,6 @@ STATUS ComParseCommunicationBlock(IN BYTE_PTR comminucationBlockAddress,
 STATUS ComHandleInit(IN PGENERIC_COM_STRUCT args);
 STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args);
 STATUS ComHandleHideFileData(IN PGENERIC_COM_STRUCT args);
+STATUS ComHandleRemoveProtectedFile(IN PGENERIC_COM_STRUCT args);
 
 #endif

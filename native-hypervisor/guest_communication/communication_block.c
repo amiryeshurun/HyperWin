@@ -32,17 +32,22 @@ STATUS ComHandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     {
         case OPERATION_INIT:
         {
-            regs->rax = ComHandleCommunicationInit(args);
+            regs->rax = ComHandleInit(args);
             break;
         }
         case OPERATION_PROTECTED_PROCESS:
         {
-            regs->rax = ComHandleCommunicationProtect(args);
+            regs->rax = ComHandleProtectProcess(args);
             break;
         }
         case OPERATION_PROTECT_FILE_DATA:
         {
-            regs->rax = ComHandleCommunicationHideData(args);
+            regs->rax = ComHandleHideFileData(args);
+            break;
+        }
+        case OPERATION_REMOVE_FILE_PROTECTION:
+        {
+            regs->rax = ComHandleRemoveProtectedFile(args);
             break;
         }
         default:
@@ -88,7 +93,7 @@ STATUS ComValidateCaller()
 
 // Handlers
 
-STATUS ComHandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
+STATUS ComHandleInit(IN PGENERIC_COM_STRUCT args)
 {
     if(args->argumentsUnion.initArgs.isMessageAvailable)
     {
@@ -102,32 +107,42 @@ STATUS ComHandleCommunicationInit(IN PGENERIC_COM_STRUCT args)
     return STATUS_SUCCESS; 
 }
 
-STATUS ComHandleCommunicationProtect(IN PGENERIC_COM_STRUCT args)
+STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args)
 {
     QWORD eprocess, handleTable, protectedProcessEprocess;
+    STATUS status;
 
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
     ObjTranslateHandleToObject(args->argumentsUnion.protectProcess.handle, handleTable, &protectedProcessEprocess);
-    if(PspMarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc) != STATUS_SUCCESS)
+    if((status = PspMarkProcessProtected(protectedProcessEprocess, PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc)) != STATUS_SUCCESS)
         return STATUS_PROTECTED_PROCESS_FAILED;
     
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
-    return STATUS_SUCCESS;
+    return status;
 }
 
-STATUS ComHandleCommunicationHideData(IN PGENERIC_COM_STRUCT args)
+STATUS ComHandleHideFileData(IN PGENERIC_COM_STRUCT args)
 {
     HANDLE fileHandle;
     BYTE_PTR content;
+    STATUS status;
 
     fileHandle = args->argumentsUnion.protectFileData.fileHandle;
     content = args->argumentsUnion.protectFileData.content;
-    FileAddNewProtectedFile(fileHandle, content,
+    if((status = FileAddNewProtectedFile(fileHandle, content,
         args->argumentsUnion.protectFileData.contentLength,
-        args->argumentsUnion.protectFileData.encodingType);
-    Print("The content of the file will be hidden from now on\n");
+        args->argumentsUnion.protectFileData.encodingType)) == STATUS_SUCCESS)
+    {
+        Print("The content of the file will be hidden from now on\n");
+    }
 
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
-    return STATUS_SUCCESS;
+    return status;
+}
+
+STATUS ComHandleRemoveProtectedFile(IN PGENERIC_COM_STRUCT args)
+{
+    args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
+    return FileRemoveProtectedFile(args->argumentsUnion.removeProtectedFile.fileHandle);
 }

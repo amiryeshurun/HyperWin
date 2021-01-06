@@ -42,6 +42,29 @@ STATUS QPArrayInsert(IN PQWORD_PAIRS_ARRAY array, IN PQWORD_PAIR value)
     return STATUS_SUCCESS;
 }
 
+QWORD QPArrayRemove(IN PQWORD_PAIRS_ARRAY array, IN QWORD key)
+{
+    PHEAP heap;
+    QWORD ret = VALUE_NOT_FOUND;
+
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    for(QWORD i = 0; i < array->count; i++)
+    {
+        if(array->arr[i]->key == key)
+        {
+            ret = array->arr[i]->value;
+            heap->deallocate(heap, array->arr[i]);
+            for(QWORD j = i; j < array->count - 1; j++)
+                array->arr[j] = array->arr[j + 1];
+            array->count--;
+            i--;
+            return ret;
+        }
+    }
+
+    return ret;
+}
+
 STATUS QArrayInit(OUT PQWORD_ARRAY array)
 {
     PHEAP heap;

@@ -26,7 +26,7 @@ VOID MapOverride(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
     QWORD hash;
 
     hash = map->hash(key);
-    if(map->keyArrays[hash].size == 1)
+    if(map->keyArrays[hash].count == 1 && map->equals(map->keyArrays[hash].arr[0]->key, key))
         map->keyArrays[hash].arr[0]->value = value;
     else
     {
@@ -39,6 +39,16 @@ VOID MapOverride(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
             }
         }
     }
+}
+
+QWORD MapRemove(IN PQWORD_MAP map, IN QWORD key)
+{
+    QWORD hash, ret;
+
+    hash = map->hash(key);
+    ret = QPArrayRemove(&map->keyArrays[hash], key);
+    
+    return ret == VALUE_NOT_FOUND ? MAP_KEY_NOT_FOUND : ret;
 }
 
 VOID MapSet(IN PQWORD_MAP map, IN QWORD key, IN QWORD value)
