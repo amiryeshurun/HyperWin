@@ -138,6 +138,12 @@ STATUS ComHandleHideFileData(IN PGENERIC_COM_STRUCT args)
 
 STATUS ComHandleRemoveProtectedFile(IN PGENERIC_COM_STRUCT args)
 {
+    STATUS status;
+    
+    if((status = FileRemoveProtectedFile(args->argumentsUnion.removeProtectedFile.fileHandle)) !=
+        STATUS_SUCCESS)
+        Print("Unable to remove protection from file\n");
+
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
-    return FileRemoveProtectedFile(args->argumentsUnion.removeProtectedFile.fileHandle);
+    return status;
 }
