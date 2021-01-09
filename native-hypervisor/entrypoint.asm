@@ -75,14 +75,15 @@ multiboot2_header_start:
     dd 0          ; architecture - i386 protected mode, DWORD
     dd multiboot2_header_end - multiboot2_header_start ; header length, DWORD
     dd 0x100000000 - (0xE85250D6 + (multiboot2_header_end - multiboot2_header_start) + 0) ; checksum, DWORD
-    multiboot2_address_tag_start:
-        dw 2 ; type, WORD
-        dw 0 ; flags, WORD
-        dd multiboot2_address_tag_end - multiboot2_address_tag_start ; dize, DWORD
-        dd CODE_BEGIN_ADDRESS
-        dd -1 ; data segment is present to the end of the imgae
-        dq 0  ; bss
-    multiboot2_address_tag_end:
+    ; multiboot2_address_tag_start:
+    ;     dw 2 ; type, WORD
+    ;     dw 0 ; flags, WORD
+    ;     dd multiboot2_address_tag_end - multiboot2_address_tag_start ; size, DWORD
+    ;     dd CODE_BEGIN_ADDRESS
+    ;     dd -1 ; data segment is present to the end of the imgae
+    ;     dd 0  ; bss
+    ;     dd 0
+    ; multiboot2_address_tag_end:
     multiboot2_entry_address_tag_start:
         dw 3      ; type, WORD
         dw 0      ; flags, WORD
