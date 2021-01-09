@@ -108,6 +108,8 @@ STATUS ComHandleInit(IN PGENERIC_COM_STRUCT args)
 
 STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args)
 {
+    STATUS status;
+
     SUCCESS_OR_RETURN(PspMarkProcessProtected(args->argumentsUnion.protectProcess.handle,
          PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc));
     Print("Successfully marked process as protected\n");
@@ -152,7 +154,8 @@ STATUS ComHandleCreateNewGroup(IN PGENERIC_COM_STRUCT args)
     if((status = PspCreateNewGroup(args->argumentsUnion.createNewGroup.groupId, 
         args->argumentsUnion.createNewGroup.includeSelf)) != STATUS_SUCCESS)
         Print("Could not create a new group\n");
-    
+    else
+        Print("Successfully created a new group: %d\n", args->argumentsUnion.createNewGroup.groupId);
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return status;
 }

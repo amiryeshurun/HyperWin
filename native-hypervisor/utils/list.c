@@ -16,6 +16,7 @@ STATUS ListInsert(IN PLIST list, IN QWORD data)
 {
     PLIST_ENTRY last, newEntry;
     PHEAP heap;
+    STATUS status;
 
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(LIST_ENTRY), &newEntry));

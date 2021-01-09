@@ -19,12 +19,9 @@
 #define VALUE_NOT_FOUND (-1ULL)
 
 // Check for success or return
-#define SUCCESS_OR_RETURN(EXPRESSION) \
-                                    { \
-                                        STATUS status; \ 
-                                        if((status = EXPRESSION) != STATUS_SUCCESS) \
-                                            return status; \
-                                    }
+#define SUCCESS_OR_RETURN(expression) \
+                                        if((status = expression) != STATUS_SUCCESS) \
+                                            return status
                                         
 
 // Spinlock (for multiprocessing)

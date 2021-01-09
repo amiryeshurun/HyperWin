@@ -41,13 +41,8 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     if(!module)
-    {
-        if((status = MdlGetModuleByName(&module, "KPP Module")) != STATUS_SUCCESS)
-        {
-            Print("Could not find the desired module\n");
-            return status;
-        }
-    }
+        SUCCESS_OR_RETURN(MdlGetModuleByName(&module, "KPP Module"));
+    
     heap = &shared->heap;
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;
     if((status = heap->allocate(heap, sizeof(KPP_ENTRY_CONTEXT), &kppContext)) != STATUS_SUCCESS)

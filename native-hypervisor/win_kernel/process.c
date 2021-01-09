@@ -17,6 +17,7 @@ STATUS PspMarkProcessProtected(IN HANDLE processHandle, IN BYTE protectionLevel,
     IN BYTE sectionSignLevel)
 {
     QWORD pid, eprocess, handleTable, protectedProcessEprocess;
+    STATUS status;
 
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
@@ -35,6 +36,7 @@ STATUS PspCreateNewGroup(IN QWORD groupId, IN BOOL includeSelf)
     PPROCESS_GROUP groupData;
     PHEAP heap;
     QWORD eprocess, pid;
+    STATUS status;
 
     if(MapGet(&g_groupsData, groupId) != MAP_KEY_NOT_FOUND)
         return STATUS_GROUP_ALREADY_EXISTS;

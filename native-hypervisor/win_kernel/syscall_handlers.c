@@ -222,7 +222,7 @@ STATUS ShdHandleNtReadFileReturn()
     PSHARED_CPU_DATA shared;
     static PMODULE module;
     PREGISTERS regs;
-    QWORD threadId, ethread, bufferLength, idx, pid, eprocess, count, indecies[10];
+    QWORD threadId, ethread, bufferLength, idx, count, indecies[10];
     PHIDDEN_FILE_RULE rule;
     BYTE readDataBuffer[BUFF_MAX_SIZE];
     PWCHAR utf16Ptr;
@@ -233,16 +233,9 @@ STATUS ShdHandleNtReadFileReturn()
     regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
-    {
-        if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
-        {
-            Print("Could not find the desired module\n");
-            return status;
-        }
-    }
+        SUCCESS_OR_RETURN(MdlGetModuleByName(&module, "Windows Hooking Module"));
+    // Get
     ObjGetCurrent_ETHREAD(&ethread);
-    ObjGetCurrent_EPROCESS(&eprocess);
-    ObjGetObjectField(EPROCESS, eprocess, EPROCESS_PID, &pid);
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     // Get the rule found in the hashmap
     rule = g_syscallEvents[threadId].dataUnion.NtReadFile.rule;
