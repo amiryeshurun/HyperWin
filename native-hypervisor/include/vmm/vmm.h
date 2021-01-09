@@ -29,42 +29,6 @@
 struct _SINGLE_CPU_DATA;
 struct _CURRENT_GUEST_STATE;
 
-typedef struct _STATIC_VARIABLES
-{
-    union
-    {
-        struct
-        {
-            PMODULE module;
-        } addNewProtectedFile;
-        struct
-        {
-            PMODULE module;
-        } handleNtReadFile;
-        struct
-        {
-            PMODULE module;
-        } handleNtReadFileReturn;
-        struct
-        {
-            PMODULE module;
-        } kppAddNewEntry;
-        struct
-        {
-            PMODULE module;
-        } removeProtectedFile;
-    } staticContent;
-} STATIC_VARIABLES, *PSTATIC_VARIABLES;
-
-typedef struct _STATIC_HV_VARIABLES
-{
-    STATIC_VARIABLES addNewProtectedFile;
-    STATIC_VARIABLES handleNtReadFile;
-    STATIC_VARIABLES handleNtReadFileReturn;
-    STATIC_VARIABLES kppAddNewEntry;
-    STATIC_VARIABLES removeProtectedFile;
-} STATIC_HV_VARIABLES, *PSTATIC_HV_VARIABLES;
-
 typedef struct _SHARED_CPU_DATA
 {
     HEAP heap;
@@ -89,7 +53,6 @@ typedef struct _SHARED_CPU_DATA
     QWORD int15Offset;
     COMMUNICATION_PIPE readPipe;
     COMMUNICATION_PIPE writePipe;
-    STATIC_HV_VARIABLES staticVariables; 
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA

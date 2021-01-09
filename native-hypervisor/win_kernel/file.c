@@ -40,7 +40,7 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     IN BYTE encodingType)
 {
     PSHARED_CPU_DATA shared;
-    PMODULE module;
+    static PMODULE module;
     PHEAP heap;
     PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
@@ -49,7 +49,6 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
-    module = shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module;
     if(!module)
     {
         if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
@@ -57,7 +56,6 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
             Print("Could not find the desired module\n");
             return status;
         }
-        shared->staticVariables.addNewProtectedFile.staticContent.addNewProtectedFile.module = module;
     }
     // Translate the Handle to an object
     ObjGetCurrent_EPROCESS(&eprocess);
@@ -104,7 +102,7 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
 STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
 {
     PSHARED_CPU_DATA shared;
-    PMODULE module;
+    static PMODULE module;
     PHEAP heap;
     PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
@@ -113,7 +111,6 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
-    module = shared->staticVariables.removeProtectedFile.staticContent.removeProtectedFile.module;
     if(!module)
     {
         if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
@@ -121,7 +118,6 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
             Print("Could not find the desired module\n");
             return status;
         }
-        shared->staticVariables.removeProtectedFile.staticContent.removeProtectedFile.module = module;
     }
 
     ext = module->moduleExtension;

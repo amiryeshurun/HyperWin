@@ -166,7 +166,7 @@ STATUS ShdHandleNtReadFile()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
-    PMODULE module;
+    static PMODULE module;
     PREGISTERS regs;
     PHOOKING_MODULE_EXTENSION ext;
     PQWORD_MAP filesData;
@@ -178,7 +178,6 @@ STATUS ShdHandleNtReadFile()
 
     state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
-    module = shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module;
     regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
@@ -188,7 +187,6 @@ STATUS ShdHandleNtReadFile()
             Print("Could not find the desired module\n");
             goto NtReadFileEmulateInstruction;
         }
-        shared->staticVariables.handleNtReadFile.staticContent.handleNtReadFile.module = module;
     }
     ext = module->moduleExtension;
     filesData = &ext->filesData;
@@ -235,7 +233,7 @@ STATUS ShdHandleNtReadFileReturn()
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
-    PMODULE module;
+    static PMODULE module;
     PREGISTERS regs;
     QWORD threadId, ethread, bufferLength, idx, pid, eprocess, count, indecies[10];
     PHIDDEN_FILE_RULE rule;
@@ -245,7 +243,6 @@ STATUS ShdHandleNtReadFileReturn()
 
     state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
-    module = shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn.module;
     regs = &state->guestRegisters;
     // First get the syscalls module pointer
     if(!module)
@@ -255,8 +252,6 @@ STATUS ShdHandleNtReadFileReturn()
             Print("Could not find the desired module\n");
             return status;
         }
-        shared->staticVariables.handleNtReadFileReturn.staticContent.handleNtReadFileReturn
-            .module = module;
     }
     ObjGetCurrent_ETHREAD(&ethread);
     ObjGetCurrent_EPROCESS(&eprocess);

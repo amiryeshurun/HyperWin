@@ -13,6 +13,8 @@
 #include <vmx_modules/default_module.h>
 #include <vmx_modules/hooking_module.h>
 #include <vmx_modules/kpp_module.h>
+#include <win_kernel/process.h>
+#include <guest_communication/communication_block.h>
 
 VOID VmmInitializeSingleHypervisor(IN PVOID data)
 {
@@ -376,6 +378,8 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         Print("Successfully registered KPP module\n");
         // Mark modules as initiated
         sharedData->wereModulesInitiated = TRUE;
+        PspInit();
+        ComInit();
     }
     KppModuleInitializeSingleCore(data);
     HookingModuleInitializeSingleCore(data);
