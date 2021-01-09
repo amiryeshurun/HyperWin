@@ -257,7 +257,6 @@ STATUS ShdHandleNtReadFileReturn()
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_PID, &pid);
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
-    Print("Process %d, Thread %d hooken the return event of NtReadFile\n", pid, threadId);
     // Get the rule found in the hashmap
     rule = syscallEvents[threadId].dataUnion.NtReadFile.rule;
     // Copy the readen data length (stored in the inforamtion member of IoStatusBlock)
@@ -284,7 +283,6 @@ STATUS ShdHandleNtReadFileReturn()
                 for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
                     readDataBuffer[i] = '*';
     }
-    Print("Final output: %.b", bufferLength, readDataBuffer);
     WinMmCopyMemoryToGuest(syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
 NtReadFilePutReturnAddress:
     // Put back the saved address in the RIP register
