@@ -12,9 +12,6 @@
 // Used to determine how many vm-exits should occur before hooking the system calls
 #define COUNT_UNTIL_HOOK 1500
 
-// Used to determine if a physical address is assosiated with a return event or not
-#define RETURN_EVENT_FLAG (1 << 30)
-
 typedef STATUS (*HOOK_HANDLER)();
 
 typedef struct _HOOK_CONTEXT

@@ -50,6 +50,8 @@
 #define STATUS_UNKNOWN_VMCALL_CALLER           45
 #define STATUS_MODULE_NOT_FOUND                46
 #define STATUS_SYSCALL_NOT_HANDLED             47
+#define STATUS_GROUP_ALREADY_EXISTS            48
+
 
 #define STATUS_VM_EXIT_NOT_HANDLED             (1 << 16)
 

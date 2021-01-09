@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <utils/string.h>
+#include <error_codes.h>
 
 #define ALIGN_UP(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 #define ALIGN_DOWN(x, y) ((x) & (~((y) - 1)))
@@ -16,6 +17,15 @@
 #define BASIC_HASH_LEN 11
 #define IDX_NOT_FOUND (-1ULL)
 #define VALUE_NOT_FOUND (-1ULL)
+
+// Check for success or return
+#define SUCCESS_OR_RETURN(EXPRESSION) \
+                                    { \
+                                        STATUS status; \ 
+                                        if((status = EXPRESSION) != STATUS_SUCCESS) \
+                                            return status; \
+                                    }
+                                        
 
 // Spinlock (for multiprocessing)
 typedef struct _SPIN_LOCK

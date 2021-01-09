@@ -35,12 +35,11 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
     PKPP_ENTRY_CONTEXT kppContext;
     PHEAP heap;
     STATUS status;
-    PMODULE module;
+    static PMODULE module;
     PKPP_MODULE_DATA kppData;
     PSHARED_CPU_DATA shared;
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
-    module = shared->staticVariables.kppAddNewEntry.staticContent.kppAddNewEntry.module;
     if(!module)
     {
         if((status = MdlGetModuleByName(&module, "KPP Module")) != STATUS_SUCCESS)
@@ -48,7 +47,6 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
             Print("Could not find the desired module\n");
             return status;
         }
-        shared->staticVariables.kppAddNewEntry.staticContent.kppAddNewEntry.module = module;
     }
     heap = &shared->heap;
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;

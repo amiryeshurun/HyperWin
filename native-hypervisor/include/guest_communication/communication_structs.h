@@ -41,6 +41,11 @@ typedef struct _GENERIC_COM_STRUCT
         {
             HANDLE fileHandle;
         } removeProtectedFile;
+        struct _CREATE_NEW_GROUP
+        {
+            QWORD groupId;
+            BOOL includeSelf;
+        } createNewGroup;
     } argumentsUnion;
 } GENERIC_COM_STRUCT, *PGENERIC_COM_STRUCT;
 
@@ -50,5 +55,7 @@ typedef struct _COMMUNICATION_PIPE
     BYTE_PTR virtualAddress;
     QWORD currentOffset;
 } COMMUNICATION_PIPE, *PCOMMUNICATION_PIPE;
+
+typedef STATUS (*COMMUNICATION_FUNCTION)(IN PGENERIC_COM_STRUCT);
 
 #endif

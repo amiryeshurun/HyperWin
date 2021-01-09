@@ -6,13 +6,30 @@
 #include <debug.h>
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/syscall_handlers.h>
+#include <utils/map.h>
+#include <vmm/vmm.h>
 
-STATUS ComHandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
+QWORD_MAP operationToFunction;
+
+VOID ComInit()
+{
+    Print("Initializing communication structures\n");
+    MapCreate(&operationToFunction, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+    MapSet(&operationToFunction, OPERATION_INIT, ComInit);
+    MapSet(&operationToFunction, OPERATION_PROTECTED_PROCESS, ComHandleProtectProcess);
+    MapSet(&operationToFunction, OPERATION_PROTECT_FILE_DATA, ComHandleHideFileData);
+    MapSet(&operationToFunction, OPERATION_REMOVE_FILE_PROTECTION, ComHandleRemoveProtectedFile);
+    MapSet(&operationToFunction, OPERATION_CREATE_NEW_GROUP, ComHandleCreateNewGroup);
+    Print("Done initializing communication structures\n");
+}
+
+VOID ComHandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
 {
     PREGISTERS regs;
     OPERATION operation;
     PGENERIC_COM_STRUCT args;
     QWORD offsetWithinPipe;
+    COMMUNICATION_FUNCTION function;
     STATUS status;
 
     regs = &data->guestRegisters;
@@ -21,42 +38,24 @@ STATUS ComHandleVmCallCommunication(IN PCURRENT_GUEST_STATE data)
     if((status = ComValidateCaller()) != STATUS_SUCCESS)
     {
         Print("Could not validate the VMCALL caller: %d\n", status);
-        return status;
+        goto HandleVmCallCleanup;
     }
 
-    if(ComParseCommunicationBlock(data->currentCPU->sharedData->readPipe.virtualAddress, offsetWithinPipe,
-        &operation, &args))
-        return STATUS_COMMUNICATION_PARSING_FAILED;
+    if((status = ComParseCommunicationBlock(data->currentCPU->sharedData->readPipe.virtualAddress, offsetWithinPipe,
+        &operation, &args)) != STATUS_SUCCESS)
+        goto HandleVmCallCleanup;
 
-    switch(operation)
+    if((function = MapGet(&operationToFunction, operation)) == MAP_KEY_NOT_FOUND)
     {
-        case OPERATION_INIT:
-        {
-            regs->rax = ComHandleInit(args);
-            break;
-        }
-        case OPERATION_PROTECTED_PROCESS:
-        {
-            regs->rax = ComHandleProtectProcess(args);
-            break;
-        }
-        case OPERATION_PROTECT_FILE_DATA:
-        {
-            regs->rax = ComHandleHideFileData(args);
-            break;
-        }
-        case OPERATION_REMOVE_FILE_PROTECTION:
-        {
-            regs->rax = ComHandleRemoveProtectedFile(args);
-            break;
-        }
-        default:
-        {
-            Print("Unknown operation was sent from guest: %8\n", operation);
-            return STATUS_UNKNOWN_COMMUNICATION_OPERATION;
-        }
+        Print("Unsupported operation: %8\n", operation);
+        status = STATUS_UNKNOWN_COMMUNICATION_OPERATION;
+        goto HandleVmCallCleanup;
     }
+    // If a handler was found, handle the call
+    status = function(args);
 
+HandleVmCallCleanup:
+    regs->rax = status;
     return STATUS_SUCCESS;
 }
 
@@ -114,7 +113,8 @@ STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args)
     if((status = PspMarkProcessProtected(args->argumentsUnion.protectProcess.handle,
          PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc)) != STATUS_SUCCESS)
         return status;
-    
+    Print("Successfully marked process as protected\n");
+
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return status;
 }
@@ -144,6 +144,18 @@ STATUS ComHandleRemoveProtectedFile(IN PGENERIC_COM_STRUCT args)
         STATUS_SUCCESS)
         Print("Unable to remove protection from file\n");
 
+    args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
+    return status;
+}
+
+STATUS ComHandleCreateNewGroup(IN PGENERIC_COM_STRUCT args)
+{
+    STATUS status;
+
+    if((status = PspCreateNewGroup(args->argumentsUnion.createNewGroup.groupId, 
+        args->argumentsUnion.createNewGroup.includeSelf)) != STATUS_SUCCESS)
+        Print("Could not create a new group\n");
+    
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
     return status;
 }
