@@ -24,7 +24,6 @@ STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODUL
     extension->exitCount = 0;
     extension->syscallsData = &__ntDataStart;
     MapCreate(&extension->addressToContext, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
-    MapCreate(&extension->filesData, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
     ShdInitSyscallData(NT_OPEN_PROCESS, 0, 4, ShdHandleNtOpenPrcoess, FALSE, NULL);

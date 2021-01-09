@@ -39,5 +39,6 @@ STATUS FileGetFcbField(IN QWORD fcb, IN QWORD field, OUT PVOID value);
 STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWORD contentLength, 
     IN BYTE encodingType);
 STATUS FileRemoveProtectedFile(IN HANDLE fileHandle);
+STATUS FileGetRuleByIndex(IN QWORD fileIndex, OUT PHIDDEN_FILE_RULE* rule);
 
 #endif

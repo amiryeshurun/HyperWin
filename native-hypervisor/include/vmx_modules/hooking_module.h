@@ -30,7 +30,6 @@ typedef struct _HOOKING_MODULE_EXTENSION
     BYTE_PTR lstar;
     QWORD guestCr3;
     QWORD_MAP addressToContext;
-    QWORD_MAP filesData;
 } HOOKING_MODULE_EXTENSION, *PHOOKING_MODULE_EXTENSION;
 
 STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData);

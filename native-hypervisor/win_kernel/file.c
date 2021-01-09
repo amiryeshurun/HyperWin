@@ -12,6 +12,13 @@
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/file.h>
 
+QWORD_MAP g_filesData;
+
+VOID FileInit()
+{
+    MapCreate(&g_filesData, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+}
+
 STATUS FileTranslateScbToFcb(IN QWORD scb, OUT QWORD_PTR fcb)
 {
     STATUS status;
@@ -40,7 +47,6 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     IN BYTE encodingType)
 {
     PSHARED_CPU_DATA shared;
-    static PMODULE module;
     PHEAP heap;
     PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
@@ -49,14 +55,6 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
-    if(!module)
-    {
-        if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
-        {
-            Print("Could not find the desired module\n");
-            return status;
-        }
-    }
     // Translate the Handle to an object
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
@@ -92,9 +90,8 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     rule->rule = FILE_HIDE_CONTENT;
     rule->encoding = encodingType;
     // Get the module extension
-    ext = module->moduleExtension;
     // Map the file to a rule
-    MapSet(&ext->filesData, fileIndex, rule);
+    MapSet(&g_filesData, fileIndex, rule);
     Print("File rule added for file idx: %8, data: %.b\n", fileIndex, contentLength, content);
     return STATUS_SUCCESS;
 }
@@ -102,7 +99,6 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
 STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
 {
     PSHARED_CPU_DATA shared;
-    static PMODULE module;
     PHEAP heap;
     PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
@@ -111,16 +107,6 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
-    if(!module)
-    {
-        if((status = MdlGetModuleByName(&module, "Windows Hooking Module")) != STATUS_SUCCESS)
-        {
-            Print("Could not find the desired module\n");
-            return status;
-        }
-    }
-
-    ext = module->moduleExtension;
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
     if((status = ObjTranslateHandleToObject(fileHandle, handleTable, &fileObject)) 
@@ -146,7 +132,7 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
         Print("Failed to get MFTIndex\n");
         return status;
     }
-    rule = (PHIDDEN_FILE_RULE)MapRemove(&ext->filesData, fileIndex);
+    rule = (PHIDDEN_FILE_RULE)MapRemove(&g_filesData, fileIndex);
     if(rule != MAP_KEY_NOT_FOUND)
     {
         // Free the stored data
@@ -156,4 +142,10 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
         heap->deallocate(heap, rule);
     }
     return STATUS_SUCCESS;
+}
+
+STATUS FileGetRuleByIndex(IN QWORD fileIndex, OUT PHIDDEN_FILE_RULE* rule)
+{
+    return ((*rule = MapGet(&g_filesData, fileIndex)) != MAP_KEY_NOT_FOUND) ?
+         STATUS_SUCCESS : STATUS_FILE_NOT_FOUND;
 }

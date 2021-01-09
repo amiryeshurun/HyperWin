@@ -380,6 +380,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         sharedData->wereModulesInitiated = TRUE;
         PspInit();
         ComInit();
+        FileInit();
     }
     KppModuleInitializeSingleCore(data);
     HookingModuleInitializeSingleCore(data);

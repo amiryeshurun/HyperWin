@@ -6,33 +6,27 @@
 #include <utils/allocation.h>
 #include <utils/utils.h>
 
-QWORD_MAP groupsData;
+QWORD_MAP g_groupsData;
 
 VOID PspInit()
 {
-    MapCreate(&groupsData, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+    MapCreate(&g_groupsData, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
 }
 
 STATUS PspMarkProcessProtected(IN HANDLE processHandle, IN BYTE protectionLevel, IN BYTE signLevel, 
     IN BYTE sectionSignLevel)
 {
     QWORD pid, eprocess, handleTable, protectedProcessEprocess;
-    STATUS status;
 
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    if((status = ObjTranslateHandleToObject(processHandle, handleTable, &protectedProcessEprocess))
-        != STATUS_SUCCESS)
-        return status;
-    if((status = WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SIGN_LEVEL, &signLevel, sizeof(BYTE)))
-        != STATUS_SUCCESS)
-        return status;
-    if((status = WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SECTION_SIGN_LEVEL, &sectionSignLevel, sizeof(BYTE))) 
-        != STATUS_SUCCESS)
-        return status;
-    if((status = WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_PROTECTION, &protectionLevel, sizeof(BYTE)))
-        != STATUS_SUCCESS)
-        return status;
+    SUCCESS_OR_RETURN(ObjTranslateHandleToObject(processHandle, handleTable, &protectedProcessEprocess));
+    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SIGN_LEVEL, &signLevel, sizeof(BYTE)));
+    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SECTION_SIGN_LEVEL, 
+        &sectionSignLevel, sizeof(BYTE)));
+    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_PROTECTION, 
+        &protectionLevel, sizeof(BYTE)));
+    
     return STATUS_SUCCESS;
 }
 
@@ -42,7 +36,7 @@ STATUS PspCreateNewGroup(IN QWORD groupId, IN BOOL includeSelf)
     PHEAP heap;
     QWORD eprocess, pid;
 
-    if(MapGet(&groupsData, groupId) != MAP_KEY_NOT_FOUND)
+    if(MapGet(&g_groupsData, groupId) != MAP_KEY_NOT_FOUND)
         return STATUS_GROUP_ALREADY_EXISTS;
 
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
@@ -57,7 +51,7 @@ STATUS PspCreateNewGroup(IN QWORD groupId, IN BOOL includeSelf)
         SUCCESS_OR_RETURN(ObjGetObjectField(EPROCESS, eprocess, EPROCESS_PID, &pid));
         SetInsert(&groupData->processes, pid);
     }
-    MapSet(&groupsData, groupId, groupData);
+    MapSet(&g_groupsData, groupId, groupData);
 
     return STATUS_SUCCESS;
 }

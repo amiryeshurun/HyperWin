@@ -16,14 +16,9 @@ STATUS ListInsert(IN PLIST list, IN QWORD data)
 {
     PLIST_ENTRY last, newEntry;
     PHEAP heap;
-    STATUS status;
 
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
-    if((status = heap->allocate(heap, sizeof(LIST_ENTRY), &newEntry)) != STATUS_SUCCESS)
-    {
-        Print("Could not allocate space for new list entry\n");
-        return status;
-    }
+    SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(LIST_ENTRY), &newEntry));
     // Is the list empty?
     if(list->head == NULL)
     {
