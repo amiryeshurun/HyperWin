@@ -10,6 +10,9 @@
 #define ETHREAD 0x3
 #define EPROCESS 0x4
 #define FILE_OBJECT 0x5
+#define DEVICE_OBJECT 0x6
+#define DRIVER_OBJECT 0x7
+#define VPB 0x8
  
 enum
 {
@@ -47,7 +50,23 @@ enum
 {
     FILE_OBJECT_TYPE = 0x0,
     FILE_OBJECT_FILE_NAME = 0x58,
-    FILE_OBJECT_SCB = 0x18
+    FILE_OBJECT_SCB = 0x18,
+    FILE_OBJECT_VPB = 0x10
+};
+
+enum
+{
+    DEVICE_OBJECT_DRIVER_OBJECT = 0x8
+};
+
+enum
+{
+    DRIVER_OBJECT_NAME = 0x38
+};
+
+enum
+{
+    VPB_DEVICE_OBJECT = 0x8
 };
 
 STATUS ObjGetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
@@ -57,11 +76,15 @@ STATUS ObjGet_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value);
 STATUS ObjGet_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value);
 STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value);
 STATUS ObjTranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object);
+STATUS ObjGetDeviceObjectField(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS ObjGetDriverObjectField(IN QWORD object, IN QWORD field, OUT PVOID value);
+STATUS ObjGet_VPB_field(IN QWORD object, IN QWORD field, OUT PVOID value);
 
 typedef struct _WIN_KERNEL_UNICODE_STRING
 {
     WORD length;
     WORD maxLength;
+    DWORD dummy;
     QWORD address;
 } WIN_KERNEL_UNICODE_STRING, *PWIN_KERNEL_UNICODE_STRING;
 

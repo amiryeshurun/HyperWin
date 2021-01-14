@@ -24,7 +24,6 @@ typedef struct _SYSCALL_DATA
     BOOL hookReturnEvent;
     QWORD hookedInstructionLength;
     // Dynamically defined
-    QWORD hookedInstructionAddress;
     QWORD virtualHookedInstructionAddress;
 } SYSCALL_DATA, *PSYSCALL_DATA;
 

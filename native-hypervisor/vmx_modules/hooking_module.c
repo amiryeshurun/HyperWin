@@ -26,8 +26,6 @@ STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODUL
     MapCreate(&extension->addressToContext, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
     /* System calls data initialization - START */
     // Init NtOpenProcess related data
-    ShdInitSyscallData(NT_OPEN_PROCESS, 0, 4, ShdHandleNtOpenPrcoess, FALSE, NULL);
-    ShdInitSyscallData(NT_CREATE_USER_PROCESS, 0, 2, ShdHandleNtCreateUserProcess, FALSE, NULL);
     ShdInitSyscallData(NT_READ_FILE, 0, 3, ShdHandleNtReadFile, TRUE, ShdHandleNtReadFileReturn);
     /* System calls data initialization - END */
     PrintDebugLevelDebug("Shared cores data successfully initialized for hooking module\n");
@@ -139,48 +137,67 @@ STATUS HookingHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR 
         Print("Syscall ID: %d, Virtual: %8, Guest Physical: %8\n", syscallId, ntoskrnl + (offset >> 4),
              functionAddress);
         // Save hook information in system calls database
-        physicalHookAddress = functionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
         virtualHookAddress = virtualFunctionAddress + ext->syscallsData[syscallId].hookInstructionOffset;
-        ext->syscallsData[syscallId].hookedInstructionAddress = physicalHookAddress;
         ext->syscallsData[syscallId].virtualHookedInstructionAddress = virtualHookAddress;
-        HwCopyMemory(hookedInstruction, WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress),
-            ext->syscallsData[syscallId].hookedInstructionLength);
-        // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
-        hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
-        HwSetMemory(hookInstruction + 2, NOP_OPCODE, ext->syscallsData[syscallId].hookedInstructionLength - 2);
-        // Inject the hooked instruction to the guest and print current stored instruction at address
-        Print("Injecting a hook instruction of length %d to %8. Current instruction is: %.b\n", 
-                ext->syscallsData[syscallId].hookedInstructionLength,
-                physicalHookAddress,
-                ext->syscallsData[syscallId].hookedInstructionLength,
-                WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress)
-             );
-        HwCopyMemory(WinMmTranslateGuestPhysicalToHostVirtual(physicalHookAddress), hookInstruction, 
-            ext->syscallsData[syscallId].hookedInstructionLength);
-        // Translate address to hook context
-        if((status = heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext)) != STATUS_SUCCESS)
-        {
-            Print("Could not allocate memory for hook context\n");
-            return status;
-        }
-        hookContext->handler = ext->syscallsData[syscallId].handler;
-        hookContext->additionalData = syscallId;
-        MapSet(&ext->addressToContext, physicalHookAddress, hookContext);
-        if(ext->syscallsData[syscallId].hookReturnEvent)
-        {
-            if((status = heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext)) != STATUS_SUCCESS)
-            {
-                Print("Could not allocate memory for hook context\n");
-                return status;
-            }
-            hookContext->handler = ext->syscallsData[syscallId].returnHandler;
-            hookContext->additionalData = syscallId;
-            MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(physicalHookAddress), hookContext);
-        }
-        ASSERT(KppAddNewEntry(physicalHookAddress, ext->syscallsData[syscallId].hookedInstructionLength, hookedInstruction) 
-            == STATUS_SUCCESS);
+        // Set the hook
+        ASSERT(HookingSetupGenericHook(virtualHookAddress,
+            ext->syscallsData[syscallId].hookInstructionOffset, 
+            ext->syscallsData[syscallId].hookedInstructionLength,
+            ext->syscallsData[syscallId].handler,
+            ext->syscallsData[syscallId].returnHandler) == STATUS_SUCCESS);
     }
     va_end(args);
+    return STATUS_SUCCESS;
+}
+
+STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN QWORD instructionOffset, IN QWORD instructionLength,
+    IN HOOK_HANDLER handler, IN HOOK_HANDLER returnHandler)
+{
+    PHEAP heap;
+    PHOOK_CONTEXT hookContext;
+    STATUS status;
+    PHOOKING_MODULE_EXTENSION ext;
+    QWORD guestPhysicalAddress, physicalAddress;
+    static PMODULE hookingModule;
+    BYTE hookedInstruction[X86_MAX_INSTRUCTION_LEN], hookInstruction[X86_MAX_INSTRUCTION_LEN];
+
+    if(hookInstruction <= 1)
+        return STATUS_INSTRUCTION_TOO_SHORT;
+    // First get module and extension
+    if(!hookingModule)
+        SUCCESS_OR_RETURN(MdlGetModuleByName(&hookingModule, "Windows Hooking Module"));
+    ext = hookingModule->moduleExtension;
+    // Allocate space for hook context
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
+    // Set handler
+    hookContext->handler = handler;
+    // Calculate address of hook
+    SUCCESS_OR_RETURN(WinMmTranslateGuestVirtualToGuestPhysical(guestVirtualAddress, &guestPhysicalAddress));
+    physicalAddress = WinMmTranslateGuestPhysicalToPhysicalAddress(guestPhysicalAddress);
+    // Set hook
+    MapSet(&ext->addressToContext, physicalAddress, hookContext);
+    if(returnHandler)
+    {
+        SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
+        hookContext->handler = returnHandler;
+        MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(physicalAddress), hookContext);
+    }
+    // First save the current instruction (must be sent to KPP module)
+    SUCCESS_OR_RETURN(WinMmCopyGuestMemory(hookedInstruction, guestVirtualAddress, instructionLength));
+    // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
+    hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
+    HwSetMemory(hookInstruction + 2, NOP_OPCODE, instructionLength - 2);
+    // Inject the hooked instruction to the guest and print current stored instruction at address
+    Print("Injecting a hook instruction of length %d to %8. Current instruction is: %.b\n", 
+            instructionLength,
+            physicalAddress,
+            instructionLength,
+            WinMmTranslateGuestPhysicalToHostVirtual(guestPhysicalAddress)
+            );
+    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(guestVirtualAddress, hookInstruction, instructionLength));
+    // Send the hooked instruction to KPP modules
+    SUCCESS_OR_RETURN(KppAddNewEntry(physicalAddress, instructionLength, hookedInstruction));
     return STATUS_SUCCESS;
 }
 
@@ -212,19 +229,20 @@ STATUS HookingHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 STATUS HookingHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     BYTE vector;
-    QWORD syscallId, ripPhysicalAddress;
+    QWORD syscallId, guestPhysical, ripPhysicalAddress;
     PHOOKING_MODULE_EXTENSION ext;
     PHOOK_CONTEXT hookContext;
+    STATUS status;
 
     vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
     if(vector != INT_BREAKPOINT)
         return STATUS_VM_EXIT_NOT_HANDLED;
     
     ext = module->moduleExtension;
-    ASSERT(WinMmTranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &ripPhysicalAddress)
-        == STATUS_SUCCESS);
+    SUCCESS_OR_RETURN(WinMmTranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &guestPhysical));
+    ripPhysicalAddress = WinMmTranslateGuestPhysicalToPhysicalAddress(guestPhysical);
     if((hookContext = MapGet(&ext->addressToContext, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
-        ASSERT(hookContext->handler() == STATUS_SUCCESS);
+        return hookContext->handler();
     else
         VmmInjectGuestInterrupt(INT_BREAKPOINT, 0);
     return STATUS_SUCCESS;

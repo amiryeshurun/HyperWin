@@ -1,0 +1,10 @@
+nt!_VPB
+   +0x000 Type             : Int2B
+   +0x002 Size             : Int2B
+   +0x004 Flags            : Uint2B
+   +0x006 VolumeLabelLength : Uint2B
+   +0x008 DeviceObject     : Ptr64 _DEVICE_OBJECT
+   +0x010 RealDevice       : Ptr64 _DEVICE_OBJECT
+   +0x018 SerialNumber     : Uint4B
+   +0x01c ReferenceCount   : Uint4B
+   +0x020 VolumeLabel      : [32] Wchar

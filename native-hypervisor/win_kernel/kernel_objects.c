@@ -130,12 +130,37 @@ STATUS ObjGet_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value)
     }
 }
 
+STATUS ObjGetDeviceObjectField(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case DEVICE_OBJECT_DRIVER_OBJECT:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+STATUS ObjGetDriverObjectField(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case DRIVER_OBJECT_NAME:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(WIN_KERNEL_UNICODE_STRING));
+    }
+}
+STATUS ObjGet_VPB_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case VPB_DEVICE_OBJECT:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+
 STATUS ObjGet_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
         case FILE_OBJECT_TYPE:
-            return WinMmCopyGuestMemory(value, object + field, sizeof(WORD));
+        case FILE_OBJECT_VPB:
         case FILE_OBJECT_SCB:
             return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
         case FILE_OBJECT_FILE_NAME:
@@ -153,6 +178,12 @@ STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OU
             return ObjGet_EPROCESS_field(object, field, value);
         case FILE_OBJECT:
             return ObjGet_FILE_OBJECT_field(object, field, value);
+        case DEVICE_OBJECT:
+            return ObjGetDeviceObjectField(object, field, value);
+        case DRIVER_OBJECT:
+            return ObjGetDriverObjectField(object, field, value);
+        case VPB:
+            return ObjGet_VPB_field(object, field, value);
         default:
         {
             Print("Unsupported object type!\n");

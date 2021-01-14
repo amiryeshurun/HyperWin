@@ -5,6 +5,7 @@
 #include <vmm/vm_operations.h>
 #include <win_kernel/kernel_objects.h>
 #include <vmx_modules/hooking_module.h>
+#include <win_kernel/utils.h>
 
 static __attribute__((section(".nt_data"))) SYSCALL_DATA g_syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
  { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
@@ -65,7 +66,7 @@ static __attribute__((section(".nt_data"))) SYSCALL_DATA g_syscallsData[] = {  {
  { NULL, 2 },  { NULL, 5 },  { NULL, 4 },  { NULL, 3 },  { NULL, 1 },  { NULL, 7 },  { NULL, 2 },  { NULL, 2 }, 
  { NULL, 4 },  { NULL, 4 },  { NULL, 5 },  { NULL, 1 },  { NULL, 1 } };
 
-static __attribute__((section(".nt_sycalls_events"))) SYSCALL_EVENT g_syscallEvents[25000];
+static __attribute__((section(".nt_sycalls_events"))) SYSCALL_EVENT g_threadEvents[25000];
 
 VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
     IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler)
@@ -77,43 +78,12 @@ VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BY
     g_syscallsData[syscallId].returnHandler = returnHandler;
 }
 
-VOID ShdGetParameters(OUT QWORD_PTR params, IN BYTE count)
-{
-    PREGISTERS regs = &VmmGetVmmStruct()->guestRegisters;
-    QWORD paramsStart = regs->rsp + 5 * sizeof(QWORD);
-    switch(count)
-    {
-        case 17:
-        case 16:
-        case 15:
-        case 14:
-        case 13:
-        case 12:
-        case 11:
-        case 10:
-        case 9:
-        case 8:
-        case 7:
-        case 6:
-        case 5:
-            WinMmCopyGuestMemory(params + 4, paramsStart, (count - 4) * sizeof(QWORD));
-        case 4:
-            params[3] = regs->r9;
-        case 3:
-            params[2] = regs->r8;
-        case 2:
-            params[1] = regs->rdx;
-        case 1:
-            params[0] = regs->rcx;
-    }
-}
-
 VOID ShdHookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId)
 {
     QWORD returnAddress;
     
     returnAddress = CALC_RETURN_HOOK_ADDR(g_syscallsData[syscallId].virtualHookedInstructionAddress);
-    WinMmCopyGuestMemory(&g_syscallEvents[threadId].returnAddress, rsp, sizeof(QWORD));
+    WinMmCopyGuestMemory(&g_threadEvents[threadId].returnAddress, rsp, sizeof(QWORD));
     WinMmCopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
 }
 
@@ -167,18 +137,20 @@ STATUS ShdHandleNtReadFile()
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
-    PHOOKING_MODULE_EXTENSION ext;
     QWORD params[17];
-    QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex;
-    PHIDDEN_FILE_RULE hiddenFileRule;
+    QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex,
+         vpb, deviceObj, driverObj;
     WORD fileType;
+    WORD_PTR pfileType = &fileType;
     STATUS status;
+    PHIDDEN_FILE_RULE hiddenFileRule;
+    WIN_KERNEL_UNICODE_STRING driverName;
 
     state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
     // Receive syscall parameters
-    ShdGetParameters(params, g_syscallsData[NT_READ_FILE].params);
+    WinGetParameters(params, g_syscallsData[NT_READ_FILE].params);
     // Translate the first parameter (file handle) to the corresponding _FILE_OBJECT structure
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
@@ -193,6 +165,25 @@ STATUS ShdHandleNtReadFile()
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_TYPE, &fileType);
     if(fileType != 5)
         goto NtReadFileEmulateInstruction;
+    // Try to hook NtfsFsdRead instead of NtReadFile (for kernel mode data protection)
+    ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_VPB, &vpb);
+    if(vpb)
+    {
+        BYTE nameAsBytes[] = { 0x5C, 0x00, 0x46, 0x00, 0x69, 0x00, 0x6C, 0x00, 0x65, 0x00, 0x53, 0x00, 0x79, 0x00, 0x73, 0x00,
+         0x74, 0x00, 0x65, 0x00, 0x6D, 0x00, 0x5C, 0x00, 0x4E, 0x00, 0x74, 0x00, 0x66, 0x00, 0x73, 0x00 };
+        BYTE driverNameBuffer[50];
+        // Check the name of the driver
+        ObjGetObjectField(VPB, vpb, VPB_DEVICE_OBJECT, &deviceObj);
+        ObjGetObjectField(DEVICE_OBJECT, deviceObj, DEVICE_OBJECT_DRIVER_OBJECT, &driverObj);
+        ObjGetObjectField(DRIVER_OBJECT, driverObj, DRIVER_OBJECT_NAME, &driverName);
+        WinMmCopyGuestMemory(driverNameBuffer, driverName.address, driverName.length);
+        // Is it Ntfs?
+        if(!HwCompareMemory(driverNameBuffer, nameAsBytes, 32))
+        {
+            // Hook NtfsFdsRead
+            // HookingSetupGenericHook()
+        }
+    }
     // Get the MFTIndex of the current file
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
     FileTranslateScbToFcb(scb, &fcb);
@@ -204,9 +195,9 @@ STATUS ShdHandleNtReadFile()
         ObjGetCurrent_ETHREAD(&ethread);
         ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
         ShdHookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
-        g_syscallEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
-        g_syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock = params[4];
-        g_syscallEvents[threadId].dataUnion.NtReadFile.userBuffer = params[5];
+        g_threadEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
+        g_threadEvents[threadId].dataUnion.NtReadFile.ioStatusBlock = params[4];
+        g_threadEvents[threadId].dataUnion.NtReadFile.userBuffer = params[5];
     }
 NtReadFileEmulateInstruction:
     // Emulate replaced instruction: mov rax,rsp
@@ -238,14 +229,14 @@ STATUS ShdHandleNtReadFileReturn()
     ObjGetCurrent_ETHREAD(&ethread);
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     // Get the rule found in the hashmap
-    rule = g_syscallEvents[threadId].dataUnion.NtReadFile.rule;
+    rule = g_threadEvents[threadId].dataUnion.NtReadFile.rule;
     // Copy the readen data length (stored in the inforamtion member of IoStatusBlock)
-    WinMmCopyGuestMemory(&bufferLength, g_syscallEvents[threadId].dataUnion.NtReadFile.ioStatusBlock
+    WinMmCopyGuestMemory(&bufferLength, g_threadEvents[threadId].dataUnion.NtReadFile.ioStatusBlock
      + sizeof(PVOID), sizeof(QWORD));
     if(!bufferLength)
         goto NtReadFilePutReturnAddress;
     // Copy the readon data itself
-    WinMmCopyGuestMemory(readDataBuffer, g_syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
+    WinMmCopyGuestMemory(readDataBuffer, g_threadEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
     // Replace hidden content (if exist)
     if(bufferLength >= rule->content.length && 
         (count = MemoryContains(readDataBuffer, bufferLength, rule->content.data, rule->content.length, indecies)) 
@@ -263,9 +254,9 @@ STATUS ShdHandleNtReadFileReturn()
                 for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
                     readDataBuffer[i] = '*';
     }
-    WinMmCopyMemoryToGuest(g_syscallEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
+    WinMmCopyMemoryToGuest(g_threadEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
 NtReadFilePutReturnAddress:
     // Put back the saved address in the RIP register
-    regs->rip = g_syscallEvents[threadId].returnAddress;
+    regs->rip = g_threadEvents[threadId].returnAddress;
     return STATUS_SUCCESS;
 }

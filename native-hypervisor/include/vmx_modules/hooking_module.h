@@ -32,6 +32,7 @@ typedef struct _HOOKING_MODULE_EXTENSION
     QWORD_MAP addressToContext;
 } HOOKING_MODULE_EXTENSION, *PHOOKING_MODULE_EXTENSION;
 
+// VM-X related operations
 STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData);
 STATUS HookingModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data);
 STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE module);
@@ -43,6 +44,7 @@ STATUS HookingLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr
 VOID HookingGetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3);
 STATUS HookingHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
     IN QWORD count, ...);
-
+STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN QWORD instructionOffset, IN QWORD instructionLength,
+    IN HOOK_HANDLER handler, IN HOOK_HANDLER returnHandler);
 
 #endif
