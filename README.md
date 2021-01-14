@@ -1,7 +1,24 @@
 # HyperWin
 
-This hypervisor is not written for any specific usage. My main motivation is to learn about the virtualization technology on x86-64 Intel processors, Windows internals and BIOS programming.
+HyperWin is a native hypervisor designed for Windows (x64 only) running on Intel processors. The whole system consists three major components: a hypervisor, a driver and a command line application. Using the command-line application, you can send IOCTL codes to the communication driver that will eventually reach the hypervisor.
+HyperWin provides many interesting features, including: 
+- Creation of memory regions hidden from the operating system (using EPT and a hidden hook on E820)
+- PatchGaurd bypassing
+- sensitive data protection (currently User-Mode protection only) 
+- smart process management
 
-## License
+And much more!
+
+### Compilation
+HyperWin can be installed on any computer that is using an MBR disk. The compilation process is super easy:
+```sh
+$ cd HyperWin
+$ make
+```
+After running the above commands, a new file called `hypervisor.iso` will be generated inside the `build` directory. Burn it to a USB stick, plug the stick to a computer and make sure to change the boot order from the BIOS menu (the USB stick must be choosed as the first option).
+Once the computer boots to HyperWin, it will automatically load Windows after it finishes the initialization process.
+
+License
+---
 
 [GPL v3.0](LICENSE)
