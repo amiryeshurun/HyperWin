@@ -1,6 +1,9 @@
 #include <win_kernel/utils.h>
 #include <vmm/vmm.h>
 #include <win_kernel/memory_manager.h>
+#include <vmx_modules/hooking_module.h>
+
+static __attribute__((section(".nt_sycalls_events"))) THREAD_EVENT g_threadEvents[25000];
 
 VOID WinGetParameters(OUT QWORD_PTR params, IN BYTE count)
 {
@@ -31,4 +34,18 @@ VOID WinGetParameters(OUT QWORD_PTR params, IN BYTE count)
         case 1:
             params[0] = regs->rcx;
     }
+}
+
+VOID WinHookReturnEvent(IN QWORD rsp, IN QWORD threadId, IN QWORD hookAddress)
+{
+    QWORD returnAddress;
+    
+    returnAddress = CALC_RETURN_HOOK_ADDR(hookAddress);
+    WinMmCopyGuestMemory(&g_threadEvents[threadId].returnAddress, rsp, sizeof(QWORD));
+    WinMmCopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
+}
+
+PTHREAD_EVENT WinGetEventForThread(IN QWORD threadId)
+{
+    return &(g_threadEvents[threadId]);
 }
