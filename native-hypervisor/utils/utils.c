@@ -164,3 +164,25 @@ QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QW
     
     return count;
 }
+
+QWORD GetTokenLength(IN BYTE_PTR begin, IN CHAR separator)
+{
+    QWORD tokenLength;
+
+    tokenLength = 0;
+    while(*begin != separator)
+        tokenLength++;
+    
+    return tokenLength;
+}
+
+QWORD StringToInt(IN PCHAR str, IN QWORD strlen)
+{
+    QWORD result;
+
+    result = 0;
+    while(strlen--)
+        result = result * 10 + (*(str++) - '0');
+    
+    return result;
+}

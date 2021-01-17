@@ -46,5 +46,7 @@ BOOL IsMsrValid(IN QWORD msrNumber, IN BYTE_PTR msrRange);
 QWORD SumDigits(IN QWORD num);
 QWORD MemoryContains(IN BYTE_PTR buff1, IN QWORD size1, IN BYTE_PTR buff2, IN QWORD size2,
     OUT QWORD_PTR indecies);
+QWORD GetTokenLength(IN BYTE_PTR begin, IN CHAR separator);
+QWORD StringToInt(IN PCHAR str, IN QWORD strlen);
 
 #endif
