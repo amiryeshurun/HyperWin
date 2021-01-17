@@ -15,6 +15,9 @@
 // The INT3 instruction used to detect return events of system call is (ADDRESS + 1)
 #define CALC_RETURN_HOOK_ADDR(address) (address + 1)
 
+// Define a name for the module to allow getting a module by its name
+#define HOOKING_MODULE_NAME "HyperWin Hooking Module"
+
 enum
 {
     HOOK_TYPE_GENERIC,

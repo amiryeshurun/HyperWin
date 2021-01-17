@@ -170,8 +170,11 @@ QWORD GetTokenLength(IN BYTE_PTR begin, IN CHAR separator)
     QWORD tokenLength;
 
     tokenLength = 0;
-    while(*begin != separator)
+    while(*begin != separator && *begin != '\r' && *begin != '\n')
+    {
+        begin++;
         tokenLength++;
+    }
     
     return tokenLength;
 }

@@ -12,7 +12,8 @@
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/file.h>
 
-STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
+STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module,
+    IN PGENERIC_MODULE_DATA initData)
 {
     PHOOKING_MODULE_EXTENSION extension;
 
@@ -22,7 +23,7 @@ STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODUL
     extension = module->moduleExtension;
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
-    extension->hookingConfigSegment = &__hooking_config_segment;
+    extension->hookingConfigSegment = PhysicalToVirtual(&__hooking_config_segment);
     ListCreate(&extension->hookConfig);
     MapCreate(&extension->addressToContext, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
     ASSERT(HookingParseConfig(extension->hookingConfigSegment, &extension->hookConfig) == STATUS_SUCCESS);
@@ -73,7 +74,7 @@ STATUS HookingTranslateSyscallNameToId(IN PCHAR name, OUT QWORD_PTR syscallId)
     
     // First get the module
     if(!module)
-        MdlGetModuleByName(&module, "Windows Hooking Module");
+        MdlGetModuleByName(&module, HOOKING_MODULE_NAME);
     // Get the module extension
     ext = module->moduleExtension;
     // Get the list of config entries
@@ -99,7 +100,7 @@ STATUS HookingTranslateSyscallNameToId(IN PCHAR name, OUT QWORD_PTR syscallId)
 
 STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
 {
-    BYTE_PTR current, begin;
+    BYTE_PTR current;
     QWORD tokenLength, syscallId, offset, instructionLength;
     PCHAR name;
     PCONFIG_HOOK_CONTEXT configContext;
@@ -108,29 +109,27 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
     BYTE type;
     STATUS status;
 
-    begin = hookConfigSegment;
+    current = hookConfigSegment;
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     while(TRUE)
     {
-        if(!HwCompareMemory(begin, "END", 3))
+        if(!HwCompareMemory(current, "END", 3))
             break;
         // Get the name
-        begin = current;
-        tokenLength = GetTokenLength(begin, ',');
+        tokenLength = GetTokenLength(current, ',');
         SUCCESS_OR_RETURN(heap->allocate(heap, (tokenLength + 1) * sizeof(char), &name));
-        HwCopyMemory(name, begin, tokenLength);
+        HwCopyMemory(name, current, tokenLength);
         name[tokenLength] = '\0';
         current += (tokenLength + 1);
         // Get the hook type
-        begin = current;
-        tokenLength = GetTokenLength(begin, ',');
-        if(!HwCompareMemory(begin, "SYSCALL", tokenLength))
+        tokenLength = GetTokenLength(current, ',');
+        if(!HwCompareMemory(current, "SYSCALL", tokenLength))
             type = HOOK_TYPE_SYSCALL;
-        else if(!HwCompareMemory(begin, "GENERIC", tokenLength))
+        else if(!HwCompareMemory(current, "GENERIC", tokenLength))
             type = HOOK_TYPE_GENERIC;
         else
             return STATUS_UNKNOWN_HOOK_TYPE;
-        begin += (tokenLength + 1);
+        current += (tokenLength + 1);
         // Allocate space for hook context config
         SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(CONFIG_HOOK_CONTEXT), &configContext));
         configContext->name = name;
@@ -141,9 +140,9 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
             case HOOK_TYPE_SYSCALL:
             {
                 // Load syscall ID
-                tokenLength = GetTokenLength(begin, ',');
-                syscallId = StringToInt(begin, tokenLength);
-                begin += (tokenLength + 1);
+                tokenLength = GetTokenLength(current, ',');
+                syscallId = StringToInt(current, tokenLength);
+                current += (tokenLength + 1);
                 // Allocate space for a specific-type config data
                 SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(SYSCALL_CONFIG_HOOK_CONTEXT), &syscallConfigContext));
                 // Store syscall ID & Save the context pointer
@@ -153,21 +152,24 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
             }
         }
         // Get params & offset & instruction length (ordered)
-        tokenLength = GetTokenLength(begin, ',');
-        configContext->params = StringToInt(begin, tokenLength);
-        begin += (tokenLength + 1);
-        tokenLength = GetTokenLength(begin, ',');
-        configContext->offsetFromBeginning = StringToInt(begin, tokenLength);
-        begin += (tokenLength + 1);
-        tokenLength = GetTokenLength(begin, ',');
-        configContext->instructionLength =  StringToInt(begin, tokenLength);
+        tokenLength = GetTokenLength(current, ',');
+        configContext->params = StringToInt(current, tokenLength);
+        current += (tokenLength + 1);
+        tokenLength = GetTokenLength(current, ',');
+        configContext->offsetFromBeginning = StringToInt(current, tokenLength);
+        current += (tokenLength + 1);
+        tokenLength = GetTokenLength(current, ',');
+        configContext->instructionLength =  StringToInt(current, tokenLength);
         // Skip \r\n
-        begin += (tokenLength + 2);
+        current += (tokenLength + 2);
         // Print to log
         Print("Scanned a config field with the following data:\nName: ");
         Print(name);
-        Print("Type: %d\nParams: %d\nOffset: %d\nInstruction Length: %d\n", configContext->type, 
-            configContext->params, configContext->offsetFromBeginning, configContext->instructionLength);
+        Print("\nType: %d\nParams: %d\nOffset: %d\nInstruction Length: %d\n",
+            configContext->type, 
+            configContext->params,
+            configContext->offsetFromBeginning,
+            configContext->instructionLength);
         switch(type)
         {
             case HOOK_TYPE_SYSCALL:
@@ -281,7 +283,7 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
         return STATUS_INSTRUCTION_TOO_SHORT;
     // First get module and extension
     if(!hookingModule)
-        SUCCESS_OR_RETURN(MdlGetModuleByName(&hookingModule, "Windows Hooking Module"));
+        SUCCESS_OR_RETURN(MdlGetModuleByName(&hookingModule, HOOKING_MODULE_NAME));
     ext = hookingModule->moduleExtension;
     // Allocate space for hook context
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;

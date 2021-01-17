@@ -365,7 +365,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
         // Syscalls Module
         MdlInitModule(sharedData, hookingModule, HookingModuleInitializeAllCores, NULL, HookingDefaultHandler);
-        MdlSetModuleName(sharedData, hookingModule, "Windows Hooking Module");
+        MdlSetModuleName(sharedData, hookingModule, HOOKING_MODULE_NAME);
         MdlRegisterVmExitHandler(hookingModule, EXIT_REASON_MSR_WRITE, HookingHandleMsrWrite);
         MdlRegisterVmExitHandler(hookingModule, EXIT_REASON_EXCEPTION_NMI, HookingHandleException);
         MdlRegisterModule(sharedData, hookingModule);

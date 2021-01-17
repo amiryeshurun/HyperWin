@@ -95,15 +95,11 @@ STATUS ShdHandleNtReadFileReturn(PHOOK_CONTEXT context)
     BYTE readDataBuffer[BUFF_MAX_SIZE];
     PWCHAR utf16Ptr;
     PTHREAD_EVENT threadEvent;
-    static PMODULE module;
     STATUS status;
 
     state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
-    // First get the syscalls module pointer
-    if(!module)
-        SUCCESS_OR_RETURN(MdlGetModuleByName(&module, "Windows Hooking Module"));
     // Get thread id
     ObjGetCurrent_ETHREAD(&ethread);
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
