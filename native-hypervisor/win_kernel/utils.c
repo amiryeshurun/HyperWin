@@ -3,7 +3,7 @@
 #include <win_kernel/memory_manager.h>
 #include <vmx_modules/hooking_module.h>
 
-static __attribute__((section(".nt_sycalls_events"))) THREAD_EVENT g_threadEvents[25000];
+static __attribute__((section(".nt_thread_events"))) THREAD_EVENT g_threadEvents[25000];
 
 VOID WinGetParameters(OUT QWORD_PTR params, IN BYTE count)
 {

@@ -13,6 +13,6 @@
 STATUS ShdHandleNtReadFile(PHOOK_CONTEXT context);
 STATUS ShdHandleNtReadFileReturn(PHOOK_CONTEXT context);
 
-extern QWORD __ntDataStart;
+extern QWORD __nt_thread_events_segment;
 
 #endif
