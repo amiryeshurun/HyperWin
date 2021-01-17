@@ -7,132 +7,7 @@
 #include <vmx_modules/hooking_module.h>
 #include <win_kernel/utils.h>
 
-static __attribute__((section(".nt_data"))) SYSCALL_DATA g_syscallsData[] = {  { NULL, 8 },  { NULL, 1 },  { NULL, 6 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 10 }, 
- { NULL, 9 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
- { NULL, 5 },  { NULL, 5 },  { NULL, 3 },  { NULL, 6 },  { NULL, 3 },  { NULL, 2 },  { NULL, 5 },  { NULL, 6 }, 
- { NULL, 6 },  { NULL, 5 },  { NULL, 5 },  { NULL, 9 },  { NULL, 4 },  { NULL, 7 },  { NULL, 4 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 5 },  { NULL, 3 },  { NULL, 6 },  { NULL, 4 },  { NULL, 5 },  { NULL, 4 },  { NULL, 5 }, 
- { NULL, 10 },  { NULL, 11 },  { NULL, 2 },  { NULL, 5 },  { NULL, 2 },  { NULL, 1 },  { NULL, 9 },  { NULL, 5 }, 
- { NULL, 4 },  { NULL, 2 },  { NULL, 6 },  { NULL, 6 },  { NULL, 2 },  { NULL, 11 },  { NULL, 4 },  { NULL, 3 }, 
- { NULL, 5 },  { NULL, 10 },  { NULL, 5 },  { NULL, 3 },  { NULL, 7 },  { NULL, 2 },  { NULL, 1 },  { NULL, 5 }, 
- { NULL, 3 },  { NULL, 6 },  { NULL, 6 },  { NULL, 2 },  { NULL, 1 },  { NULL, 5 },  { NULL, 0 },  { NULL, 3 }, 
- { NULL, 5 },  { NULL, 5 },  { NULL, 7 },  { NULL, 2 },  { NULL, 2 },  { NULL, 9 },  { NULL, 8 },  { NULL, 2 }, 
- { NULL, 5 },  { NULL, 5 },  { NULL, 2 },  { NULL, 2 },  { NULL, 6 },  { NULL, 11 },  { NULL, 5 },  { NULL, 6 }, 
- { NULL, 3 },  { NULL, 16 },  { NULL, 1 },  { NULL, 5 },  { NULL, 4 },  { NULL, 2 },  { NULL, 4 },  { NULL, 5 }, 
- { NULL, 6 },  { NULL, 2 },  { NULL, 7 },  { NULL, 11 },  { NULL, 11 },  { NULL, 16 },  { NULL, 17 },  { NULL, 3 }, 
- { NULL, 4 },  { NULL, 2 },  { NULL, 2 },  { NULL, 6 },  { NULL, 16 },  { NULL, 2 },  { NULL, 1 },  { NULL, 1 }, 
- { NULL, 1 },  { NULL, 3 },  { NULL, 3 },  { NULL, 4 },  { NULL, 7 },  { NULL, 9 },  { NULL, 3 },  { NULL, 11 }, 
- { NULL, 11 },  { NULL, 3 },  { NULL, 6 },  { NULL, 4 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 }, 
- { NULL, 3 },  { NULL, 3 },  { NULL, 2 },  { NULL, 3 },  { NULL, 3 },  { NULL, 6 },  { NULL, 6 },  { NULL, 5 }, 
- { NULL, 6 },  { NULL, 3 },  { NULL, 8 },  { NULL, 4 },  { NULL, 2 },  { NULL, 2 },  { NULL, 8 },  { NULL, 4 }, 
- { NULL, 3 },  { NULL, 3 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 3 },  { NULL, 1 },  { NULL, 1 },  { NULL, 8 },  { NULL, 4 }, 
- { NULL, 4 },  { NULL, 3 },  { NULL, 5 },  { NULL, 9 },  { NULL, 8 },  { NULL, 3 },  { NULL, 3 },  { NULL, 4 }, 
- { NULL, 3 },  { NULL, 3 },  { NULL, 8 },  { NULL, 4 },  { NULL, 9 },  { NULL, 8 },  { NULL, 4 },  { NULL, 14 }, 
- { NULL, 4 },  { NULL, 4 },  { NULL, 5 },  { NULL, 4 },  { NULL, 8 },  { NULL, 9 },  { NULL, 10 },  { NULL, 4 }, 
- { NULL, 7 },  { NULL, 5 },  { NULL, 4 },  { NULL, 11 },  { NULL, 4 },  { NULL, 5 },  { NULL, 13 },  { NULL, 17 }, 
- { NULL, 10 },  { NULL, 6 },  { NULL, 11 },  { NULL, 3 },  { NULL, 5 },  { NULL, 7 },  { NULL, 10 },  { NULL, 2 }, 
- { NULL, 3 },  { NULL, 1 },  { NULL, 1 },  { NULL, 1 },  { NULL, 1 },  { NULL, 1 },  { NULL, 3 },  { NULL, 1 }, 
- { NULL, 2 },  { NULL, 2 },  { NULL, 1 },  { NULL, 0 },  { NULL, 1 },  { NULL, 1 },  { NULL, 0 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 3 },  { NULL, 5 },  { NULL, 2 },  { NULL, 5 },  { NULL, 6 },  { NULL, 14 },  { NULL, 5 }, 
- { NULL, 2 },  { NULL, 3 },  { NULL, 1 },  { NULL, 0 },  { NULL, 4 },  { NULL, 0 },  { NULL, 3 },  { NULL, 1 }, 
- { NULL, 2 },  { NULL, 6 },  { NULL, 6 },  { NULL, 2 },  { NULL, 0 },  { NULL, 1 },  { NULL, 2 },  { NULL, 3 }, 
- { NULL, 5 },  { NULL, 6 },  { NULL, 5 },  { NULL, 7 },  { NULL, 7 },  { NULL, 1 },  { NULL, 3 },  { NULL, 5 }, 
- { NULL, 3 },  { NULL, 1 },  { NULL, 4 },  { NULL, 0 },  { NULL, 0 },  { NULL, 2 },  { NULL, 1 },  { NULL, 9 }, 
- { NULL, 2 },  { NULL, 3 },  { NULL, 8 },  { NULL, 10 },  { NULL, 2 },  { NULL, 1 },  { NULL, 4 },  { NULL, 1 }, 
- { NULL, 1 },  { NULL, 5 },  { NULL, 6 },  { NULL, 3 },  { NULL, 9 },  { NULL, 1 },  { NULL, 1 },  { NULL, 9 }, 
- { NULL, 10 },  { NULL, 10 },  { NULL, 12 },  { NULL, 8 },  { NULL, 5 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 }, 
- { NULL, 4 },  { NULL, 4 },  { NULL, 5 },  { NULL, 3 },  { NULL, 3 },  { NULL, 12 },  { NULL, 3 },  { NULL, 4 }, 
- { NULL, 3 },  { NULL, 3 },  { NULL, 5 },  { NULL, 3 },  { NULL, 3 },  { NULL, 3 },  { NULL, 4 },  { NULL, 3 }, 
- { NULL, 5 },  { NULL, 6 },  { NULL, 3 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 3 }, 
- { NULL, 6 },  { NULL, 5 },  { NULL, 4 },  { NULL, 3 },  { NULL, 2 },  { NULL, 1 },  { NULL, 2 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 10 },  { NULL, 7 },  { NULL, 2 },  { NULL, 9 },  { NULL, 2 },  { NULL, 5 },  { NULL, 5 }, 
- { NULL, 5 },  { NULL, 5 },  { NULL, 5 },  { NULL, 5 },  { NULL, 5 },  { NULL, 5 },  { NULL, 5 },  { NULL, 1 }, 
- { NULL, 2 },  { NULL, 5 },  { NULL, 5 },  { NULL, 6 },  { NULL, 5 },  { NULL, 2 },  { NULL, 4 },  { NULL, 0 }, 
- { NULL, 9 },  { NULL, 6 },  { NULL, 5 },  { NULL, 6 },  { NULL, 5 },  { NULL, 3 },  { NULL, 4 },  { NULL, 5 }, 
- { NULL, 6 },  { NULL, 3 },  { NULL, 6 },  { NULL, 5 },  { NULL, 6 },  { NULL, 3 },  { NULL, 6 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 1 },  { NULL, 1 },  { NULL, 5 },  { NULL, 1 },  { NULL, 4 },  { NULL, 1 },  { NULL, 6 }, 
- { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 3 },  { NULL, 3 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 }, 
- { NULL, 3 },  { NULL, 3 },  { NULL, 1 },  { NULL, 0 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 2 },  { NULL, 3 },  { NULL, 3 },  { NULL, 9 },  { NULL, 0 },  { NULL, 2 },  { NULL, 2 }, 
- { NULL, 5 },  { NULL, 6 },  { NULL, 2 },  { NULL, 3 },  { NULL, 1 },  { NULL, 2 },  { NULL, 1 },  { NULL, 2 }, 
- { NULL, 4 },  { NULL, 1 },  { NULL, 1 },  { NULL, 2 },  { NULL, 5 },  { NULL, 4 },  { NULL, 4 },  { NULL, 4 }, 
- { NULL, 4 },  { NULL, 4 },  { NULL, 4 },  { NULL, 4 },  { NULL, 4 },  { NULL, 6 },  { NULL, 4 },  { NULL, 2 }, 
- { NULL, 5 },  { NULL, 6 },  { NULL, 6 },  { NULL, 1 },  { NULL, 1 },  { NULL, 4 },  { NULL, 3 },  { NULL, 2 }, 
- { NULL, 5 },  { NULL, 3 },  { NULL, 3 },  { NULL, 2 },  { NULL, 2 },  { NULL, 4 },  { NULL, 4 },  { NULL, 3 }, 
- { NULL, 1 },  { NULL, 5 },  { NULL, 1 },  { NULL, 1 },  { NULL, 2 },  { NULL, 4 },  { NULL, 2 },  { NULL, 1 }, 
- { NULL, 1 },  { NULL, 4 },  { NULL, 1 },  { NULL, 2 },  { NULL, 6 },  { NULL, 2 },  { NULL, 2 },  { NULL, 0 }, 
- { NULL, 0 },  { NULL, 0 },  { NULL, 6 },  { NULL, 4 },  { NULL, 1 },  { NULL, 1 },  { NULL, 1 },  { NULL, 2 }, 
- { NULL, 2 },  { NULL, 5 },  { NULL, 4 },  { NULL, 3 },  { NULL, 1 },  { NULL, 7 },  { NULL, 2 },  { NULL, 2 }, 
- { NULL, 4 },  { NULL, 4 },  { NULL, 5 },  { NULL, 1 },  { NULL, 1 } };
-
-static __attribute__((section(".nt_sycalls_events"))) SYSCALL_EVENT g_threadEvents[25000];
-
-VOID ShdInitSyscallData(IN QWORD syscallId, IN BYTE hookInstructionOffset, IN BYTE hookedInstructionLength,
-    IN SYSCALL_HANDLER handler, IN BOOL hookReturn, IN SYSCALL_HANDLER returnHandler)
-{
-    g_syscallsData[syscallId].hookInstructionOffset = hookInstructionOffset;
-    g_syscallsData[syscallId].hookedInstructionLength = hookedInstructionLength;
-    g_syscallsData[syscallId].hookReturnEvent = hookReturn;
-    g_syscallsData[syscallId].handler = handler;
-    g_syscallsData[syscallId].returnHandler = returnHandler;
-}
-
-VOID ShdHookReturnEvent(IN QWORD syscallId, IN QWORD rsp, IN QWORD threadId)
-{
-    QWORD returnAddress;
-    
-    returnAddress = CALC_RETURN_HOOK_ADDR(g_syscallsData[syscallId].virtualHookedInstructionAddress);
-    WinMmCopyGuestMemory(&g_threadEvents[threadId].returnAddress, rsp, sizeof(QWORD));
-    WinMmCopyMemoryToGuest(rsp, &returnAddress, sizeof(QWORD));
-}
-
-STATUS ShdHandleNtOpenPrcoess()
-{
-    PCURRENT_GUEST_STATE state;
-    PSHARED_CPU_DATA shared;
-    PREGISTERS regs;
-
-    state = VmmGetVmmStruct();
-    shared = state->currentCPU->sharedData;
-    regs = &state->guestRegisters;
-    // Emulate replaced instruction: sub rsp,38h
-    regs->rsp -= 0x38;
-    regs->rip += g_syscallsData[NT_OPEN_PROCESS].hookedInstructionLength;
-    // End emulation
-    return STATUS_SUCCESS;
-}
-
-STATUS ShdHandleNtOpenPrcoessReturn()
-{
-    PCURRENT_GUEST_STATE state;
-    PSHARED_CPU_DATA shared;
-    PREGISTERS regs;
-
-    state = VmmGetVmmStruct();
-    shared = state->currentCPU->sharedData;
-    regs = &state->guestRegisters;
-    return STATUS_SUCCESS;
-}
-
-STATUS ShdHandleNtCreateUserProcess()
-{
-    PCURRENT_GUEST_STATE state;
-    PSHARED_CPU_DATA shared;
-    PREGISTERS regs;
-
-    state = VmmGetVmmStruct();
-    shared = state->currentCPU->sharedData;
-    regs = &state->guestRegisters;
-    // Emulate replaced instruction: push rbp
-    ASSERT(WinMmCopyMemoryToGuest(regs->rsp - 8, &regs->rbp, sizeof(QWORD)) == STATUS_SUCCESS);
-    regs->rsp -= 8;
-    regs->rip += g_syscallsData[NT_CREATE_USER_PROCESS].hookedInstructionLength;
-    // End emulation
-    return STATUS_SUCCESS;
-}
-
-STATUS ShdHandleNtReadFile()
+STATUS ShdHandleNtReadFile(PHOOK_CONTEXT context)
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
@@ -145,12 +20,13 @@ STATUS ShdHandleNtReadFile()
     STATUS status;
     PHIDDEN_FILE_RULE hiddenFileRule;
     WIN_KERNEL_UNICODE_STRING driverName;
+    PTHREAD_EVENT threadEvent;
 
     state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
     regs = &state->guestRegisters;
     // Receive syscall parameters
-    WinGetParameters(params, g_syscallsData[NT_READ_FILE].params);
+    WinGetParameters(params, context->relatedConfig->params);
     // Translate the first parameter (file handle) to the corresponding _FILE_OBJECT structure
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
@@ -169,6 +45,7 @@ STATUS ShdHandleNtReadFile()
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_VPB, &vpb);
     if(vpb)
     {
+        // Ntfs
         BYTE nameAsBytes[] = { 0x5C, 0x00, 0x46, 0x00, 0x69, 0x00, 0x6C, 0x00, 0x65, 0x00, 0x53, 0x00, 0x79, 0x00, 0x73, 0x00,
          0x74, 0x00, 0x65, 0x00, 0x6D, 0x00, 0x5C, 0x00, 0x4E, 0x00, 0x74, 0x00, 0x66, 0x00, 0x73, 0x00 };
         BYTE driverNameBuffer[50];
@@ -194,29 +71,31 @@ STATUS ShdHandleNtReadFile()
         // The file is a protected file
         ObjGetCurrent_ETHREAD(&ethread);
         ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
-        ShdHookReturnEvent(NT_READ_FILE, regs->rsp, threadId);
-        g_threadEvents[threadId].dataUnion.NtReadFile.rule = hiddenFileRule;
-        g_threadEvents[threadId].dataUnion.NtReadFile.ioStatusBlock = params[4];
-        g_threadEvents[threadId].dataUnion.NtReadFile.userBuffer = params[5];
+        WinHookReturnEvent(regs->rsp, threadId, context->virtualAddress);
+        threadEvent = WinGetEventForThread(threadId);
+        threadEvent->dataUnion.NtReadFile.rule = hiddenFileRule;
+        threadEvent->dataUnion.NtReadFile.ioStatusBlock = params[4];
+        threadEvent->dataUnion.NtReadFile.userBuffer = params[5];
     }
 NtReadFileEmulateInstruction:
     // Emulate replaced instruction: mov rax,rsp
     regs->rax = regs->rsp;
-    regs->rip += g_syscallsData[NT_READ_FILE].hookedInstructionLength;
+    regs->rip += context->relatedConfig->instructionLength;
     // End emulation
     return STATUS_SUCCESS;
 }
 
-STATUS ShdHandleNtReadFileReturn()
+STATUS ShdHandleNtReadFileReturn(PHOOK_CONTEXT context)
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
-    static PMODULE module;
     PREGISTERS regs;
     QWORD threadId, ethread, bufferLength, idx, count, indecies[10];
     PHIDDEN_FILE_RULE rule;
     BYTE readDataBuffer[BUFF_MAX_SIZE];
     PWCHAR utf16Ptr;
+    PTHREAD_EVENT threadEvent;
+    static PMODULE module;
     STATUS status;
 
     state = VmmGetVmmStruct();
@@ -225,18 +104,20 @@ STATUS ShdHandleNtReadFileReturn()
     // First get the syscalls module pointer
     if(!module)
         SUCCESS_OR_RETURN(MdlGetModuleByName(&module, "Windows Hooking Module"));
-    // Get
+    // Get thread id
     ObjGetCurrent_ETHREAD(&ethread);
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
+    // Using the thread id, get the saved data
+    threadEvent = WinGetEventForThread(threadId);
     // Get the rule found in the hashmap
-    rule = g_threadEvents[threadId].dataUnion.NtReadFile.rule;
+    rule = threadEvent->dataUnion.NtReadFile.rule;
     // Copy the readen data length (stored in the inforamtion member of IoStatusBlock)
-    WinMmCopyGuestMemory(&bufferLength, g_threadEvents[threadId].dataUnion.NtReadFile.ioStatusBlock
+    WinMmCopyGuestMemory(&bufferLength, threadEvent->dataUnion.NtReadFile.ioStatusBlock
      + sizeof(PVOID), sizeof(QWORD));
     if(!bufferLength)
         goto NtReadFilePutReturnAddress;
     // Copy the readon data itself
-    WinMmCopyGuestMemory(readDataBuffer, g_threadEvents[threadId].dataUnion.NtReadFile.userBuffer, bufferLength);
+    WinMmCopyGuestMemory(readDataBuffer, threadEvent->dataUnion.NtReadFile.userBuffer, bufferLength);
     // Replace hidden content (if exist)
     if(bufferLength >= rule->content.length && 
         (count = MemoryContains(readDataBuffer, bufferLength, rule->content.data, rule->content.length, indecies)) 
@@ -254,9 +135,9 @@ STATUS ShdHandleNtReadFileReturn()
                 for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
                     readDataBuffer[i] = '*';
     }
-    WinMmCopyMemoryToGuest(g_threadEvents[threadId].dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
+    WinMmCopyMemoryToGuest(threadEvent->dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
 NtReadFilePutReturnAddress:
     // Put back the saved address in the RIP register
-    regs->rip = g_threadEvents[threadId].returnAddress;
+    regs->rip = threadEvent->returnAddress;
     return STATUS_SUCCESS;
 }

@@ -8,8 +8,11 @@ C_COMPILER_FLAGS = -I./native-hypervisor/include \
 				   -fno-stack-protector \
 				   -mno-red-zone \
 				   -nostdinc \
-				   -g \
-				   -fshort-wchar
+				   -g3 \
+				   -ggdb \
+				   -fshort-wchar \
+				   -fvar-tracking \
+				   -fno-omit-frame-pointer
 
 # --------------- LINKER --------------- #
 LINKER 			= ld
@@ -26,6 +29,7 @@ ASM_FLAGS 		= -I./native-hypervisor/include \
 
 
 OBJDIR := build
+CONFIG_DIR := config
 SRC_DIR := native-hypervisor
 
 ENTRYPOINT_ASM		       = entrypoint.asm
@@ -41,24 +45,35 @@ UTILS_ASM_SOURCE_FILES     = $(addprefix utils/, $(shell find native-hypervisor/
 VMM_ASM_SOURCE_FILES       = $(addprefix vmm/, $(shell find native-hypervisor/vmm/ -maxdepth 1 -name '*.asm' -printf '%f '))
 GUEST_COM_ASM_SOURCE_FILES = $(addprefix guest_communication/, $(shell find native-hypervisor/guest_communication/ -maxdepth 1 -name '*.asm' -printf '%f '))
 MODULES_ASM_SOURCE_FILES   = $(addprefix vmx_modules/, $(shell find native-hypervisor/vmx_modules/ -maxdepth 1 -name '*.asm' -printf '%f '))
+CONFIG_FILES               = $(addprefix config/, $(shell find config/ -maxdepth 1 -name '*.cfg' -printf '%f '))
 
 OUTPUT_OBJECT_FILES = $(addprefix $(OBJDIR)/, $(ENTRYPOINT_ASM:.asm=.o))             \
 					  $(addprefix $(OBJDIR)/, $(BIOS_ASM_SOURCE_FILES:.asm=.o))	     \
 					  $(addprefix $(OBJDIR)/, $(UTILS_ASM_SOURCE_FILES:.asm=.o))     \
 					  $(addprefix $(OBJDIR)/, $(VMM_ASM_SOURCE_FILES:.asm=.o))       \
 					  $(addprefix $(OBJDIR)/, $(GUEST_COM_ASM_SOURCE_FILES:.asm=.o)) \
-					  $(addprefix $(OBJDIR)/, $(MODULES_ASM_SOURCE_FILES:.asm=.o)) \
+					  $(addprefix $(OBJDIR)/, $(MODULES_ASM_SOURCE_FILES:.asm=.o))   \
 					  $(addprefix $(OBJDIR)/, $(BIOS_C_SOURCE_FILES:.c=.o))  	     \
 					  $(addprefix $(OBJDIR)/, $(DEBUG_C_SOURCE_FILES:.c=.o)) 	     \
 					  $(addprefix $(OBJDIR)/, $(UTILS_C_SOURCE_FILES:.c=.o))         \
 					  $(addprefix $(OBJDIR)/, $(VMM_C_SOURCE_FILES:.c=.o))           \
 					  $(addprefix $(OBJDIR)/, $(WIN_KERNEL_C_SOURCE_FILES:.c=.o))    \
 					  $(addprefix $(OBJDIR)/, $(GUEST_COM_C_SOURCE_FILES:.c=.o))     \
-					  $(addprefix $(OBJDIR)/, $(MDULES_C_SOURCE_FILES:.c=.o))     \
+					  $(addprefix $(OBJDIR)/, $(MDULES_C_SOURCE_FILES:.c=.o))        \
+					  $(addprefix $(OBJDIR)/, $(CONFIG_FILES:.cfg=.o))
 
 .PHONY: clean
 
 all: $(OBJDIR)/hypervisor.iso
+
+config: $(OBJDIR)/$(CONFIG_DIR)/hook_config.o
+
+$(OBJDIR)/$(CONFIG_DIR)/hook_config.o : $(CONFIG_DIR)/hook_config.cfg
+	objcopy --input binary \
+    --output elf64-x86-64 \
+    --binary-architecture i386:x86-64 \
+    --rename-section .data=.hooking_config,CONTENTS,ALLOC,LOAD,READONLY,DATA \
+    $< $@
 
 $(OBJDIR)/%.o : $(SRC_DIR)/%.c
 	$(C_COMPILER) $(C_COMPILER_FLAGS) $< -o $@

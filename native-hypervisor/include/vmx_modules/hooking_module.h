@@ -4,25 +4,52 @@
 #include <types.h>
 #include <vmm/vmm.h>
 #include <vmx_modules/module.h>
-#include <win_kernel/syscall_handlers.h>
 #include <utils/map.h>
 #include <utils/set.h>
 #include <win_kernel/file.h>
+#include <utils/list.h>
 
 // Used to determine how many vm-exits should occur before hooking the system calls
 #define COUNT_UNTIL_HOOK 1500
 
-typedef STATUS (*HOOK_HANDLER)();
+// The INT3 instruction used to detect return events of system call is (ADDRESS + 1)
+#define CALC_RETURN_HOOK_ADDR(address) (address + 1)
+
+enum
+{
+    HOOK_TYPE_GENERIC,
+    HOOK_TYPE_SYSCALL
+};
+
+typedef struct _SYSCALL_CONFIG_HOOK_CONTEXT
+{
+    QWORD syscallId;
+} SYSCALL_CONFIG_HOOK_CONTEXT, *PSYSCALL_CONFIG_HOOK_CONTEXT;
+
+typedef struct _CONFIG_HOOK_CONTEXT
+{
+    PCHAR name;
+    BYTE type;
+    BYTE offsetFromBeginning;
+    BYTE instructionLength;
+    BYTE params;
+    PVOID additionalData;
+} CONFIG_HOOK_CONTEXT, *PCONFIG_HOOK_CONTEXT;
+
+struct _HOOK_CONTEXT;
+
+typedef STATUS (*HOOK_HANDLER)(struct _HOOK_CONTEXT*);
 
 typedef struct _HOOK_CONTEXT
 {
     HOOK_HANDLER handler;
+    PCONFIG_HOOK_CONTEXT relatedConfig;
+    QWORD virtualAddress;
     PVOID additionalData;
 } HOOK_CONTEXT, *PHOOK_CONTEXT;
 
 typedef struct _HOOKING_MODULE_EXTENSION
 {
-    PSYSCALL_DATA syscallsData;
     BOOL startExitCount;
     QWORD exitCount;
     BYTE_PTR ntoskrnl;
@@ -30,6 +57,8 @@ typedef struct _HOOKING_MODULE_EXTENSION
     BYTE_PTR lstar;
     QWORD guestCr3;
     QWORD_MAP addressToContext;
+    BYTE_PTR hookingConfigSegment;
+    LIST hookConfig;
 } HOOKING_MODULE_EXTENSION, *PHOOKING_MODULE_EXTENSION;
 
 // VM-X related operations
@@ -42,9 +71,13 @@ STATUS HookingHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 // Operational functions
 STATUS HookingLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3);
 VOID HookingGetSystemTables(IN BYTE_PTR ssdt, OUT BYTE_PTR* ntoskrnl, OUT BYTE_PTR* win32k, IN QWORD guestCr3);
-STATUS HookingHookSystemCalls(IN PMODULE module, IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
+STATUS HookingHookSystemCalls(IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_PTR win32k, 
     IN QWORD count, ...);
-STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN QWORD instructionOffset, IN QWORD instructionLength,
-    IN HOOK_HANDLER handler, IN HOOK_HANDLER returnHandler);
+STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN HOOK_HANDLER handler,
+    IN HOOK_HANDLER returnHandler);
+STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig);
+STATUS HookingTranslateSyscallNameToId(IN PCHAR name, OUT QWORD_PTR syscallId);
+
+extern PVOID __hooking_config_segment;
 
 #endif

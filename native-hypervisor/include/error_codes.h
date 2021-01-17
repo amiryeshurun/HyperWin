@@ -53,6 +53,9 @@
 #define STATUS_GROUP_ALREADY_EXISTS            48
 #define STATUS_FILE_NOT_FOUND                  49
 #define STATUS_INSTRUCTION_TOO_SHORT           50
+#define STATUS_UNKNOWN_HOOK_TYPE               51
+#define STATUS_UNKNOWN_HOOK_NAME               52
+#define STATUS_SYSCALL_NOT_FOUND               53
 
 #define STATUS_VM_EXIT_NOT_HANDLED             (1 << 16)
 

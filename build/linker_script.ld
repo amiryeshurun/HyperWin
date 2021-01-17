@@ -10,15 +10,15 @@ SECTIONS
     .bss : { *(.bss) }
     /* Use all rodata sections from input files */
     .rodata : { *(.rodata) }
-    .nt_data : 
-    {
-        __ntDataStart = .;
-        *(.nt_data)
-    }
     .nt_sycalls_events :
     {
         __ntSyscallsEventsStart = .;
         *(.nt_sycalls_events)
+    }
+    .hooking_config :
+    {
+        __hooking_config_segment = .;
+        *(.hooking_config)
     }
     /DISCARD/ :
     {
