@@ -30,7 +30,7 @@ STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
     return STATUS_SUCCESS;
 }
 
-STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstruction)
+STATUS KppAddNewEntry(IN QWORD guestPhysicalAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstruction)
 {
     PKPP_ENTRY_CONTEXT kppContext;
     PHEAP heap;
@@ -41,7 +41,7 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     if(!module)
-        SUCCESS_OR_RETURN(MdlGetModuleByName(&module, "KPP Module"));
+        SUCCESS_OR_RETURN(MdlGetModuleByName(&module, KPP_MODULE_NAME));
     
     heap = &shared->heap;
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;
@@ -50,7 +50,7 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
         Print("Could not allocate memory for a new KPP context\n");
         return status;
     }
-    kppContext->hookedInstructionAddress = hookedInstructionAddress;
+    kppContext->hookedInstructionAddress = guestPhysicalAddress;
     kppContext->hookedInstructionLength = hookedInstructionLength;
     HwCopyMemory(kppContext->hookedInstrucion, hookedInstruction, hookedInstructionLength);    
     if((status = ListInsert(&kppData->entriesList, kppContext)) != STATUS_SUCCESS)
@@ -59,11 +59,50 @@ STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstruct
         return status;
     }
     // Save the address in the addresses set
-    SetInsert(&kppData->addressSet, ALIGN_DOWN((QWORD)hookedInstructionAddress, PAGE_SIZE));
+    SetInsert(&kppData->addressSet, ALIGN_DOWN((QWORD)guestPhysicalAddress, PAGE_SIZE));
     // Mark the page as unreadable & unwritable
     for(QWORD i = 0; i < shared->numberOfCores; i++)
-        VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)hookedInstructionAddress, PAGE_SIZE), 
+        VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)guestPhysicalAddress, PAGE_SIZE), 
             PAGE_SIZE, EPT_EXECUTE);
+    return STATUS_SUCCESS;
+}
+
+STATUS KppRemoveEntry(IN QWORD guestPhysicalAddress)
+{
+    PKPP_ENTRY_CONTEXT kppContext;
+    PHEAP heap;
+    STATUS status;
+    static PMODULE module;
+    PKPP_MODULE_DATA kppData;
+    PSHARED_CPU_DATA shared;
+    PLIST_ENTRY listEntry;
+    BOOL found;
+
+    if(!module)
+        MdlGetModuleByName(&module, KPP_MODULE_NAME);
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    kppData = module->moduleExtension;
+    // Remove the address from the address set
+    SetRemove(&kppData->addressSet, guestPhysicalAddress);
+    // Next, find its assosiated KPP entry
+    listEntry = kppData->entriesList.head;
+    found = FALSE;
+    while(listEntry)
+    {
+        kppContext = (KPP_ENTRY_CONTEXT)listEntry->data;
+        if(kppContext->hookedInstructionAddress == guestPhysicalAddress)
+        {
+            found = TRUE;
+            break;
+        }
+        listEntry = listEntry->next;
+    }
+    if(!found)
+        return STATUS_UNKNOWN_HOOK_ADDRESS;
+    // Remove the context from the list of KPP context data
+    ListRemove(&kppData->entriesList, (QWORD)kppContext);
+    // Deallocate the memory
+    SUCCESS_OR_RETURN(heap->deallocate(heap, kppContext));
     return STATUS_SUCCESS;
 }
 

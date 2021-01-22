@@ -9,6 +9,7 @@
 #include <utils/list.h>
 
 #define KPP_MODULE_MAX_COUNT 100
+#define KPP_MODULE_NAME "KPP Module"
 
 typedef struct _KPP_ENTRY_CONTEXT
 {
@@ -28,6 +29,7 @@ STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE mo
 STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data);
 STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength);
 STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
-STATUS KppAddNewEntry(IN QWORD hookedInstructionAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstrucion);
+STATUS KppAddNewEntry(IN QWORD guestPhysicalAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstrucion);
+STATUS KppRemoveEntry(IN QWORD guestPhysicalAddress);
 
 #endif
