@@ -10,8 +10,8 @@
 #define NT_CREATE_USER_PROCESS 0xc8
 #define NT_READ_FILE 0x6
 
-STATUS ShdHandleNtReadFile(PHOOK_CONTEXT context);
-STATUS ShdHandleNtReadFileReturn(PHOOK_CONTEXT context);
+STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context);
+STATUS ShdHandleNtReadFileReturn(IN PHOOK_CONTEXT context);
 
 extern QWORD __nt_thread_events_segment;
 

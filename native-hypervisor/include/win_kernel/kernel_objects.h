@@ -61,7 +61,8 @@ enum
 
 enum
 {
-    DRIVER_OBJECT_NAME = 0x38
+    DRIVER_OBJECT_NAME = 0x38,
+    DRIVER_OBJECT_MAJOR_FUNCTION = 0x70
 };
 
 enum

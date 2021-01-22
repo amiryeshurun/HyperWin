@@ -372,7 +372,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
         Print("Successfully registered syscalls module\n");
         // KPP Module
         MdlInitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL, NULL);
-        MdlSetModuleName(sharedData, kppModule, "KPP Module");
+        MdlSetModuleName(sharedData, kppModule, KPP_MODULE_NAME);
         MdlRegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
         MdlRegisterModule(sharedData, kppModule);
         Print("Successfully registered KPP module\n");

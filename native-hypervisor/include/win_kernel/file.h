@@ -4,6 +4,7 @@
 #include <types.h>
 #include <utils/string.h>
 #include <error_codes.h>
+#include <vmx_modules/hooking_module.h>
 
 enum
 {
@@ -40,5 +41,7 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     IN BYTE encodingType);
 STATUS FileRemoveProtectedFile(IN HANDLE fileHandle);
 STATUS FileGetRuleByIndex(IN QWORD fileIndex, OUT PHIDDEN_FILE_RULE* rule);
+STATUS FileHandleRead(IN PHOOK_CONTEXT context);
+STATUS FileHandleReadReturn(IN PHOOK_CONTEXT context);
 
 #endif

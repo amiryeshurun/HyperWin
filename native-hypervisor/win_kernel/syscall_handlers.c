@@ -6,15 +6,17 @@
 #include <win_kernel/kernel_objects.h>
 #include <vmx_modules/hooking_module.h>
 #include <win_kernel/utils.h>
+#include <win_kernel/irp.h>
+#include <win_kernel/file.h>
 
-STATUS ShdHandleNtReadFile(PHOOK_CONTEXT context)
+STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context)
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
     QWORD params[17];
     QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex,
-         vpb, deviceObj, driverObj;
+        vpb, deviceObj, driverObj, irpMjRead;
     WORD fileType;
     WORD_PTR pfileType = &fileType;
     STATUS status;
@@ -57,8 +59,13 @@ STATUS ShdHandleNtReadFile(PHOOK_CONTEXT context)
         // Is it Ntfs?
         if(!HwCompareMemory(driverNameBuffer, nameAsBytes, 32))
         {
-            // Hook NtfsFdsRead
-            // HookingSetupGenericHook()
+            WinMmCopyGuestMemory(&irpMjRead, driverObj + DRIVER_OBJECT_MAJOR_FUNCTION + 
+                sizeof(QWORD) * IRP_MJ_READ, sizeof(QWORD));
+            Print("Found NtfsFsdRead at: %8, hooking now!\n", irpMjRead);
+            ASSERT(HookingSetupGenericHook(irpMjRead, "NtfsFsdRead", FileHandleRead,
+                FileHandleReadReturn) == STATUS_SUCCESS);
+            Print("Removing NtReadFile...\n");
+            ASSERT(HookingRemoveHook("NtReadFile") == STATUS_SUCCESS);
         }
     }
     // Get the MFTIndex of the current file
@@ -85,7 +92,7 @@ NtReadFileEmulateInstruction:
     return STATUS_SUCCESS;
 }
 
-STATUS ShdHandleNtReadFileReturn(PHOOK_CONTEXT context)
+STATUS ShdHandleNtReadFileReturn(IN PHOOK_CONTEXT context)
 {
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
