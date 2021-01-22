@@ -275,7 +275,7 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     PLIST_ENTRY configHead;
     STATUS status;
     PHOOKING_MODULE_EXTENSION ext;
-    QWORD guestPhysicalAddress, physicalAddress, instructionLength;
+    QWORD guestPhysicalAddress, instructionLength;
     static PMODULE hookingModule;
     BYTE hookedInstruction[X86_MAX_INSTRUCTION_LEN], hookInstruction[X86_MAX_INSTRUCTION_LEN];
 
@@ -294,6 +294,7 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
         configContext = (PCONFIG_HOOK_CONTEXT)configHead->data;
         if(!HwCompareMemory(configContext->name, name, StringLength(name)))
             break;
+        configHead = configHead->next;
     }
     if(!configContext)
         return STATUS_UNKNOWN_HOOK_NAME;
@@ -306,35 +307,108 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     hookContext->handler = handler;
     // Calculate address of hook
     SUCCESS_OR_RETURN(WinMmTranslateGuestVirtualToGuestPhysical(guestVirtualAddress, &guestPhysicalAddress));
-    physicalAddress = WinMmTranslateGuestPhysicalToPhysicalAddress(guestPhysicalAddress);
+    configContext->guestPhysicalAddress = guestPhysicalAddress;
     // Save the related config information
     hookContext->relatedConfig = configContext;
     hookContext->virtualAddress = guestVirtualAddress;
+    // Save the physical address of hook
+    configContext->guestPhysicalAddress = guestPhysicalAddress;
     // Finally, set hook after saving all of its data
-    MapSet(&ext->addressToContext, physicalAddress, hookContext);
+    MapSet(&ext->addressToContext, guestPhysicalAddress, hookContext);
     if(returnHandler)
     {
         SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
         hookContext->handler = returnHandler;
         hookContext->virtualAddress = CALC_RETURN_HOOK_ADDR(guestVirtualAddress);
         hookContext->relatedConfig = configContext;
-        MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(physicalAddress), hookContext);
+        MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(guestVirtualAddress), hookContext);
     }
     // First save the current instruction (must be sent to KPP module)
     SUCCESS_OR_RETURN(WinMmCopyGuestMemory(hookedInstruction, guestVirtualAddress, instructionLength));
+    // Save it in the config context
+    HwCopyMemory(configContext->hookedInstruction, hookedInstruction, instructionLength);
     // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
     hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
     HwSetMemory(hookInstruction + 2, NOP_OPCODE, instructionLength - 2);
     // Inject the hooked instruction to the guest and print current stored instruction at address
-    Print("Injecting a hook instruction of length %d to %8. Current instruction is: %.b\n", 
+    Print("Injecting a hook instruction of length %d to (GP) %8. Current instruction is: %.b\n", 
             instructionLength,
-            physicalAddress,
+            guestVirtualAddress,
             instructionLength,
             WinMmTranslateGuestPhysicalToHostVirtual(guestPhysicalAddress)
             );
     SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(guestVirtualAddress, hookInstruction, instructionLength));
     // Send the hooked instruction to KPP modules
-    SUCCESS_OR_RETURN(KppAddNewEntry(physicalAddress, instructionLength, hookedInstruction));
+    SUCCESS_OR_RETURN(KppAddNewEntry(guestPhysicalAddress, instructionLength, hookedInstruction));
+    return STATUS_SUCCESS;
+}
+
+STATUS HookingRemoveHook(IN PCHAR name)
+{
+    static PMODULE module;
+    PHOOKING_MODULE_EXTENSION extension;
+    PCONFIG_HOOK_CONTEXT configContext;
+    PHOOK_CONTEXT hookContext;
+    PSYSCALL_CONFIG_HOOK_CONTEXT syscallContext;
+    PLIST_ENTRY listEntry;
+    PHEAP heap;
+    BOOL found;
+    QWORD nameLength, physicalAddress;
+    BYTE_PTR virtualAddress;
+    STATUS status;
+
+    if(!module)
+        MdlGetModuleByName(&module, HOOKING_MODULE_NAME);
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    extension = module->moduleExtension;
+    nameLength = StringLength(name);
+    // Find the associated instruction length from the context
+    found = FALSE;
+    listEntry = extension->hookConfig.head;
+    // Calculate name only once
+    nameLength = StringLength(name);
+    while(listEntry)
+    {
+        configContext = (PCONFIG_HOOK_CONTEXT)listEntry->data;
+        if(!HwCompareMemory(configContext->name, name, nameLength))
+        {
+            found = TRUE;
+            break;
+        }
+        listEntry = listEntry->next;
+    }
+    if(!found)
+        return STATUS_UNKNOWN_HOOK_ADDRESS;
+    // Convert to virtual
+    virtualAddress = WinMmTranslateGuestPhysicalToHostVirtual(configContext->guestPhysicalAddress);
+    // Copy the original instruction to guest
+    Print("Copying back instruction: %.b to guest, at %8\n", configContext->instructionLength, 
+        configContext->hookedInstruction, configContext->guestPhysicalAddress);
+    HwCopyMemory(virtualAddress, configContext->hookedInstruction, configContext->instructionLength);
+    // Remove hook context from map
+    hookContext = MapGet(extension->addressToContext, configContext->guestPhysicalAddress);
+    Print("Removing hook context from map\n");
+    MapRemove(&extension->addressToContext, configContext->guestPhysicalAddress);
+    if(hookContext->additionalData)
+    {
+        Print("Found additional data for context, at: %8. Deallocating...\n", hookContext->additionalData);
+        SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext->additionalData));
+    }
+    Print("Deallocating hook context\n");
+    SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext));
+    // Remove hook context for return event (if exists)
+    hookContext = MapGet(extension->addressToContext, CALC_RETURN_HOOK_ADDR(
+        configContext->guestPhysicalAddress));
+    if(hookContext != MAP_KEY_NOT_FOUND)
+    {
+        Print("Found return hook data, releasing all resources\n");
+        MapRemove(&extension->addressToContext, CALC_RETURN_HOOK_ADDR(configContext->guestPhysicalAddress));
+        SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext));
+    }
+    // Remove the hook from KPP's map
+    Print("Removing entry from KPP's DB\n");
+    SUCCESS_OR_RETURN(KppRemoveEntry(configContext->guestPhysicalAddress));
+    Print("Successfully removed all hook data\n");
     return STATUS_SUCCESS;
 }
 

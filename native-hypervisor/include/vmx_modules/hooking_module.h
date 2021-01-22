@@ -6,7 +6,6 @@
 #include <vmx_modules/module.h>
 #include <utils/map.h>
 #include <utils/set.h>
-#include <win_kernel/file.h>
 #include <utils/list.h>
 
 // Used to determine how many vm-exits should occur before hooking the system calls
@@ -36,6 +35,8 @@ typedef struct _CONFIG_HOOK_CONTEXT
     BYTE offsetFromBeginning;
     BYTE instructionLength;
     BYTE params;
+    QWORD guestPhysicalAddress;
+    BYTE hookedInstruction[X86_MAX_INSTRUCTION_LEN];
     PVOID additionalData;
 } CONFIG_HOOK_CONTEXT, *PCONFIG_HOOK_CONTEXT;
 
@@ -80,6 +81,7 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     IN HOOK_HANDLER returnHandler);
 STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig);
 STATUS HookingTranslateSyscallNameToId(IN PCHAR name, OUT QWORD_PTR syscallId);
+STATUS HookingRemoveHook(IN PCHAR name);
 
 extern PVOID __hooking_config_segment;
 

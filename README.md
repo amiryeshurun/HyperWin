@@ -4,8 +4,9 @@ HyperWin is a native hypervisor designed for Windows (x64 only) running on Intel
 HyperWin provides many interesting features, including: 
 - Creation of memory regions hidden from the operating system (using EPT and a hidden hook on E820)
 - PatchGaurd bypassing
-- sensitive data protection (currently User-Mode protection only) 
-- smart process management
+- Sensitive data protection via IRP hooking (User-Mode & Kernel-Mode) 
+- Smart process management
+- A (very!) generic hooking module
 
 And much more!
 
