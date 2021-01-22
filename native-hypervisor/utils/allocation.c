@@ -57,7 +57,7 @@ STATUS HeapDeallocate(IN PHEAP heap, IN BYTE_PTR ptr)
     if(heapEntry->status != HEAP_ALLOCATED)
         return STATUS_UNALLOCATED_MEMORY;
     heapEntry->status = HEAP_FREE;
-    if(++(heap->freesCount) >= heap->freesCycle)
+    if(++heap->freesCount >= heap->freesCycle)
     {
         if(heap->defragment(heap) != STATUS_SUCCESS)
             return STATUS_DEFRAGMENTATION_FAILED;

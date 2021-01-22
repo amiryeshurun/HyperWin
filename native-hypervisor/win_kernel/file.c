@@ -149,3 +149,25 @@ STATUS FileGetRuleByIndex(IN QWORD fileIndex, OUT PHIDDEN_FILE_RULE* rule)
     return ((*rule = MapGet(&g_filesData, fileIndex)) != MAP_KEY_NOT_FOUND) ?
          STATUS_SUCCESS : STATUS_FILE_NOT_FOUND;
 }
+
+STATUS FileHandleRead(IN PHOOK_CONTEXT context)
+{
+    PCURRENT_GUEST_STATE currentData;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+    STATUS status;
+
+    currentData = VmmGetVmmStruct();
+    shared = currentData->currentCPU;
+    regs = &currentData->guestRegisters;
+
+    // mov qword ptr [rsp+10h],rdx
+    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(regs->rsp + 0x10, &regs->rdx, sizeof(QWORD)));
+    regs->rip += context->relatedConfig->instructionLength;
+    return STATUS_SUCCESS;
+}
+
+STATUS FileHandleReadReturn(IN PHOOK_CONTEXT context)
+{
+    return STATUS_SUCCESS;
+}

@@ -49,8 +49,33 @@ BOOL ListContains(IN PLIST lise, IN QWORD data)
     {
         if(listEntry->data == data)
             return TRUE;
-
     } while(listEntry->next);
 
     return FALSE;
+}
+
+STATUS ListRemove(IN PLIST list, IN QWORD data)
+{
+    PLIST_ENTRY begin, next;
+    PHEAP heap;
+    STATUS status;
+
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    begin = list->head;
+    while(begin)
+    {
+        if(begin->data == data)
+        {
+            if(begin->prev)
+                begin->prev->next = begin->next;
+            if(begin->next)
+                begin->next->prev = begin->prev;
+            next = begin->next;
+            SUCCESS_OR_RETURN(heap->deallocate(heap, begin));
+        }
+        else
+            next = begin->next;
+        begin = next;
+    }
+    return STATUS_SUCCESS;
 }

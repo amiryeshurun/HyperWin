@@ -89,7 +89,7 @@ STATUS KppRemoveEntry(IN QWORD guestPhysicalAddress)
     found = FALSE;
     while(listEntry)
     {
-        kppContext = (KPP_ENTRY_CONTEXT)listEntry->data;
+        kppContext = (PKPP_ENTRY_CONTEXT)listEntry->data;
         if(kppContext->hookedInstructionAddress == guestPhysicalAddress)
         {
             found = TRUE;
@@ -100,6 +100,7 @@ STATUS KppRemoveEntry(IN QWORD guestPhysicalAddress)
     if(!found)
         return STATUS_UNKNOWN_HOOK_ADDRESS;
     // Remove the context from the list of KPP context data
+    Print("Found the entry, removing it from KPP's list...\n");
     ListRemove(&kppData->entriesList, (QWORD)kppContext);
     // Deallocate the memory
     SUCCESS_OR_RETURN(heap->deallocate(heap, kppContext));

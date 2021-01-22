@@ -163,9 +163,9 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
         // Skip \r\n
         current += (tokenLength + 2);
         // Print to log
-        Print("Scanned a config field with the following data:\nName: ");
+        Print("==========\nScanned a config field with the following data:\nName: ");
         Print(name);
-        Print("\nType: %d\nParams: %d\nOffset: %d\nInstruction Length: %d\n",
+        Print("\nType: %d\nParams: %d\nOffset: %d\nInstruction Length: %d\n==========\n",
             configContext->type, 
             configContext->params,
             configContext->offsetFromBeginning,
@@ -386,7 +386,7 @@ STATUS HookingRemoveHook(IN PCHAR name)
         configContext->hookedInstruction, configContext->guestPhysicalAddress);
     HwCopyMemory(virtualAddress, configContext->hookedInstruction, configContext->instructionLength);
     // Remove hook context from map
-    hookContext = MapGet(extension->addressToContext, configContext->guestPhysicalAddress);
+    hookContext = MapGet(&extension->addressToContext, configContext->guestPhysicalAddress);
     Print("Removing hook context from map\n");
     MapRemove(&extension->addressToContext, configContext->guestPhysicalAddress);
     if(hookContext->additionalData)
@@ -397,7 +397,7 @@ STATUS HookingRemoveHook(IN PCHAR name)
     Print("Deallocating hook context\n");
     SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext));
     // Remove hook context for return event (if exists)
-    hookContext = MapGet(extension->addressToContext, CALC_RETURN_HOOK_ADDR(
+    hookContext = MapGet(&extension->addressToContext, CALC_RETURN_HOOK_ADDR(
         configContext->guestPhysicalAddress));
     if(hookContext != MAP_KEY_NOT_FOUND)
     {
