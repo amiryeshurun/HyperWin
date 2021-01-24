@@ -1,16 +1,10 @@
-#include <vmx_modules/hooking_module.h>
-#include <vmx_modules/kpp_module.h>
-#include <vmm/msr.h>
 #include <debug.h>
 #include <win_kernel/memory_manager.h>
-#include <intrinsics.h>
-#include <vmm/vm_operations.h>
-#include <vmm/vmcs.h>
-#include <win_kernel/syscall_handlers.h>
-#include <vmm/memory_manager.h>
 #include <vmm/vmm.h>
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/file.h>
+#include <win_kernel/process.h>
+#include <win_kernel/utils.h>
 
 QWORD_MAP g_filesData;
 
@@ -51,36 +45,18 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
     QWORD fileObject, scb, fcb, eprocess, handleTable, fileIndex;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
     // Translate the Handle to an object
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    if((status = ObjTranslateHandleToObject(fileHandle, handleTable, &fileObject)) 
-        != STATUS_SUCCESS)
-    {
-        Print("Failed to translate handle to object\n");
-        return status;   
-    }
+    SUCCESS_OR_CLEANUP(ObjTranslateHandleToObject(fileHandle, handleTable, &fileObject));
     // Get the MFTIndex field
-    if((status = ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb)) 
-        != STATUS_SUCCESS)
-    {
-        Print("Failed to get SCB from file object\n");
-        return status;   
-    }
-    if((status = FileTranslateScbToFcb(scb, &fcb)) != STATUS_SUCCESS)
-    {
-        Print("Failed to get FCB from FCB\n");
-        return status; 
-    }
-    if((status = FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex)) != STATUS_SUCCESS)
-    {
-        Print("Failed to get MFTIndex\n");
-        return status;
-    }
+    SUCCESS_OR_CLEANUP(ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb));
+    SUCCESS_OR_CLEANUP(FileTranslateScbToFcb(scb, &fcb));
+    SUCCESS_OR_CLEANUP(FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex));
     // Allocate memory for storing the rule
     heap->allocate(heap, sizeof(HIDDEN_FILE_RULE), &rule);
     heap->allocate(heap, contentLength, &rule->content.data);
@@ -93,7 +69,13 @@ STATUS FileAddNewProtectedFile(IN HANDLE fileHandle, IN BYTE_PTR content, IN QWO
     // Map the file to a rule
     MapSet(&g_filesData, fileIndex, rule);
     Print("File rule added for file idx: %8, data: %.b\n", fileIndex, contentLength, content);
-    return STATUS_SUCCESS;
+
+cleanup:
+    if(status && rule && rule->content.data)
+        heap->deallocate(heap, rule->content.data);
+    if(status && rule)
+        heap->deallocate(heap, rule);
+    return status;
 }
 
 STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
@@ -103,35 +85,18 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
     PHOOKING_MODULE_EXTENSION ext;
     PHIDDEN_FILE_RULE rule;
     QWORD eprocess, handleTable, fileObject, scb, fcb, fileIndex;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     heap = &shared->heap;
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    if((status = ObjTranslateHandleToObject(fileHandle, handleTable, &fileObject)) 
-        != STATUS_SUCCESS)
-    {
-        Print("Failed to translate handle to object\n");
-        return status;   
-    }
+    SUCCESS_OR_CLEANUP(ObjTranslateHandleToObject(fileHandle, handleTable, &fileObject));
     // Get the MFTIndex field
-    if((status = ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb)) 
-        != STATUS_SUCCESS)
-    {
-        Print("Failed to get SCB from file object\n");
-        return status;   
-    }
-    if((status = FileTranslateScbToFcb(scb, &fcb)) != STATUS_SUCCESS)
-    {
-        Print("Failed to get FCB from FCB\n");
-        return status; 
-    }
-    if((status = FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex)) != STATUS_SUCCESS)
-    {
-        Print("Failed to get MFTIndex\n");
-        return status;
-    }
+    SUCCESS_OR_CLEANUP(ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb));
+    SUCCESS_OR_CLEANUP(FileTranslateScbToFcb(scb, &fcb));
+    SUCCESS_OR_CLEANUP(FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex));
+    // Remove rule from map
     rule = (PHIDDEN_FILE_RULE)MapRemove(&g_filesData, fileIndex);
     if(rule != MAP_KEY_NOT_FOUND)
     {
@@ -141,7 +106,9 @@ STATUS FileRemoveProtectedFile(IN HANDLE fileHandle)
             heap->deallocate(heap, rule->optional.data);
         heap->deallocate(heap, rule);
     }
-    return STATUS_SUCCESS;
+
+cleanup:
+    return status;
 }
 
 STATUS FileGetRuleByIndex(IN QWORD fileIndex, OUT PHIDDEN_FILE_RULE* rule)
@@ -155,19 +122,94 @@ STATUS FileHandleRead(IN PHOOK_CONTEXT context)
     PCURRENT_GUEST_STATE currentData;
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
-    STATUS status;
+    QWORD fileObject, ioStackLocation, params[17], fcb, scb, fileIndex, threadId, mdl, ioStatus;
+    DWORD flags;
+    PHIDDEN_FILE_RULE hiddenFileRule;
+    PTHREAD_EVENT threadEvent;
+    STATUS status = STATUS_SUCCESS;
 
     currentData = VmmGetVmmStruct();
     shared = currentData->currentCPU;
     regs = &currentData->guestRegisters;
-
+    WinGetParameters(params, context->relatedConfig->params);
+    // Get the FileObject for the current file
+    SUCCESS_OR_CLEANUP(ObjGetObjectField(IRP, params[1], IRP_TAIL_IO_STACK_LOCATION, &ioStackLocation));
+    SUCCESS_OR_CLEANUP(ObjGetObjectField(IO_STACK_LOCATION, ioStackLocation, IO_STACK_LOCATION_FILE_OBJECT,
+        &fileObject));
+    ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
+    FileTranslateScbToFcb(scb, &fcb);
+    FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex);
+    // Check if the current file is protected
+    if(FileGetRuleByIndex(fileIndex, &hiddenFileRule) == STATUS_SUCCESS)
+    {
+        // The file is indeed protected
+        // Get the thread id
+        threadId = PspGetCurrentThreadId();
+        // Hook return event
+        WinHookReturnEvent(regs->rsp, threadId, context->virtualAddress);
+        // Get & Store important information for later
+        ObjGetObjectField(IRP, params[1], IRP_MDL, &mdl);
+        ObjGetObjectField(IRP, params[1], IRP_IO_STATUS, &ioStatus);
+        threadEvent = WinGetEventForThread(threadId);
+        threadEvent->dataUnion.NtfsFsdRead.rule = hiddenFileRule;
+        threadEvent->dataUnion.NtfsFsdRead.ioStatusBlock = ioStatus;
+        threadEvent->dataUnion.NtfsFsdRead.mdl = mdl;
+    }
+cleanup:
     // mov qword ptr [rsp+10h],rdx
     SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(regs->rsp + 0x10, &regs->rdx, sizeof(QWORD)));
     regs->rip += context->relatedConfig->instructionLength;
-    return STATUS_SUCCESS;
+    return status;
 }
 
 STATUS FileHandleReadReturn(IN PHOOK_CONTEXT context)
 {
-    return STATUS_SUCCESS;
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+    QWORD threadId, ethread, bufferLength, idx, count, indecies[10], systemVa;
+    PHIDDEN_FILE_RULE rule;
+    BYTE readDataBuffer[BUFF_MAX_SIZE];
+    PWCHAR utf16Ptr;
+    PTHREAD_EVENT threadEvent;
+    STATUS status = STATUS_SUCCESS;
+
+    state = VmmGetVmmStruct();
+    shared = state->currentCPU->sharedData;
+    regs = &state->guestRegisters;
+    // Get thread id
+    threadId = PspGetCurrentThreadId();
+    // Using the thread id, get the saved data
+    threadEvent = WinGetEventForThread(threadId);
+    // Get the rule found in the hashmap
+    rule = threadEvent->dataUnion.NtReadFile.rule;
+    // Get the systemVa for the request
+    ObjGetObjectField(MDL, threadEvent->dataUnion.NtfsFsdRead.mdl, MDL_SYSTEM_VA, &systemVa);
+    Print("System VA: %8\n", systemVa);
+    ObjGetObjectField(IO_STATUS_BLOCK, threadEvent->dataUnion.NtfsFsdRead.ioStatusBlock,
+        IO_STATUS_BLOCK_INFORMATION, &bufferLength);
+    // Copy the readen data itself
+    WinMmCopyGuestMemory(readDataBuffer, systemVa, bufferLength);
+    // Replace hidden content (if exist)
+    if(bufferLength >= rule->content.length && 
+        (count = MemoryContains(readDataBuffer, bufferLength, rule->content.data, rule->content.length, indecies)) 
+            != 0)
+    {
+        if(rule->encoding == ENCODING_TYPE_UTF_16)
+        {
+            utf16Ptr = readDataBuffer;
+            for(QWORD k = 0; k < count; k++)
+                for(QWORD i = indecies[k] / 2; i < (indecies[k] + rule->content.length) / 2; i++)
+                    utf16Ptr[i] = L'*';
+        }
+        else if(rule->encoding == ENCODING_TYPE_UTF_8)
+            for(QWORD k = 0; k < count; k++)
+                for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
+                    readDataBuffer[i] = '*';
+    }
+    WinMmCopyMemoryToGuest(systemVa, readDataBuffer, bufferLength);
+cleanup:
+    // Put back the saved address in the RIP register
+    regs->rip = threadEvent->returnAddress;
+    return status;
 }

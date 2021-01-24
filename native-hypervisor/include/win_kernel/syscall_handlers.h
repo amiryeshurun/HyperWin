@@ -11,7 +11,6 @@
 #define NT_READ_FILE 0x6
 
 STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context);
-STATUS ShdHandleNtReadFileReturn(IN PHOOK_CONTEXT context);
 
 extern QWORD __nt_thread_events_segment;
 

@@ -1,7 +1,6 @@
 #include <win_kernel/syscall_handlers.h>
 #include <win_kernel/memory_manager.h>
 #include <debug.h>
-#include <vmm/vmcs.h>
 #include <vmm/vm_operations.h>
 #include <win_kernel/kernel_objects.h>
 #include <vmx_modules/hooking_module.h>
@@ -15,14 +14,14 @@ STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context)
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
     QWORD params[17];
-    QWORD fileObject, handleTable, eprocess, threadId, ethread, returnAddress, scb, fcb, fileIndex,
+    QWORD fileObject, handleTable, eprocess, returnAddress, scb, fcb, fileIndex,
         vpb, deviceObj, driverObj, irpMjRead;
     WORD fileType;
     WORD_PTR pfileType = &fileType;
-    STATUS status;
     PHIDDEN_FILE_RULE hiddenFileRule;
     WIN_KERNEL_UNICODE_STRING driverName;
     PTHREAD_EVENT threadEvent;
+    STATUS status = STATUS_SUCCESS;
 
     state = VmmGetVmmStruct();
     shared = state->currentCPU->sharedData;
@@ -37,12 +36,12 @@ STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context)
 #ifdef DEBUG_HANDLE_TRANSLATION_FAILURE
         Print("Could not translate handle to object, skipping... (Handle value: %8)\n", params[0]);
 #endif
-        goto NtReadFileEmulateInstruction;
+        goto cleanup;
     }
     // Check if this is a file object (See MSDN file object page)
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_TYPE, &fileType);
     if(fileType != 5)
-        goto NtReadFileEmulateInstruction;
+        goto cleanup;
     // Try to hook NtfsFsdRead instead of NtReadFile (for kernel mode data protection)
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_VPB, &vpb);
     if(vpb)
@@ -68,79 +67,10 @@ STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context)
             ASSERT(HookingRemoveHook("NtReadFile") == STATUS_SUCCESS);
         }
     }
-    // Get the MFTIndex of the current file
-    ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
-    FileTranslateScbToFcb(scb, &fcb);
-    FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex);
-    // Check if the current file is protected
-    if(FileGetRuleByIndex(fileIndex, &hiddenFileRule) == STATUS_SUCCESS)
-    {
-        // The file is a protected file
-        ObjGetCurrent_ETHREAD(&ethread);
-        ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
-        WinHookReturnEvent(regs->rsp, threadId, context->virtualAddress);
-        threadEvent = WinGetEventForThread(threadId);
-        threadEvent->dataUnion.NtReadFile.rule = hiddenFileRule;
-        threadEvent->dataUnion.NtReadFile.ioStatusBlock = params[4];
-        threadEvent->dataUnion.NtReadFile.userBuffer = params[5];
-    }
-NtReadFileEmulateInstruction:
+cleanup:
     // Emulate replaced instruction: mov rax,rsp
     regs->rax = regs->rsp;
     regs->rip += context->relatedConfig->instructionLength;
     // End emulation
-    return STATUS_SUCCESS;
-}
-
-STATUS ShdHandleNtReadFileReturn(IN PHOOK_CONTEXT context)
-{
-    PCURRENT_GUEST_STATE state;
-    PSHARED_CPU_DATA shared;
-    PREGISTERS regs;
-    QWORD threadId, ethread, bufferLength, idx, count, indecies[10];
-    PHIDDEN_FILE_RULE rule;
-    BYTE readDataBuffer[BUFF_MAX_SIZE];
-    PWCHAR utf16Ptr;
-    PTHREAD_EVENT threadEvent;
-    STATUS status;
-
-    state = VmmGetVmmStruct();
-    shared = state->currentCPU->sharedData;
-    regs = &state->guestRegisters;
-    // Get thread id
-    ObjGetCurrent_ETHREAD(&ethread);
-    ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
-    // Using the thread id, get the saved data
-    threadEvent = WinGetEventForThread(threadId);
-    // Get the rule found in the hashmap
-    rule = threadEvent->dataUnion.NtReadFile.rule;
-    // Copy the readen data length (stored in the inforamtion member of IoStatusBlock)
-    WinMmCopyGuestMemory(&bufferLength, threadEvent->dataUnion.NtReadFile.ioStatusBlock
-     + sizeof(PVOID), sizeof(QWORD));
-    if(!bufferLength)
-        goto NtReadFilePutReturnAddress;
-    // Copy the readon data itself
-    WinMmCopyGuestMemory(readDataBuffer, threadEvent->dataUnion.NtReadFile.userBuffer, bufferLength);
-    // Replace hidden content (if exist)
-    if(bufferLength >= rule->content.length && 
-        (count = MemoryContains(readDataBuffer, bufferLength, rule->content.data, rule->content.length, indecies)) 
-            != 0)
-    {
-        if(rule->encoding == ENCODING_TYPE_UTF_16)
-        {
-            utf16Ptr = readDataBuffer;
-            for(QWORD k = 0; k < count; k++)
-                for(QWORD i = indecies[k] / 2; i < (indecies[k] + rule->content.length) / 2; i++)
-                    utf16Ptr[i] = L'*';
-        }
-        else if(rule->encoding == ENCODING_TYPE_UTF_8)
-            for(QWORD k = 0; k < count; k++)
-                for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
-                    readDataBuffer[i] = '*';
-    }
-    WinMmCopyMemoryToGuest(threadEvent->dataUnion.NtReadFile.userBuffer, readDataBuffer, bufferLength);
-NtReadFilePutReturnAddress:
-    // Put back the saved address in the RIP register
-    regs->rip = threadEvent->returnAddress;
-    return STATUS_SUCCESS;
+    return status;
 }

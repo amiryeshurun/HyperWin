@@ -17,18 +17,19 @@ STATUS PspMarkProcessProtected(IN HANDLE processHandle, IN BYTE protectionLevel,
     IN BYTE sectionSignLevel)
 {
     QWORD pid, eprocess, handleTable, protectedProcessEprocess;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     ObjGetCurrent_EPROCESS(&eprocess);
     ObjGetObjectField(EPROCESS, eprocess, EPROCESS_OBJECT_TABLE, &handleTable);
-    SUCCESS_OR_RETURN(ObjTranslateHandleToObject(processHandle, handleTable, &protectedProcessEprocess));
-    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SIGN_LEVEL, &signLevel, sizeof(BYTE)));
-    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SECTION_SIGN_LEVEL, 
+    SUCCESS_OR_CLEANUP(ObjTranslateHandleToObject(processHandle, handleTable, &protectedProcessEprocess));
+    SUCCESS_OR_CLEANUP(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SIGN_LEVEL, &signLevel, sizeof(BYTE)));
+    SUCCESS_OR_CLEANUP(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_SECTION_SIGN_LEVEL, 
         &sectionSignLevel, sizeof(BYTE)));
-    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_PROTECTION, 
+    SUCCESS_OR_CLEANUP(WinMmCopyMemoryToGuest(protectedProcessEprocess + EPROCESS_PROTECTION, 
         &protectionLevel, sizeof(BYTE)));
     
-    return STATUS_SUCCESS;
+cleanup:
+    return status;
 }
 
 STATUS PspCreateNewGroup(IN QWORD groupId, IN BOOL includeSelf)
@@ -36,24 +37,35 @@ STATUS PspCreateNewGroup(IN QWORD groupId, IN BOOL includeSelf)
     PPROCESS_GROUP groupData;
     PHEAP heap;
     QWORD eprocess, pid;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     if(MapGet(&g_groupsData, groupId) != MAP_KEY_NOT_FOUND)
         return STATUS_GROUP_ALREADY_EXISTS;
 
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
-    SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(PROCESS_GROUP), &groupData));
-    SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(QWORD_SET), &groupData->processes));
-    SUCCESS_OR_RETURN(SetInit(&groupData->processes, BASIC_HASH_LEN, BasicHashFunction));
+    SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(PROCESS_GROUP), &groupData));
+    SUCCESS_OR_CLEANUP(SetInit(&groupData->processes, BASIC_HASH_LEN, BasicHashFunction));
     groupData->groupId = groupId;
     // Should the current process be included?
     if(includeSelf)
     {
         ObjGetCurrent_EPROCESS(&eprocess);
-        SUCCESS_OR_RETURN(ObjGetObjectField(EPROCESS, eprocess, EPROCESS_PID, &pid));
+        SUCCESS_OR_CLEANUP(ObjGetObjectField(EPROCESS, eprocess, EPROCESS_PID, &pid));
         SetInsert(&groupData->processes, pid);
     }
     MapSet(&g_groupsData, groupId, groupData);
 
-    return STATUS_SUCCESS;
+cleanup:
+    if(status && groupData)
+        heap->deallocate(heap, groupData);
+    return status;
+}
+
+QWORD PspGetCurrentThreadId()
+{
+    QWORD threadId, ethread;
+
+    ObjGetCurrent_ETHREAD(&ethread);
+    ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
+    return threadId;
 }

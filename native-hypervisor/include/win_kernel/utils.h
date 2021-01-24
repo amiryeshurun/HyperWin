@@ -15,6 +15,12 @@ typedef struct _THREAD_EVENT
             QWORD ioStatusBlock;
             QWORD userBuffer;
         } NtReadFile;
+        struct
+        {
+            PHIDDEN_FILE_RULE rule;
+            QWORD mdl;
+            QWORD ioStatusBlock;
+        } NtfsFsdRead;
     } dataUnion;
 } THREAD_EVENT, *PTHREAD_EVENT;
 

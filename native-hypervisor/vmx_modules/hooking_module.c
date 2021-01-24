@@ -54,7 +54,7 @@ STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE modu
         HookingLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         HookingGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
         ASSERT(HookingHookSystemCalls(ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE, 
-            ShdHandleNtReadFile, ShdHandleNtReadFileReturn) == STATUS_SUCCESS);
+            ShdHandleNtReadFile, NULL) == STATUS_SUCCESS);
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
     }
@@ -107,7 +107,7 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
     PSYSCALL_CONFIG_HOOK_CONTEXT syscallConfigContext;
     PHEAP heap;
     BYTE type;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     current = hookConfigSegment;
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
@@ -117,7 +117,7 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
             break;
         // Get the name
         tokenLength = GetTokenLength(current, ',');
-        SUCCESS_OR_RETURN(heap->allocate(heap, (tokenLength + 1) * sizeof(char), &name));
+        SUCCESS_OR_CLEANUP(heap->allocate(heap, (tokenLength + 1) * sizeof(char), &name));
         HwCopyMemory(name, current, tokenLength);
         name[tokenLength] = '\0';
         current += (tokenLength + 1);
@@ -131,7 +131,7 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
             return STATUS_UNKNOWN_HOOK_TYPE;
         current += (tokenLength + 1);
         // Allocate space for hook context config
-        SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(CONFIG_HOOK_CONTEXT), &configContext));
+        SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(CONFIG_HOOK_CONTEXT), &configContext));
         configContext->name = name;
         configContext->type = type;
         // Get the specific-type data
@@ -144,7 +144,9 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
                 syscallId = StringToInt(current, tokenLength);
                 current += (tokenLength + 1);
                 // Allocate space for a specific-type config data
-                SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(SYSCALL_CONFIG_HOOK_CONTEXT), &syscallConfigContext));
+                syscallConfigContext = NULL;
+                SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(SYSCALL_CONFIG_HOOK_CONTEXT), 
+                    &syscallConfigContext));
                 // Store syscall ID & Save the context pointer
                 syscallConfigContext->syscallId = syscallId;
                 configContext->additionalData = syscallConfigContext;
@@ -181,7 +183,15 @@ STATUS HookingParseConfig(IN BYTE_PTR hookConfigSegment, IN PLIST hookConfig)
         // Now configContext is ready to be stored in the list
         ListInsert(hookConfig, configContext);
     }
-    return STATUS_SUCCESS;
+
+cleanup:
+    if(status && name)
+        heap->deallocate(heap, name);
+    if(status && configContext)
+        heap->deallocate(heap, configContext);
+    if(status && syscallConfigContext)
+        heap->deallocate(heap, syscallConfigContext);
+    return status;
 }
 
 STATUS HookingLocateSSDT(IN BYTE_PTR lstar, OUT BYTE_PTR* ssdt, IN QWORD guestCr3)
@@ -236,7 +246,7 @@ STATUS HookingHookSystemCalls(IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_P
     PCHAR syscallName;
     PVOID handler;
     PVOID returnHandler;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     va_start(args, count);
     while(count--)
@@ -246,7 +256,7 @@ STATUS HookingHookSystemCalls(IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_P
         handler = va_arg(args, PVOID);
         returnHandler = va_arg(args, PVOID);
         // Translate name to id
-        SUCCESS_OR_RETURN(HookingTranslateSyscallNameToId(syscallName, &syscallId));
+        SUCCESS_OR_CLEANUP(HookingTranslateSyscallNameToId(syscallName, &syscallId));
         // Get the offset of the syscall handler (in ntoskrnl.exe) from the shadowed SSDT
         ASSERT(WinMmCopyGuestMemory(&offset, ntoskrnl + syscallId * sizeof(DWORD), 
             sizeof(DWORD)) == STATUS_SUCCESS);
@@ -262,7 +272,9 @@ STATUS HookingHookSystemCalls(IN QWORD guestCr3, IN BYTE_PTR ntoskrnl, IN BYTE_P
                 returnHandler) == STATUS_SUCCESS);
     }
     va_end(args);
-    return STATUS_SUCCESS;
+
+cleanup:
+    return status;
 }
 
 STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN HOOK_HANDLER handler,
@@ -273,17 +285,17 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     PCONFIG_HOOK_CONTEXT configContext;
     PSYSCALL_CONFIG_HOOK_CONTEXT syscallConfigContext;
     PLIST_ENTRY configHead;
-    STATUS status;
     PHOOKING_MODULE_EXTENSION ext;
     QWORD guestPhysicalAddress, instructionLength;
     static PMODULE hookingModule;
     BYTE hookedInstruction[X86_MAX_INSTRUCTION_LEN], hookInstruction[X86_MAX_INSTRUCTION_LEN];
+    STATUS status = STATUS_SUCCESS;
 
     if(hookInstruction <= 1)
         return STATUS_INSTRUCTION_TOO_SHORT;
     // First get module and extension
     if(!hookingModule)
-        SUCCESS_OR_RETURN(MdlGetModuleByName(&hookingModule, HOOKING_MODULE_NAME));
+        SUCCESS_OR_CLEANUP(MdlGetModuleByName(&hookingModule, HOOKING_MODULE_NAME));
     ext = hookingModule->moduleExtension;
     // Allocate space for hook context
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
@@ -302,11 +314,11 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     guestVirtualAddress += configContext->offsetFromBeginning;
     instructionLength = configContext->instructionLength;
     // If an entry was found, allocate space for hook context
-    SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
+    SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
     // Set handler
     hookContext->handler = handler;
     // Calculate address of hook
-    SUCCESS_OR_RETURN(WinMmTranslateGuestVirtualToGuestPhysical(guestVirtualAddress, &guestPhysicalAddress));
+    SUCCESS_OR_CLEANUP(WinMmTranslateGuestVirtualToGuestPhysical(guestVirtualAddress, &guestPhysicalAddress));
     configContext->guestPhysicalAddress = guestPhysicalAddress;
     // Save the related config information
     hookContext->relatedConfig = configContext;
@@ -317,14 +329,14 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     MapSet(&ext->addressToContext, guestPhysicalAddress, hookContext);
     if(returnHandler)
     {
-        SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
+        SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(HOOK_CONTEXT), &hookContext));
         hookContext->handler = returnHandler;
         hookContext->virtualAddress = CALC_RETURN_HOOK_ADDR(guestVirtualAddress);
         hookContext->relatedConfig = configContext;
         MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(guestVirtualAddress), hookContext);
     }
     // First save the current instruction (must be sent to KPP module)
-    SUCCESS_OR_RETURN(WinMmCopyGuestMemory(hookedInstruction, guestVirtualAddress, instructionLength));
+    SUCCESS_OR_CLEANUP(WinMmCopyGuestMemory(hookedInstruction, guestVirtualAddress, instructionLength));
     // Save it in the config context
     HwCopyMemory(configContext->hookedInstruction, hookedInstruction, instructionLength);
     // Build the hook instruction ((INT3)(INT3-OPTIONAL)(NOP)(NOP)(NOP)(NOP)...)
@@ -337,10 +349,13 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
             instructionLength,
             WinMmTranslateGuestPhysicalToHostVirtual(guestPhysicalAddress)
             );
-    SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(guestVirtualAddress, hookInstruction, instructionLength));
+    SUCCESS_OR_CLEANUP(WinMmCopyMemoryToGuest(guestVirtualAddress, hookInstruction, instructionLength));
     // Send the hooked instruction to KPP modules
-    SUCCESS_OR_RETURN(KppAddNewEntry(guestPhysicalAddress, instructionLength, hookedInstruction));
-    return STATUS_SUCCESS;
+    SUCCESS_OR_CLEANUP(KppAddNewEntry(guestPhysicalAddress, instructionLength, hookedInstruction));
+cleanup:
+    if(status && hookContext)
+        heap->deallocate(heap, hookContext);
+    return status;
 }
 
 STATUS HookingRemoveHook(IN PCHAR name)
@@ -355,7 +370,7 @@ STATUS HookingRemoveHook(IN PCHAR name)
     BOOL found;
     QWORD nameLength, physicalAddress;
     BYTE_PTR virtualAddress;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     if(!module)
         MdlGetModuleByName(&module, HOOKING_MODULE_NAME);
@@ -392,10 +407,10 @@ STATUS HookingRemoveHook(IN PCHAR name)
     if(hookContext->additionalData)
     {
         Print("Found additional data for context, at: %8. Deallocating...\n", hookContext->additionalData);
-        SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext->additionalData));
+        heap->deallocate(heap, hookContext->additionalData);
     }
     Print("Deallocating hook context\n");
-    SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext));
+    heap->deallocate(heap, hookContext);
     // Remove hook context for return event (if exists)
     hookContext = MapGet(&extension->addressToContext, CALC_RETURN_HOOK_ADDR(
         configContext->guestPhysicalAddress));
@@ -403,13 +418,14 @@ STATUS HookingRemoveHook(IN PCHAR name)
     {
         Print("Found return hook data, releasing all resources\n");
         MapRemove(&extension->addressToContext, CALC_RETURN_HOOK_ADDR(configContext->guestPhysicalAddress));
-        SUCCESS_OR_RETURN(heap->deallocate(heap, hookContext));
+        heap->deallocate(heap, hookContext);
     }
     // Remove the hook from KPP's map
     Print("Removing entry from KPP's DB\n");
-    SUCCESS_OR_RETURN(KppRemoveEntry(configContext->guestPhysicalAddress));
+    SUCCESS_OR_CLEANUP(KppRemoveEntry(configContext->guestPhysicalAddress));
     Print("Successfully removed all hook data\n");
-    return STATUS_SUCCESS;
+cleanup:
+    return status;
 }
 
 STATUS HookingHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
@@ -443,18 +459,19 @@ STATUS HookingHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
     QWORD syscallId, guestPhysical, ripPhysicalAddress;
     PHOOKING_MODULE_EXTENSION ext;
     PHOOK_CONTEXT hookContext;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     vector = vmread(VM_EXIT_INTR_INFO) & 0xff;
     if(vector != INT_BREAKPOINT)
         return STATUS_VM_EXIT_NOT_HANDLED;
     
     ext = module->moduleExtension;
-    SUCCESS_OR_RETURN(WinMmTranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &guestPhysical));
+    SUCCESS_OR_CLEANUP(WinMmTranslateGuestVirtualToGuestPhysical(data->guestRegisters.rip, &guestPhysical));
     ripPhysicalAddress = WinMmTranslateGuestPhysicalToPhysicalAddress(guestPhysical);
     if((hookContext = MapGet(&ext->addressToContext, ripPhysicalAddress)) != MAP_KEY_NOT_FOUND)
         return hookContext->handler(hookContext);
     else
         VmmInjectGuestInterrupt(INT_BREAKPOINT, 0);
-    return STATUS_SUCCESS;
+cleanup:
+    return status;
 }
