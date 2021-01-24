@@ -24,6 +24,7 @@ STATUS HeapAllocate(IN PHEAP heap, IN QWORD size, OUT BYTE_PTR* ptr)
     QWORD currentEntryLength;
     BYTE_PTR currentNext;
 
+    *ptr = NULL;
     size = ALIGN_UP(size, sizeof(QWORD));
     for(heapEntry = heap->heap; (heapEntry->status != HEAP_FREE || (size + sizeof(HEAP_ENTRY)) > heapEntry->length) && heapEntry->next;
          heapEntry = heapEntry->next->base);

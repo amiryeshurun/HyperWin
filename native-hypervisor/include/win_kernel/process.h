@@ -28,5 +28,6 @@ VOID PspInit();
 STATUS PspMarkProcessProtected(IN QWORD eprocess, IN BYTE protectionLevel, IN BYTE signLevel, 
     IN BYTE sectionSignLevel);
 STATUS PspCreateNewGroup(IN QWORD groupId, IN BOOL includeSelf);
+QWORD PspGetCurrentThreadId();
 
 #endif

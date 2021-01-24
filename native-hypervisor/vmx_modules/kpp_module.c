@@ -34,37 +34,33 @@ STATUS KppAddNewEntry(IN QWORD guestPhysicalAddress, IN QWORD hookedInstructionL
 {
     PKPP_ENTRY_CONTEXT kppContext;
     PHEAP heap;
-    STATUS status;
     static PMODULE module;
     PKPP_MODULE_DATA kppData;
     PSHARED_CPU_DATA shared;
+    STATUS status = STATUS_SUCCESS;
 
     shared = VmmGetVmmStruct()->currentCPU->sharedData;
     if(!module)
-        SUCCESS_OR_RETURN(MdlGetModuleByName(&module, KPP_MODULE_NAME));
+        SUCCESS_OR_CLEANUP(MdlGetModuleByName(&module, KPP_MODULE_NAME));
     
     heap = &shared->heap;
     kppData = (PKPP_MODULE_DATA)module->moduleExtension;
-    if((status = heap->allocate(heap, sizeof(KPP_ENTRY_CONTEXT), &kppContext)) != STATUS_SUCCESS)
-    {
-        Print("Could not allocate memory for a new KPP context\n");
-        return status;
-    }
+    SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(KPP_ENTRY_CONTEXT), &kppContext));
     kppContext->hookedInstructionAddress = guestPhysicalAddress;
     kppContext->hookedInstructionLength = hookedInstructionLength;
-    HwCopyMemory(kppContext->hookedInstrucion, hookedInstruction, hookedInstructionLength);    
-    if((status = ListInsert(&kppData->entriesList, kppContext)) != STATUS_SUCCESS)
-    {
-        Print("Could not insert a new KPP context to list of contexts\n");
-        return status;
-    }
+    HwCopyMemory(kppContext->hookedInstrucion, hookedInstruction, hookedInstructionLength);
+    SUCCESS_OR_CLEANUP(ListInsert(&kppData->entriesList, kppContext));
     // Save the address in the addresses set
     SetInsert(&kppData->addressSet, ALIGN_DOWN((QWORD)guestPhysicalAddress, PAGE_SIZE));
     // Mark the page as unreadable & unwritable
     for(QWORD i = 0; i < shared->numberOfCores; i++)
         VmmUpdateEptAccessPolicy(shared->cpuData[i], ALIGN_DOWN((QWORD)guestPhysicalAddress, PAGE_SIZE), 
             PAGE_SIZE, EPT_EXECUTE);
-    return STATUS_SUCCESS;
+
+cleanup:
+    if(status && kppContext)
+        heap->deallocate(heap, kppContext);
+    return status;
 }
 
 STATUS KppRemoveEntry(IN QWORD guestPhysicalAddress)
@@ -103,7 +99,7 @@ STATUS KppRemoveEntry(IN QWORD guestPhysicalAddress)
     Print("Found the entry, removing it from KPP's list...\n");
     ListRemove(&kppData->entriesList, (QWORD)kppContext);
     // Deallocate the memory
-    SUCCESS_OR_RETURN(heap->deallocate(heap, kppContext));
+    heap->deallocate(heap, kppContext);
     return STATUS_SUCCESS;
 }
 

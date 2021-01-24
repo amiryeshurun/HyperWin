@@ -13,7 +13,11 @@
 #define DEVICE_OBJECT 0x6
 #define DRIVER_OBJECT 0x7
 #define VPB 0x8
- 
+#define IRP 0x9
+#define IO_STACK_LOCATION 0xa
+#define MDL 0xb
+#define IO_STATUS_BLOCK 0xc
+
 enum
 {
     KPRC_KPRCB = 0x180
@@ -70,16 +74,33 @@ enum
     VPB_DEVICE_OBJECT = 0x8
 };
 
+enum
+{
+    IRP_MDL = 0x8,
+    IRP_FLAGS = 0x10,
+    IRP_IO_STATUS = 0x30,
+    IRP_TAIL_IO_STACK_LOCATION = 0xb8
+};
+
+enum
+{
+    IO_STACK_LOCATION_FILE_OBJECT = 0x30
+};
+
+enum
+{
+    MDL_SYSTEM_VA = 0x18
+};
+
+enum
+{
+    IO_STATUS_BLOCK_INFORMATION = 0x8
+};
+
 STATUS ObjGetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
 STATUS ObjGetCurrent_EPROCESS(OUT BYTE_PTR* eprocess);
-STATUS ObjGet_ETHREAD_field(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS ObjGet_EPROCESS_field(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS ObjGet_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value);
 STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value);
 STATUS ObjTranslateHandleToObject(IN HANDLE handle, IN BYTE_PTR handleTable, OUT BYTE_PTR* object);
-STATUS ObjGetDeviceObjectField(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS ObjGetDriverObjectField(IN QWORD object, IN QWORD field, OUT PVOID value);
-STATUS ObjGet_VPB_field(IN QWORD object, IN QWORD field, OUT PVOID value);
 
 typedef struct _WIN_KERNEL_UNICODE_STRING
 {

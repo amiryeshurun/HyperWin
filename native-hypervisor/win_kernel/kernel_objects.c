@@ -168,6 +168,46 @@ STATUS ObjGet_FILE_OBJECT_field(IN QWORD object, IN QWORD field, OUT PVOID value
     }
 }
 
+STATUS ObjGet_IRP_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case IRP_TAIL_IO_STACK_LOCATION:
+        case IRP_IO_STATUS:
+        case IRP_MDL:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+        case IRP_FLAGS:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(DWORD));
+    }
+}
+
+STATUS ObjGet_IO_STACK_LOCATION_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case IO_STACK_LOCATION_FILE_OBJECT:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+
+STATUS ObjGet_MDL_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case MDL_SYSTEM_VA:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+
+STATUS ObjGet_IO_STATUS_BLOCK_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case IO_STATUS_BLOCK_INFORMATION:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+
 STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(objectType)
@@ -184,6 +224,14 @@ STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OU
             return ObjGetDriverObjectField(object, field, value);
         case VPB:
             return ObjGet_VPB_field(object, field, value);
+        case IRP:
+            return ObjGet_IRP_field(object, field, value);
+        case IO_STACK_LOCATION:
+            return ObjGet_IO_STACK_LOCATION_field(object, field, value);
+        case MDL:
+            return ObjGet_MDL_field(object, field, value);
+        case IO_STATUS_BLOCK:
+            return ObjGet_IO_STATUS_BLOCK_field(object, field, value);
         default:
         {
             Print("Unsupported object type!\n");
