@@ -16,10 +16,10 @@ STATUS ListInsert(IN PLIST list, IN QWORD data)
 {
     PLIST_ENTRY last, newEntry;
     PHEAP heap;
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
-    SUCCESS_OR_RETURN(heap->allocate(heap, sizeof(LIST_ENTRY), &newEntry));
+    SUCCESS_OR_CLEANUP(heap->allocate(heap, sizeof(LIST_ENTRY), &newEntry));
     // Is the list empty?
     if(list->head == NULL)
     {
@@ -38,7 +38,9 @@ STATUS ListInsert(IN PLIST list, IN QWORD data)
     }
     newEntry->data = data;
     list->size++;
-    return STATUS_SUCCESS;
+
+cleanup:
+    return status;
 }
 
 BOOL ListContains(IN PLIST lise, IN QWORD data)
@@ -58,7 +60,6 @@ STATUS ListRemove(IN PLIST list, IN QWORD data)
 {
     PLIST_ENTRY begin, next;
     PHEAP heap;
-    STATUS status;
 
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
     begin = list->head;
@@ -71,7 +72,7 @@ STATUS ListRemove(IN PLIST list, IN QWORD data)
             if(begin->next)
                 begin->next->prev = begin->prev;
             next = begin->next;
-            SUCCESS_OR_RETURN(heap->deallocate(heap, begin));
+            heap->deallocate(heap, begin);
         }
         else
             next = begin->next;

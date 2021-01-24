@@ -108,14 +108,15 @@ STATUS ComHandleInit(IN PGENERIC_COM_STRUCT args)
 
 STATUS ComHandleProtectProcess(IN PGENERIC_COM_STRUCT args)
 {
-    STATUS status;
+    STATUS status = STATUS_SUCCESS;
 
-    SUCCESS_OR_RETURN(PspMarkProcessProtected(args->argumentsUnion.protectProcess.handle,
+    SUCCESS_OR_CLEANUP(PspMarkProcessProtected(args->argumentsUnion.protectProcess.handle,
          PS_PROTECTED_WINTCB_LIGHT, 0x3e, 0xc));
     Print("Successfully marked process as protected\n");
 
+cleanup:
     args->argumentsUnion.cleanup.status = OPERATION_COMPLETED;
-    return STATUS_SUCCESS;
+    return status;
 }
 
 STATUS ComHandleHideFileData(IN PGENERIC_COM_STRUCT args)

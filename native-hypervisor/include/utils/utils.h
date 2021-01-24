@@ -2,6 +2,7 @@
 #define __UTILS_H_
 
 #include <types.h>
+#include <debug.h>
 #include <utils/string.h>
 #include <error_codes.h>
 
@@ -20,9 +21,18 @@
 
 // Check for success or return
 #define SUCCESS_OR_RETURN(expression) \
-                                        if((status = expression) != STATUS_SUCCESS) \
-                                            return status
-                                        
+                    if((status = expression) != STATUS_SUCCESS) \
+                        return status
+
+#define SUCCESS_OR_CLEANUP(expression) \
+                    do \
+                    { \
+                        if((status = expression) != STATUS_SUCCESS) \
+                        { \
+                            Print("%d: Non-successful status returned at: " STR(__FILE__) ", line: " STR(__LINE__) ", condition: [[[ " STR(expression) " ]]]" "\n", status); \
+                            goto cleanup; \
+                        } \
+                    } while(FALSE)
 
 // Spinlock (for multiprocessing)
 typedef struct _SPIN_LOCK

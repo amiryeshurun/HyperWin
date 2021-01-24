@@ -6,16 +6,17 @@
 STATUS SetInit(IN PQWORD_SET set, IN QWORD bucketsCount, IN HASH_FUNC hasher)
 {
     PHEAP heap;
-    STATUS status;
-    
+    STATUS status = STATUS_SUCCESS;
+
     heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
-    SUCCESS_OR_RETURN(heap->allocate(heap, bucketsCount * sizeof(QWORD_ARRAY), &set->array));
+    SUCCESS_OR_CLEANUP(heap->allocate(heap, bucketsCount * sizeof(QWORD_ARRAY), &set->array));
     for(QWORD i = 0; i < bucketsCount; i++)
         QArrayInit(&set->array[i]);
     set->hasher = hasher;
     set->buckets = bucketsCount;
-    
-    return STATUS_SUCCESS;
+
+cleanup:
+    return status;
 }
 
 STATUS SetInsert(IN PQWORD_SET set, IN QWORD value)
