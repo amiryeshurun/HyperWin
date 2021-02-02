@@ -319,7 +319,6 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     hookContext->handler = handler;
     // Calculate address of hook
     SUCCESS_OR_CLEANUP(WinMmTranslateGuestVirtualToGuestPhysical(guestVirtualAddress, &guestPhysicalAddress));
-    configContext->guestPhysicalAddress = guestPhysicalAddress;
     // Save the related config information
     hookContext->relatedConfig = configContext;
     hookContext->virtualAddress = guestVirtualAddress;
@@ -333,7 +332,7 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
         hookContext->handler = returnHandler;
         hookContext->virtualAddress = CALC_RETURN_HOOK_ADDR(guestVirtualAddress);
         hookContext->relatedConfig = configContext;
-        MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(guestVirtualAddress), hookContext);
+        MapSet(&ext->addressToContext, CALC_RETURN_HOOK_ADDR(guestPhysicalAddress), hookContext);
     }
     // First save the current instruction (must be sent to KPP module)
     SUCCESS_OR_CLEANUP(WinMmCopyGuestMemory(hookedInstruction, guestVirtualAddress, instructionLength));
@@ -343,7 +342,7 @@ STATUS HookingSetupGenericHook(IN QWORD guestVirtualAddress, IN PCHAR name, IN H
     hookInstruction[0] = INT3_OPCODE; hookInstruction[1] = INT3_OPCODE;
     HwSetMemory(hookInstruction + 2, NOP_OPCODE, instructionLength - 2);
     // Inject the hooked instruction to the guest and print current stored instruction at address
-    Print("Injecting a hook instruction of length %d to (GP) %8. Current instruction is: %.b\n", 
+    Print("Injecting a hook instruction of length %d to (GV) %8. Current instruction is: %.b\n", 
             instructionLength,
             guestVirtualAddress,
             instructionLength,
