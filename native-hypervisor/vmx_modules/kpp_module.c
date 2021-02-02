@@ -113,7 +113,8 @@ BOOL KppCheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD 
     while(kppEntry)
     {
         kppContext = (PKPP_ENTRY_CONTEXT)kppEntry->data;
-        if(address - kppContext->hookedInstructionLength <= readLength)
+        if(kppContext->hookedInstructionAddress <= address
+            && ((kppContext->hookedInstructionAddress + kppContext->hookedInstructionLength) >= address))
         {
             *before = FALSE;
             *entry = kppContext;
@@ -121,7 +122,7 @@ BOOL KppCheckIfAddressContainsInstruction(IN PKPP_MODULE_DATA kppData, IN QWORD 
             return TRUE;
         }
         else if((address <= kppContext->hookedInstructionAddress)
-         && ((address + readLength) >= kppContext->hookedInstructionAddress))
+         && (kppContext->hookedInstructionAddress <= (address + readLength)))
         {
             *before = TRUE;
             *entry = kppContext;
@@ -145,6 +146,7 @@ VOID KppBuildResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
         &entry, &ext))
     {
         // The hidden instruction is a prefix of the current checked instruction
+        // OR the hidden instruction contains all of the checked instruction
         if(!isBefore)
         {
             // ext = offset from the beggining of the hidden instruction
@@ -156,11 +158,23 @@ VOID KppBuildResult(OUT PVOID val, IN QWORD guestPhysical, IN QWORD readLength,
                         - ext), readLength - (entry->hookedInstructionLength - ext));
         }
         // The hidden instruction is a suffix of the current checked instruction
+        // OR the checked instruction contains the hidden instruction 
         else
         {
             // ext = the number of bytes before the beggining of the hidden instruction
+            // Copy the beginning
             HwCopyMemory(val, hostVirtualAddress, ext);
-            HwCopyMemory((BYTE_PTR)val + ext, entry->hookedInstrucion, readLength - ext);
+            // Copy the replaced instruction itself
+            if(readLength > ext)
+            {
+                HwCopyMemory((BYTE_PTR)val + ext, entry->hookedInstrucion, readLength - ext 
+                    <= entry->hookedInstructionLength ? readLength - ext : entry->hookedInstructionLength);
+                // Copy the rest of the instruction, if we need to
+                if(readLength - ext > entry->hookedInstructionLength)
+                    HwCopyMemory((BYTE_PTR)val + ext + entry->hookedInstructionLength, 
+                                hostVirtualAddress + ext + entry->hookedInstructionLength,
+                                readLength - ext - entry->hookedInstructionLength);
+            }
         }      
     }
     else
@@ -275,6 +289,13 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         QWORD val;
         KppBuildResult(&val, address, 8, kppData);
         regs->rbx = val;
+    }
+    // Kernel-debugging area
+    else if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x88 && inst[2] == 0x02)
+    {
+        // mov BYTE PTR [r10],al
+        BYTE_PTR hostVirtual = WinMmTranslateGuestPhysicalToHostVirtual(address);
+        *hostVirtual = (BYTE)(regs->rax & 0xff);
     }
     else
     {
