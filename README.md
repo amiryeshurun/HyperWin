@@ -1,3 +1,8 @@
+<p align="left">
+<a href="https://ci.appveyor.com/project/amiryeshurun/hyperwin/branch/master"><img src="https://ci.appveyor.com/api/projects/status/github/amiryeshurun/hyperwin?svg=true" alt="Build"></a>
+<a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License"></a>
+</p>
+
 # HyperWin
 
 HyperWin is a native hypervisor designed for Windows (x64 only) running on Intel processors. The whole system consists three major components: a hypervisor, a driver and a command line application. Using the command-line application, you can send IOCTL codes to the communication driver that will eventually reach the hypervisor.
@@ -22,4 +27,4 @@ Once the computer boots to HyperWin, it will automatically load Windows after it
 License
 ---
 
-[GPL v3.0](LICENSE)
+**HyperWin** is licensed under the [GPL v3.0](LICENSE) license.
