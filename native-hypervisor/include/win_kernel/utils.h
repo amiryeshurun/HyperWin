@@ -18,8 +18,9 @@ typedef struct _THREAD_EVENT
         struct
         {
             PHIDDEN_FILE_RULE rule;
-            QWORD mdl;
+            QWORD bufferAddress;
             QWORD ioStatusBlock;
+            BOOL isPhysical;
         } NtfsFsdRead;
     } dataUnion;
 } THREAD_EVENT, *PTHREAD_EVENT;

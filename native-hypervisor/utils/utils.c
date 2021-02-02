@@ -5,7 +5,8 @@
 
 VOID HwCopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count)
 {
-    __movsb(dest, src, count);
+    if(count > 0)
+        __movsb(dest, src, count);
 }
 
 CHAR ConvertHalfByteToHexChar(IN BYTE halfByte)

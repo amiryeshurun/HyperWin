@@ -60,7 +60,8 @@ enum
 
 enum
 {
-    DEVICE_OBJECT_DRIVER_OBJECT = 0x8
+    DEVICE_OBJECT_DRIVER_OBJECT = 0x8,
+    DEVICE_OBJECT_FLAGS = 0x30
 };
 
 enum
@@ -78,7 +79,10 @@ enum
 {
     IRP_MDL = 0x8,
     IRP_FLAGS = 0x10,
+    IRP_SYSTEM_BUFFER = 0x18,
     IRP_IO_STATUS = 0x30,
+    IRP_USER_IOSB = 0x48,
+    IRP_USER_BUFFER = 0x70,
     IRP_TAIL_IO_STACK_LOCATION = 0xb8
 };
 

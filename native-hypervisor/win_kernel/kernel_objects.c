@@ -136,6 +136,8 @@ STATUS ObjGetDeviceObjectField(IN QWORD object, IN QWORD field, OUT PVOID value)
     {
         case DEVICE_OBJECT_DRIVER_OBJECT:
             return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+        case DEVICE_OBJECT_FLAGS:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(DWORD));
     }
 }
 STATUS ObjGetDriverObjectField(IN QWORD object, IN QWORD field, OUT PVOID value)
@@ -175,6 +177,9 @@ STATUS ObjGet_IRP_field(IN QWORD object, IN QWORD field, OUT PVOID value)
         case IRP_TAIL_IO_STACK_LOCATION:
         case IRP_IO_STATUS:
         case IRP_MDL:
+        case IRP_USER_IOSB:
+        case IRP_USER_BUFFER:
+        case IRP_SYSTEM_BUFFER:
             return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
         case IRP_FLAGS:
             return WinMmCopyGuestMemory(value, object + field, sizeof(DWORD));
