@@ -240,11 +240,13 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
     }
     else if((instructionLength == 3 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x18)
         || (instructionLength == 4 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x58 && inst[3] == 0x8)
-        || (instructionLength == 3 && inst[0] == 0x48 && inst[1] == 0x33 && inst[2] == 0x1f))
+        || (instructionLength == 3 && inst[0] == 0x48 && inst[1] == 0x33 && inst[2] == 0x1f)
+        || (instructionLength == 3 && inst[0] == 0x49 && inst[1] == 0x33 && inst[2] == 0x19))
     {
         // xor rbx,QWORD PTR [r8]
         // xor rbx,QWORD PTR [r8+0x8]
         // xor rbx,QWORD PTR [rdi]
+        // xor rbx,QWORD PTR [r9]
         QWORD val;
         KppBuildResult(&val, address, 8, kppData);
         regs->rbx ^= val;
@@ -290,6 +292,13 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         KppBuildResult(&val, address, 8, kppData);
         regs->rbx = val;
     }
+    else if(instructionLength == 4 && inst[0] == 0x0f && inst[1] == 0x10 && inst[2] == 0x04 && inst[3] == 0x11)
+    {
+        // movups xmm0, XMMWORD PTR [rcx+rdx*1]
+        BYTE val[16];
+        KppBuildResult(&val, address, 16, kppData);
+        __movups_xmm0(val);
+    }
     // Kernel-debugging area
     else if(instructionLength == 3 && inst[0] == 0x41 && inst[1] == 0x88 && inst[2] == 0x02)
     {
@@ -297,6 +306,7 @@ STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address,
         BYTE_PTR hostVirtual = WinMmTranslateGuestPhysicalToHostVirtual(address);
         *hostVirtual = (BYTE)(regs->rax & 0xff);
     }
+    
     else
     {
         Print("New KPP instruction found at %8: %.b\n", address, instructionLength, inst);
