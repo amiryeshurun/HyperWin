@@ -8,7 +8,7 @@
 HyperWin is a native hypervisor designed for Windows (x64 only) running on Intel processors. The whole system consists three major components: a hypervisor, a driver and a command line application. Using the command-line application, you can send IOCTL codes to the communication driver that will eventually reach the hypervisor.
 HyperWin provides many interesting features, including: 
 - Creation of memory regions hidden from the operating system (using EPT and a hidden hook on E820)
-- PatchGaurd bypassing
+- PatchGuard bypassing
 - Sensitive data protection via IRP hooking (User-Mode & Kernel-Mode) 
 - Smart process management
 - A (very!) generic hooking module
