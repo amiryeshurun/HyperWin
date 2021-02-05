@@ -140,14 +140,18 @@ STATUS ObjGetDeviceObjectField(IN QWORD object, IN QWORD field, OUT PVOID value)
             return WinMmCopyGuestMemory(value, object + field, sizeof(DWORD));
     }
 }
+
 STATUS ObjGetDriverObjectField(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
     {
         case DRIVER_OBJECT_NAME:
             return WinMmCopyGuestMemory(value, object + field, sizeof(WIN_KERNEL_UNICODE_STRING));
+        case DRIVER_OBJECT_FAST_IO_DISPATCH:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
     }
 }
+
 STATUS ObjGet_VPB_field(IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(field)
@@ -213,6 +217,15 @@ STATUS ObjGet_IO_STATUS_BLOCK_field(IN QWORD object, IN QWORD field, OUT PVOID v
     }
 }
 
+STATUS ObjGet_FAST_IO_DISPATCH_field(IN QWORD object, IN QWORD field, OUT PVOID value)
+{
+    switch(field)
+    {
+        case FAST_IO_DISPATCH_FAST_IO_READ:
+            return WinMmCopyGuestMemory(value, object + field, sizeof(QWORD));
+    }
+}
+
 STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OUT PVOID value)
 {
     switch(objectType)
@@ -237,6 +250,8 @@ STATUS ObjGetObjectField(IN BYTE objectType, IN QWORD object, IN QWORD field, OU
             return ObjGet_MDL_field(object, field, value);
         case IO_STATUS_BLOCK:
             return ObjGet_IO_STATUS_BLOCK_field(object, field, value);
+        case FAST_IO_DISPATCH:
+            return ObjGet_FAST_IO_DISPATCH_field(object, field, value);
         default:
         {
             Print("Unsupported object type!\n");

@@ -15,12 +15,9 @@ STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context)
     PREGISTERS regs;
     QWORD params[17];
     QWORD fileObject, handleTable, eprocess, returnAddress, scb, fcb, fileIndex,
-        vpb, deviceObj, driverObj, irpMjRead;
+        vpb, deviceObj, driverObj, irpMjRead, fastIoDispatch, fastIoRead;
     WORD fileType;
-    WORD_PTR pfileType = &fileType;
-    PHIDDEN_FILE_RULE hiddenFileRule;
     WIN_KERNEL_UNICODE_STRING driverName;
-    PTHREAD_EVENT threadEvent;
     STATUS status = STATUS_SUCCESS;
 
     state = VmmGetVmmStruct();
@@ -63,6 +60,11 @@ STATUS ShdHandleNtReadFile(IN PHOOK_CONTEXT context)
             Print("Found NtfsFsdRead at: %8, hooking now!\n", irpMjRead);
             ASSERT(HookingSetupGenericHook(irpMjRead, "NtfsFsdRead", FileHandleRead,
                 FileHandleReadReturn) == STATUS_SUCCESS);
+            ObjGetObjectField(DRIVER_OBJECT, driverObj, DRIVER_OBJECT_FAST_IO_DISPATCH, &fastIoDispatch);
+            ObjGetObjectField(FAST_IO_DISPATCH, fastIoDispatch, FAST_IO_DISPATCH_FAST_IO_READ, &fastIoRead);
+            Print("Found NtfsCopyReadA at: %8, hooking now!\n", fastIoRead);
+            ASSERT(HookingSetupGenericHook(fastIoRead, "NtfsCopyReadA", FileHandleFastRead,
+                FileHandleFastReadReturn) == STATUS_SUCCESS);
             Print("Removing NtReadFile...\n");
             ASSERT(HookingRemoveHook("NtReadFile") == STATUS_SUCCESS);
         }

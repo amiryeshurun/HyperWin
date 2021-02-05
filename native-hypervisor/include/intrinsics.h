@@ -185,4 +185,10 @@ VOID INLINE __vmovdqu_ymm0(IN BYTE_PTR addr)
     asm volatile("vmovdqu %0, %%ymm0" :: "m" (addr));
 }
 
+__attribute__((always_inline))
+VOID INLINE __movups_xmm0(IN BYTE_PTR addr)
+{
+    asm volatile("movups %0, %%xmm0" :: "m" (addr));
+}
+
 #endif

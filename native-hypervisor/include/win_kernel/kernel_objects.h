@@ -17,6 +17,7 @@
 #define IO_STACK_LOCATION 0xa
 #define MDL 0xb
 #define IO_STATUS_BLOCK 0xc
+#define FAST_IO_DISPATCH 0xd
 
 enum
 {
@@ -67,6 +68,7 @@ enum
 enum
 {
     DRIVER_OBJECT_NAME = 0x38,
+    DRIVER_OBJECT_FAST_IO_DISPATCH = 0x50,
     DRIVER_OBJECT_MAJOR_FUNCTION = 0x70
 };
 
@@ -99,6 +101,11 @@ enum
 enum
 {
     IO_STATUS_BLOCK_INFORMATION = 0x8
+};
+
+enum
+{
+    FAST_IO_DISPATCH_FAST_IO_READ = 0x10
 };
 
 STATUS ObjGetCurrent_ETHREAD(OUT BYTE_PTR* ethread);
