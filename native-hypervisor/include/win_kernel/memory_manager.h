@@ -50,5 +50,6 @@ STATUS WinMmTranslateGuestVirtualToGuestPhysical(IN QWORD address, OUT QWORD_PTR
 QWORD WinMmTranslateGuestPhysicalToPhysicalAddress(IN QWORD address);
 QWORD WinMmTranslateGuestPhysicalToHostVirtual(IN QWORD address);
 STATUS WinMmCopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length);
+STATUS WinMmTranslateGuestVirtualToHostVirtual(IN QWORD address, OUT BYTE_PTR* hostAddress);
 
 #endif

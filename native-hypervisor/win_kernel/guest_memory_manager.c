@@ -104,7 +104,7 @@ QWORD WinMmTranslateGuestPhysicalToHostVirtual(IN QWORD address)
     return PhysicalToVirtual(WinMmTranslateGuestPhysicalToPhysicalAddress(address));
 }
 
-STATUS TranslateGuestVirtualToHostVirtual(IN QWORD address, OUT QWORD_PTR hostAddress)
+STATUS WinMmTranslateGuestVirtualToHostVirtual(IN QWORD address, OUT BYTE_PTR* hostAddress)
 {
     QWORD guestPhysical;
 
@@ -120,7 +120,7 @@ STATUS WinMmCopyGuestMemory(OUT BYTE_PTR dest, IN QWORD src, IN QWORD length)
 
     for(QWORD offset = 0, increament = 0; TRUE; offset += increament)
     {
-        if(TranslateGuestVirtualToHostVirtual(src + offset, &hostVirtual) != STATUS_SUCCESS)
+        if(WinMmTranslateGuestVirtualToHostVirtual(src + offset, &hostVirtual) != STATUS_SUCCESS)
             return STATUS_ADDRESS_NOT_VALID;
         alignedLengthUntilNextPage = (src + offset) % PAGE_SIZE ? ALIGN_UP(src + offset, PAGE_SIZE) - src : PAGE_SIZE;
         if(length <= alignedLengthUntilNextPage)
@@ -143,7 +143,7 @@ STATUS WinMmCopyMemoryToGuest(IN QWORD dest, IN BYTE_PTR src, IN QWORD length)
 
     for(QWORD offset = 0, increament = 0; TRUE; offset += increament)
     {
-        if(TranslateGuestVirtualToHostVirtual(dest + offset, &hostVirtual) != STATUS_SUCCESS)
+        if(WinMmTranslateGuestVirtualToHostVirtual(dest + offset, &hostVirtual) != STATUS_SUCCESS)
             return STATUS_ADDRESS_NOT_VALID;
         alignedLengthUntilNextPage = (dest + offset) % PAGE_SIZE ? ALIGN_UP(dest + offset, PAGE_SIZE) - dest : PAGE_SIZE;
         if(length <= alignedLengthUntilNextPage)

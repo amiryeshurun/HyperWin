@@ -116,6 +116,29 @@ STATUS FileGetRuleByIndex(IN QWORD fileIndex, OUT PHIDDEN_FILE_RULE* rule)
          STATUS_SUCCESS : STATUS_FILE_NOT_FOUND;
 }
 
+VOID FileReplaceDataByRule(IN BYTE_PTR buffer, IN QWORD length, IN PHIDDEN_FILE_RULE rule)
+{
+    QWORD count, indices[20];
+    PWCHAR utf16Ptr;
+
+    if(length >= rule->content.length && 
+        (count = MemoryContains(buffer, length, rule->content.data, rule->content.length, indices)) 
+            != 0)
+    {
+        if(rule->encoding == ENCODING_TYPE_UTF_16)
+        {
+            utf16Ptr = buffer;
+            for(QWORD k = 0; k < count; k++)
+                for(QWORD i = indices[k] / 2; i < (indices[k] + rule->content.length) / 2; i++)
+                    utf16Ptr[i] = L'*';
+        }
+        else if(rule->encoding == ENCODING_TYPE_UTF_8)
+            for(QWORD k = 0; k < count; k++)
+                for(QWORD i = indices[k]; i < indices[k] + rule->content.length; i++)
+                    buffer[i] = '*';
+    }
+}
+
 STATUS FileHandleRead(IN PHOOK_CONTEXT context)
 {
     PCURRENT_GUEST_STATE currentData;
@@ -123,7 +146,6 @@ STATUS FileHandleRead(IN PHOOK_CONTEXT context)
     PREGISTERS regs;
     QWORD fileObject, ioStackLocation, params[17], fcb, scb, fileIndex, threadId, mdl, ioStatus,
         userBuffer, systemVa;
-    DWORD flags;
     PHIDDEN_FILE_RULE hiddenFileRule;
     PTHREAD_EVENT threadEvent;
     STATUS status = STATUS_SUCCESS;
@@ -131,14 +153,13 @@ STATUS FileHandleRead(IN PHOOK_CONTEXT context)
     currentData = VmmGetVmmStruct();
     shared = currentData->currentCPU;
     regs = &currentData->guestRegisters;
-    // TO support WinGetParameters and WinHookReturnEvent
+    // To support WinGetParameters and WinHookReturnEvent
     regs->rsp += 5 * sizeof(QWORD);
-
     WinGetParameters(params, context->relatedConfig->params);
     // Get the FileObject for the current file
-    SUCCESS_OR_CLEANUP(ObjGetObjectField(IRP, params[1], IRP_TAIL_IO_STACK_LOCATION, &ioStackLocation));
-    SUCCESS_OR_CLEANUP(ObjGetObjectField(IO_STACK_LOCATION, ioStackLocation, IO_STACK_LOCATION_FILE_OBJECT,
-        &fileObject));
+    ObjGetObjectField(IRP, params[1], IRP_TAIL_IO_STACK_LOCATION, &ioStackLocation);
+    ObjGetObjectField(IO_STACK_LOCATION, ioStackLocation, IO_STACK_LOCATION_FILE_OBJECT,
+        &fileObject);
     ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
     FileTranslateScbToFcb(scb, &fcb);
     FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex);
@@ -147,7 +168,6 @@ STATUS FileHandleRead(IN PHOOK_CONTEXT context)
     {
         // The file is indeed protected
         // Get the thread id
-        Print("Protected\n");
         threadId = PspGetCurrentThreadId();
         // Hook return event
         WinHookReturnEvent(regs->rsp, threadId, context->virtualAddress);
@@ -179,11 +199,51 @@ STATUS FileHandleRead(IN PHOOK_CONTEXT context)
         threadEvent->dataUnion.NtfsFsdRead.ioStatusBlock = ioStatus;
     }
 cleanup:
-    // mov qword ptr [rsp+10h],rdx
-    // sub     rsp,0A0h
-    //SUCCESS_OR_RETURN(WinMmCopyMemoryToGuest(regs->rsp + 0x10, &regs->rdx, sizeof(QWORD)));
+    // sub rsp,0A0h
     regs->rsp -= 5 * sizeof(QWORD);
     regs->rsp -= 0xa0;
+    regs->rip += context->relatedConfig->instructionLength;
+    return status;
+}
+
+STATUS FileHandleFastRead(IN PHOOK_CONTEXT context)
+{
+    PCURRENT_GUEST_STATE currentData;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+    QWORD fileObject, ioStackLocation, params[17], fcb, scb, fileIndex, threadId;
+    PHIDDEN_FILE_RULE hiddenFileRule;
+    PTHREAD_EVENT threadEvent;
+    STATUS status = STATUS_SUCCESS;
+
+    currentData = VmmGetVmmStruct();
+    shared = currentData->currentCPU;
+    regs = &currentData->guestRegisters;
+    WinGetParameters(params, context->relatedConfig->params);
+    // Get the FileObject for the current file
+    fileObject = params[0];
+    ObjGetObjectField(FILE_OBJECT, fileObject, FILE_OBJECT_SCB, &scb);
+    FileTranslateScbToFcb(scb, &fcb);
+    FileGetFcbField(fcb, FCB_MFT_INDEX, &fileIndex);
+    // Check if the current file is protected
+    if(FileGetRuleByIndex(fileIndex, &hiddenFileRule) == STATUS_SUCCESS)
+    {
+        // The file is indeed protected
+        // Get the thread id
+        threadId = PspGetCurrentThreadId();
+        // Hook return event
+        WinHookReturnEvent(regs->rsp, threadId, context->virtualAddress);
+        threadEvent = WinGetEventForThread(threadId);
+        // Get & Store important information for later   
+        threadEvent->dataUnion.NtfsReadCopyA.rule = hiddenFileRule;     
+        threadEvent->dataUnion.NtfsReadCopyA.buffer = params[5];
+        // Used to get the readen length
+        threadEvent->dataUnion.NtfsReadCopyA.ioStatusBlock = params[6];
+    }
+cleanup:
+    // push rbx
+    regs->rsp -= sizeof(QWORD);
+    WinMmCopyMemoryToGuest(regs->rsp, &regs->rbx, sizeof(QWORD));
     regs->rip += context->relatedConfig->instructionLength;
     return status;
 }
@@ -193,9 +253,8 @@ STATUS FileHandleReadReturn(IN PHOOK_CONTEXT context)
     PCURRENT_GUEST_STATE state;
     PSHARED_CPU_DATA shared;
     PREGISTERS regs;
-    QWORD ethread, bufferLength, count, indecies[10], guestPhysical;
+    QWORD bufferLength, guestPhysical;
     PHIDDEN_FILE_RULE rule;
-    BYTE copy[100];
     BYTE_PTR hostVirtual;
     PWCHAR utf16Ptr;
     PTHREAD_EVENT threadEvent;
@@ -218,33 +277,41 @@ STATUS FileHandleReadReturn(IN PHOOK_CONTEXT context)
     else
     {
         // Translate to host virtual
-        SUCCESS_OR_CLEANUP(WinMmTranslateGuestVirtualToGuestPhysical(threadEvent->dataUnion.NtfsFsdRead.bufferAddress, &guestPhysical));
-        hostVirtual = (BYTE_PTR)WinMmTranslateGuestPhysicalToHostVirtual(guestPhysical);
+        WinMmTranslateGuestVirtualToHostVirtual(threadEvent->dataUnion.NtfsFsdRead.bufferAddress, &hostVirtual);
     }
-    Print("DATA: %.b\n", bufferLength, hostVirtual);
-    WinMmCopyGuestMemory(copy, threadEvent->dataUnion.NtfsFsdRead.bufferAddress, bufferLength);
-    Print("DATA USING GUEST MEMORY: %.b\n", bufferLength, copy);
-    Print("Guest virtual address: %8\n", threadEvent->dataUnion.NtfsFsdRead.bufferAddress);
     // Replace hidden content (if exists)
-    if(bufferLength >= rule->content.length && 
-        (count = MemoryContains(hostVirtual, bufferLength, rule->content.data, rule->content.length, indecies)) 
-            != 0)
-    {
-        if(rule->encoding == ENCODING_TYPE_UTF_16)
-        {
-            utf16Ptr = hostVirtual;
-            for(QWORD k = 0; k < count; k++)
-                for(QWORD i = indecies[k] / 2; i < (indecies[k] + rule->content.length) / 2; i++)
-                    utf16Ptr[i] = L'*';
-        }
-        else if(rule->encoding == ENCODING_TYPE_UTF_8)
-            for(QWORD k = 0; k < count; k++)
-                for(QWORD i = indecies[k]; i < indecies[k] + rule->content.length; i++)
-                    hostVirtual[i] = '*';
-    }
-    Print("DATA: %.b\n", bufferLength, hostVirtual);
-    WinMmCopyGuestMemory(copy, threadEvent->dataUnion.NtfsFsdRead.bufferAddress, bufferLength);
-    Print("DATA USING GUEST MEMORY: %.b\n", bufferLength, copy);
+    FileReplaceDataByRule(hostVirtual, bufferLength, rule);
+cleanup:
+    // Put back the saved address in the RIP register
+    regs->rip = threadEvent->returnAddress;
+    return status;
+}
+
+STATUS FileHandleFastReadReturn(IN PHOOK_CONTEXT context)
+{
+    PCURRENT_GUEST_STATE state;
+    PSHARED_CPU_DATA shared;
+    PREGISTERS regs;
+    QWORD bufferLength;
+    PHIDDEN_FILE_RULE rule;
+    BYTE_PTR hostVirtual;
+    PWCHAR utf16Ptr;
+    PTHREAD_EVENT threadEvent;
+    STATUS status = STATUS_SUCCESS;
+
+    state = VmmGetVmmStruct();
+    shared = state->currentCPU->sharedData;
+    regs = &state->guestRegisters;
+    // Using the thread id, get the saved data
+    threadEvent = WinGetEventForThread(PspGetCurrentThreadId());
+    // Get the rule found in the hashmap
+    rule = threadEvent->dataUnion.NtReadFile.rule;
+    // Get the buffer address for the request & its length
+    ObjGetObjectField(IO_STATUS_BLOCK, threadEvent->dataUnion.NtfsReadCopyA.ioStatusBlock,
+        IO_STATUS_BLOCK_INFORMATION, &bufferLength);
+    WinMmTranslateGuestVirtualToHostVirtual(threadEvent->dataUnion.NtfsReadCopyA.buffer, &hostVirtual);
+    // Replace hidden content (if exists)
+    FileReplaceDataByRule(hostVirtual, bufferLength, rule);
 cleanup:
     // Put back the saved address in the RIP register
     regs->rip = threadEvent->returnAddress;
