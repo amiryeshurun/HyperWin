@@ -32,7 +32,9 @@ STATUS HeapAllocate(IN PHEAP heap, IN QWORD size, OUT BYTE_PTR* ptr)
         return STATUS_HEAP_FULL;
     currentEntryLength = heapEntry->length;
     currentNext = heapEntry->next;
-    if(currentEntryLength == size + sizeof(HEAP_ENTRY))
+    // An EXACT fit
+    // OR Check if we have space for at least one more entry
+    if(currentEntryLength <= (sizeof(HEAP_ENTRY) + size + sizeof(HEAP_ENTRY) + sizeof(QWORD)))
     {
         heapEntry->status = HEAP_ALLOCATED;
         *ptr = heapEntry->base + sizeof(HEAP_ENTRY);
@@ -78,7 +80,7 @@ STATUS HeapDefragment(IN PHEAP heap)
         start = currentEntry;
         end = start;
         totalLength = 0;
-        for(;end->next && end->status == HEAP_FREE && end->next->status == HEAP_FREE; totalLength += end->length, 
+        for(; end->next && end->status == HEAP_FREE && end->next->status == HEAP_FREE; totalLength += end->length, 
             end = end->next);
         if(end->status == HEAP_FREE)
             totalLength += end->length;
