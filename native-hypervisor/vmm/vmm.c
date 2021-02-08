@@ -11,8 +11,6 @@
 #include <win_kernel/memory_manager.h>
 #include <bios/apic.h>
 #include <vmx_modules/default_module.h>
-#include <vmx_modules/hooking_module.h>
-#include <vmx_modules/kpp_module.h>
 #include <win_kernel/process.h>
 #include <guest_communication/communication_block.h>
 
@@ -333,57 +331,40 @@ STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData)
 VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
 {
     PSHARED_CPU_DATA sharedData;
-    PMODULE kppModule, hookingModule;
-
+    BYTE_PTR modulesConfig, modulesConfigEnd;
+    PMODULE_INIT_DATA currentModule;
+    PMODULE allocatedModule;
+    QWORD modulesCount;
+    
+    modulesConfig = &__modules_config_segment;
+    modulesConfigEnd = &__modules_config_segment_end;
+    modulesCount = (modulesConfigEnd - modulesConfig) / sizeof(MODULE_INIT_DATA);
     sharedData = data->sharedData;
+    // Init only once
     if(!sharedData->wereModulesInitiated)
     {
-        // Init modules data
-        sharedData->modules = NULL;
-        sharedData->modulesCount = 0;
         // Default module
-        MdlInitModule(sharedData, &sharedData->defaultModule, NULL, NULL, NULL);
-        MdlSetModuleName(sharedData, &sharedData->defaultModule, "Default Module");
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_READ, DfltHandleMsrRead);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_WRITE, DfltHandleMsrWrite);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INVALID_GUEST_STATE, DfltHandleInvalidGuestState);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_XSETBV, DfltEmulateXSETBV);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CPUID, DfltHandleCpuId);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_CR_ACCESS, DfltHandleCrAccess);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EPT_VIOLATION, DfltHandleEptViolation);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_VMCALL, DfltHandleVmCall);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MSR_LOADING, DfltHandleInvalidMsrLoading);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_MCE_DURING_VMENTRY, DfltHandleMachineCheckFailure);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_TRIPLE_FAULT, DfltHandleTripleFault);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_INIT, DfltHandleApicInit);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_SIPI, DfltHandleApicSipi);
-        MdlRegisterVmExitHandler(&sharedData->defaultModule, EXIT_REASON_EXCEPTION_NMI, DfltHandleException);
-        Print("Successfully registered defualt module\n");
-        // Dynamic modules initialozation
-        // Allocation
-        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &hookingModule);
-        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &kppModule);
-        // Syscalls Module
-        MdlInitModule(sharedData, hookingModule, HookingModuleInitializeAllCores, NULL, HookingDefaultHandler);
-        MdlSetModuleName(sharedData, hookingModule, HOOKING_MODULE_NAME);
-        MdlRegisterVmExitHandler(hookingModule, EXIT_REASON_MSR_WRITE, HookingHandleMsrWrite);
-        MdlRegisterVmExitHandler(hookingModule, EXIT_REASON_EXCEPTION_NMI, HookingHandleException);
-        MdlRegisterModule(sharedData, hookingModule);
-        Print("Successfully registered syscalls module\n");
-        // KPP Module
-        MdlInitModule(sharedData, kppModule, KppModuleInitializeAllCores, NULL, NULL);
-        MdlSetModuleName(sharedData, kppModule, KPP_MODULE_NAME);
-        MdlRegisterVmExitHandler(kppModule, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
-        MdlRegisterModule(sharedData, kppModule);
-        Print("Successfully registered KPP module\n");
+        DfltModuleInitializeAllCores(&sharedData->defaultModule);
+        // Generic dynamically defined modules
+        sharedData->modules = NULL;
+        for (QWORD i = 0; i < modulesCount; i++)
+        {
+            sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &allocatedModule);
+            currentModule = (PMODULE_INIT_DATA)(modulesConfig + i * sizeof(MODULE_INIT_DATA));
+            ASSERT(currentModule->globalInit(allocatedModule) == STATUS_SUCCESS);
+        }
         // Mark modules as initiated
         sharedData->wereModulesInitiated = TRUE;
         PspInit();
         ComInit();
         FileInit();
     }
-    KppModuleInitializeSingleCore(data);
-    HookingModuleInitializeSingleCore(data);
+    // Single-core initializer
+    for (QWORD i = 0; i < modulesCount; i++)
+    {
+            currentModule = (PMODULE_INIT_DATA)(modulesConfig + i * sizeof(MODULE_INIT_DATA));
+            ASSERT(currentModule->singleInit(sharedData->modules[i]) == STATUS_SUCCESS);
+    }
 }
 
 BOOL VmmIsSoftwareInterrupt(IN BYTE vector)

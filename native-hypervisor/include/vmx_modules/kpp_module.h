@@ -25,8 +25,8 @@ typedef struct _KPP_MODULE_DATA
 } KPP_MODULE_DATA, *PKPP_MODULE_DATA;
 
 STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
-STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData);
-STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data);
+STATUS KppModuleInitializeAllCores(IN PMODULE module);
+STATUS KppModuleInitializeSingleCore(IN PMODULE module);
 STATUS KppEmulatePatchGuardAction(IN PKPP_MODULE_DATA kppData, IN QWORD address, IN BYTE instructionLength);
 STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 STATUS KppAddNewEntry(IN QWORD guestPhysicalAddress, IN QWORD hookedInstructionLength, IN BYTE_PTR hookedInstrucion);

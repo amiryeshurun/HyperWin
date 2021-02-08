@@ -68,15 +68,16 @@ QWORD QPArrayRemove(IN PQWORD_PAIRS_ARRAY array, IN QWORD key)
 STATUS QArrayInit(OUT PQWORD_ARRAY array)
 {
     PHEAP heap;
-
-    heap = &(VmmGetVmmStruct()->currentCPU->sharedData->heap);
-    if(heap->allocate(heap, sizeof(QWORD), &array->arr))
+   
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    if(heap->allocate(heap, sizeof(QWORD), &array->arr) != STATUS_SUCCESS)
     {
         Print("Could not initialize array\n");
         return STATUS_NO_MEM_AVAILABLE;
     }
     array->size = 1;
     array->count = 0;
+    
     return STATUS_SUCCESS;
 }
 

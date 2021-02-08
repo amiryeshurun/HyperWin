@@ -66,8 +66,8 @@ typedef struct _HOOKING_MODULE_EXTENSION
 } HOOKING_MODULE_EXTENSION, *PHOOKING_MODULE_EXTENSION;
 
 // VM-X related operations
-STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData);
-STATUS HookingModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data);
+STATUS HookingModuleInitializeAllCores(IN PMODULE module);
+STATUS HookingModuleInitializeSingleCore(IN PMODULE module);
 STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE module);
 STATUS HookingHandleMsrWrite(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 STATUS HookingHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module);

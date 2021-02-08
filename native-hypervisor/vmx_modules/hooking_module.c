@@ -11,28 +11,49 @@
 #include <vmm/vmm.h>
 #include <win_kernel/kernel_objects.h>
 #include <win_kernel/file.h>
+#include <vmm/exit_reasons.h>
 
-STATUS HookingModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module,
-    IN PGENERIC_MODULE_DATA initData)
+STATUS HookingModuleInitializeAllCores(IN PMODULE module)
 {
     PHOOKING_MODULE_EXTENSION extension;
+    PSHARED_CPU_DATA sharedData;
 
+    sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
     PrintDebugLevelDebug("Starting initialization of hooking module for all cores\n");
+    // Init the new module
+    MdlInitModule(module);
+    // Set name
+    MdlSetModuleName(module, HOOKING_MODULE_NAME);
+    // Register VM-Exit handlers
+    MdlRegisterVmExitHandler(module, EXIT_REASON_MSR_WRITE, HookingHandleMsrWrite);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_EXCEPTION_NMI, HookingHandleException);
+    // Register the module
+    MdlRegisterModule(module);
+    // Set default handler
+    module->hasDefaultHandler = TRUE;
+    module->defaultHandler = HookingDefaultHandler;
+    // Allocate space for extension
     sharedData->heap.allocate(&sharedData->heap, sizeof(HOOKING_MODULE_EXTENSION), &module->moduleExtension);
     HwSetMemory(module->moduleExtension, 0, sizeof(HOOKING_MODULE_EXTENSION));
+    // Init extension
     extension = module->moduleExtension;
     extension->startExitCount = FALSE;
     extension->exitCount = 0;
     extension->hookingConfigSegment = PhysicalToVirtual(&__hooking_config_segment);
     ListCreate(&extension->hookConfig);
     MapCreate(&extension->addressToContext, BasicHashFunction, BASIC_HASH_LEN, DefaultEqualityFunction);
+    // Parse config segment, assert if failed
     ASSERT(HookingParseConfig(extension->hookingConfigSegment, &extension->hookConfig) == STATUS_SUCCESS);
     PrintDebugLevelDebug("Shared cores data successfully initialized for hooking module\n");
+
     return STATUS_SUCCESS;
 }
 
-STATUS HookingModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
+STATUS HookingModuleInitializeSingleCore(IN PMODULE module)
 {
+    PSINGLE_CPU_DATA data;
+
+    data = VmmGetVmmStruct()->currentCPU;
     PrintDebugLevelDebug("Starting initialization of hooking module on core #%d\n", data->coreIdentifier);
     // Hook the event of writing to the LSTAR MSR
     VmmUpdateMsrAccessPolicy(data, MSR_IA32_LSTAR, FALSE, TRUE);
@@ -474,3 +495,5 @@ STATUS HookingHandleException(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 cleanup:
     return status;
 }
+
+REGISTER_MODULE(HookingModuleInitializeAllCores, HookingModuleInitializeSingleCore, hooking);

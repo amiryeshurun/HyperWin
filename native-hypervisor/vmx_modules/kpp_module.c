@@ -8,25 +8,41 @@
 #include <intrinsics.h>
 #include <vmx_modules/hooking_module.h>
 #include <vmm/memory_manager.h>
+#include <vmm/exit_reasons.h>
 
-STATUS KppModuleInitializeAllCores(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PGENERIC_MODULE_DATA initData)
+STATUS KppModuleInitializeAllCores(IN PMODULE module)
 {
     PKPP_MODULE_DATA extension;
+    PSHARED_CPU_DATA sharedData;
 
+    sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
     PrintDebugLevelDebug("Starting initialization of KPP module for all cores\n");
+    // Init module & name
+    MdlInitModule(module);
+    MdlSetModuleName(module, KPP_MODULE_NAME);
+    // Register VM-Exit handlers
+    MdlRegisterVmExitHandler(module, EXIT_REASON_EPT_VIOLATION, KppHandleEptViolation);
+    MdlRegisterModule(module);
+    // Allocate space for module extension
     sharedData->heap.allocate(&sharedData->heap, sizeof(KPP_MODULE_DATA), &module->moduleExtension);
+    // Init extension
     HwSetMemory(module->moduleExtension, 0, sizeof(KPP_MODULE_DATA));
     extension = module->moduleExtension;
     SetInit(&extension->addressSet, BASIC_HASH_LEN, BasicHashFunction);
     ListCreate(&extension->entriesList); 
     PrintDebugLevelDebug("Shared cores data successfully initialized for KPP module\n");
+    
     return STATUS_SUCCESS;
 }
 
-STATUS KppModuleInitializeSingleCore(IN PSINGLE_CPU_DATA data)
+STATUS KppModuleInitializeSingleCore(PMODULE module)
 {
+    PSINGLE_CPU_DATA data;
+
+    data = VmmGetVmmStruct()->currentCPU;
     PrintDebugLevelDebug("Starting initialization of KPP module on core #%d\n", data->coreIdentifier);
     PrintDebugLevelDebug("Finished initialization of KPP module on core #%d\n", data->coreIdentifier);
+    
     return STATUS_SUCCESS;
 }
 
@@ -328,3 +344,5 @@ STATUS KppHandleEptViolation(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
         return STATUS_VM_EXIT_NOT_HANDLED;
     return KppEmulatePatchGuardAction(kppData, address, instructionLength);
 }
+
+REGISTER_MODULE(KppModuleInitializeAllCores, KppModuleInitializeSingleCore, kpp);

@@ -2,19 +2,11 @@
 #include <vmx_modules/module.h>
 #include <debug.h>
 
-VOID MdlInitModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN MODULE_INITIALIZER moduleInitializer,
-    IN PGENERIC_MODULE_DATA moduleData, IN VMEXIT_HANDLER defaultHandler)
+VOID MdlInitModule(IN PMODULE module)
 {
     for(QWORD i = 0; i < VMEXIT_HANDLERS_MAX; module->isHandledOnVmExit[i] = FALSE,
             module->vmExitHandlers[i] = NULL, i++);
     module->moduleName = NULL;
-    if(defaultHandler)
-    {
-        module->hasDefaultHandler = TRUE;
-        module->defaultHandler = defaultHandler;
-    }
-    if(moduleInitializer)
-        ASSERT(moduleInitializer(sharedData, module, moduleData) == STATUS_SUCCESS);
 }
 
 VOID MdlRegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_HANDLER handler)
@@ -23,11 +15,13 @@ VOID MdlRegisterVmExitHandler(IN PMODULE module, IN QWORD exitReason, IN VMEXIT_
     module->vmExitHandlers[exitReason] = handler;
 }
 
-VOID MdlRegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
+VOID MdlRegisterModule(IN PMODULE module)
 {
     PMODULE* newArr;
-    
-    sharedData->heap.allocate(&sharedData->heap, ++(sharedData->modulesCount) * sizeof(PMODULE), &newArr);
+    PSHARED_CPU_DATA sharedData;
+
+    sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
+    sharedData->heap.allocate(&sharedData->heap, (++sharedData->modulesCount) * sizeof(PMODULE), &newArr);
     HwCopyMemory(newArr, sharedData->modules, (sharedData->modulesCount - 1) * sizeof(PMODULE));
     newArr[sharedData->modulesCount - 1] = module;
     if(sharedData->modules)
@@ -35,10 +29,13 @@ VOID MdlRegisterModule(IN PSHARED_CPU_DATA sharedData, IN PMODULE module)
     sharedData->modules = newArr;
 }
 
-VOID MdlSetModuleName(IN PSHARED_CPU_DATA sharedData, IN PMODULE module, IN PCHAR moduleName)
+VOID MdlSetModuleName(IN PMODULE module, IN PCHAR moduleName)
 {
-    sharedData->heap.allocate(&sharedData->heap, (StringLength(moduleName) + 1) * sizeof(CHAR),
-        &(module->moduleName));
+    PHEAP heap;
+
+    heap = &VmmGetVmmStruct()->currentCPU->sharedData->heap;
+    heap->allocate(heap, (StringLength(moduleName) + 1) * sizeof(CHAR),
+        &module->moduleName);
     HwCopyMemory(module->moduleName, moduleName, StringLength(moduleName) + 1);
 }
 

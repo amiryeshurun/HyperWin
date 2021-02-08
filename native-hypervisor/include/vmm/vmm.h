@@ -99,4 +99,7 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA sharedData);
 STATUS VmmUpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write);
 STATUS VmmInjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode);
 
+extern BYTE_PTR __modules_config_segment;
+extern BYTE_PTR __modules_config_segment_end;
+
 #endif
