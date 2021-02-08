@@ -4,6 +4,7 @@
 #include <vmm/vmm.h>
 #include <vmx_modules/module.h>
 
+STATUS DfltModuleInitializeAllCores(PMODULE module);
 /* VM-Exit handlers */
 STATUS DfltEmulateXSETBV(IN PCURRENT_GUEST_STATE data, IN PMODULE module);
 STATUS DfltHandleVmCall(IN PCURRENT_GUEST_STATE data, IN PMODULE module);

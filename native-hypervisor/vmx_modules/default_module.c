@@ -13,6 +13,29 @@
 #include <bios/bios_os_loader.h>
 #include <guest_communication/communication_block.h>
 
+STATUS DfltModuleInitializeAllCores(PMODULE module)
+{
+    MdlInitModule(module);
+    MdlSetModuleName(module, "Default Module");
+    MdlRegisterVmExitHandler(module, EXIT_REASON_MSR_READ, DfltHandleMsrRead);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_MSR_WRITE, DfltHandleMsrWrite);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_INVALID_GUEST_STATE, DfltHandleInvalidGuestState);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_XSETBV, DfltEmulateXSETBV);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_CPUID, DfltHandleCpuId);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_CR_ACCESS, DfltHandleCrAccess);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_EPT_VIOLATION, DfltHandleEptViolation);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_VMCALL, DfltHandleVmCall);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_MSR_LOADING, DfltHandleInvalidMsrLoading);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_MCE_DURING_VMENTRY, DfltHandleMachineCheckFailure);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_TRIPLE_FAULT, DfltHandleTripleFault);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_INIT, DfltHandleApicInit);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_SIPI, DfltHandleApicSipi);
+    MdlRegisterVmExitHandler(module, EXIT_REASON_EXCEPTION_NMI, DfltHandleException);
+    Print("Successfully registered default module\n");
+
+    return STATUS_SUCCESS;
+}
+
 STATUS DfltHandleCrAccess(IN PCURRENT_GUEST_STATE data, IN PMODULE module)
 {
     QWORD accessInformation, operation, cr3Value;
