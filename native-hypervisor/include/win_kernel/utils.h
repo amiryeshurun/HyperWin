@@ -36,5 +36,6 @@ VOID WinHookReturnEvent(IN QWORD rsp, IN QWORD threadId, IN QWORD hookAddress);
 PTHREAD_EVENT WinGetEventForThread(IN QWORD threadId);
 STATUS FileHandleFastRead(IN PHOOK_CONTEXT context);
 STATUS FileHandleFastReadReturn(IN PHOOK_CONTEXT context);
+VOID WinInitializeComponents();
 
 #endif

@@ -2,6 +2,9 @@
 #include <vmm/vmm.h>
 #include <win_kernel/memory_manager.h>
 #include <vmx_modules/hooking_module.h>
+#include <win_kernel/file.h>
+#include <win_kernel/process.h>
+#include <guest_communication/communication_block.h>
 
 static __attribute__((section(".nt_thread_events"))) THREAD_EVENT g_threadEvents[25000];
 
@@ -48,4 +51,11 @@ VOID WinHookReturnEvent(IN QWORD rsp, IN QWORD threadId, IN QWORD hookAddress)
 PTHREAD_EVENT WinGetEventForThread(IN QWORD threadId)
 {
     return &(g_threadEvents[threadId]);
+}
+
+VOID WinInitializeComponents()
+{
+    PspInit();
+    ComInit();
+    FileInit();
 }

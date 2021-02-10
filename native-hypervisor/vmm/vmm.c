@@ -149,14 +149,17 @@ VOID VmmInitializeSingleHypervisor(IN PVOID data)
     __vmwrite(MSR_BITMAP, VirtualToPhysical(cpuData->msrBitmaps));
     __vmwrite(VIRTUAL_PROCESSOR_ID, 1);
     
-    // Modules must be initiated while running in VMX-root operation
-    RegisterAllModules(cpuData);
-
-    if(VmmSetupCompleteBackToGuestState() != STATUS_SUCCESS)
+    if(cpuData->coreIdentifier != 0)
     {
-        // Should never arrive here
-        Print("FLAGS: %8, instruction error: %8\n", __readflags(), vmread(VM_INSTRUCTION_ERROR));
-        ASSERT(FALSE);
+        // Modules must be initiated while running in VMX-root operation
+        VmmInitModulesSingleCore();
+        // Back to VMX-non root mode
+        if(VmmSetupCompleteBackToGuestState() != STATUS_SUCCESS)
+        {
+            // Should never arrive here
+            Print("FLAGS: %8, instruction error: %8\n", __readflags(), vmread(VM_INSTRUCTION_ERROR));
+            ASSERT(FALSE);
+        }
     }
     Print("Initialization completed on core #%d\n", cpuData->coreIdentifier);
 }
@@ -328,7 +331,7 @@ STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData)
     return STATUS_SUCCESS;
 }
 
-VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
+VOID VmmGlobalRegisterAllModules()
 {
     PSHARED_CPU_DATA sharedData;
     BYTE_PTR modulesConfig, modulesConfigEnd;
@@ -339,28 +342,32 @@ VOID RegisterAllModules(IN PSINGLE_CPU_DATA data)
     modulesConfig = &__modules_config_segment;
     modulesConfigEnd = &__modules_config_segment_end;
     modulesCount = (modulesConfigEnd - modulesConfig) / sizeof(MODULE_INIT_DATA);
-    sharedData = data->sharedData;
-    // Init only once
-    if(!sharedData->wereModulesInitiated)
-    {
-        // Default module
-        DfltModuleInitializeAllCores(&sharedData->defaultModule);
-        // Generic dynamically defined modules
-        sharedData->modules = NULL;
-        for (QWORD i = 0; i < modulesCount; i++)
-        {
-            sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &allocatedModule);
-            currentModule = (PMODULE_INIT_DATA)(modulesConfig + i * sizeof(MODULE_INIT_DATA));
-            ASSERT(currentModule->globalInit(allocatedModule) == STATUS_SUCCESS);
-        }
-        // Mark modules as initiated
-        sharedData->wereModulesInitiated = TRUE;
-        PspInit();
-        ComInit();
-        FileInit();
-    }
-    // Single-core initializer
+    sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
+    // Initialize global modules data only once
+    // Default module
+    DfltModuleInitializeAllCores(&sharedData->defaultModule);
+    // Generic (dynamically defined) modules
+    sharedData->modules = NULL;
     for (QWORD i = 0; i < modulesCount; i++)
+    {
+        sharedData->heap.allocate(&sharedData->heap, sizeof(MODULE), &allocatedModule);
+        currentModule = (PMODULE_INIT_DATA)(modulesConfig + i * sizeof(MODULE_INIT_DATA));
+        ASSERT(currentModule->globalInit(allocatedModule) == STATUS_SUCCESS);
+    }
+}
+
+VOID VmmInitModulesSingleCore()
+{
+    PSHARED_CPU_DATA sharedData;
+    BYTE_PTR modulesConfig, modulesConfigEnd;
+    PMODULE_INIT_DATA currentModule;
+    
+    modulesConfig = &__modules_config_segment;
+    modulesConfigEnd = &__modules_config_segment_end;
+    sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
+
+    // Single-core initializer
+    for (QWORD i = 0; i < sharedData->modulesCount; i++)
     {
             currentModule = (PMODULE_INIT_DATA)(modulesConfig + i * sizeof(MODULE_INIT_DATA));
             ASSERT(currentModule->singleInit(sharedData->modules[i]) == STATUS_SUCCESS);

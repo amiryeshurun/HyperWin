@@ -8,6 +8,9 @@
 #include <bios/apic.h>
 #include <guest_communication/communication_block.h>
 #include <utils/allocation.h>
+#include <vmm/vm_operations.h>
+#include <vmm/vmcs.h>
+#include <win_kernel/utils.h>
 
 VOID BiosInitialize()
 {
@@ -100,15 +103,28 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->validRamCount = validRamCount;
     sharedData->wereModulesInitiated = FALSE;
     // Init heap before registering modules
-    HeapInit(&(sharedData->heap), HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
+    HeapInit(&sharedData->heap, HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
+    // Initialize hypervisor on BSP
+    VmmInitializeSingleHypervisor(sharedData->cpuData[0]);
+    // Register modules global data
+    VmmGlobalRegisterAllModules();
+    // Init modules on BSP
+    VmmInitModulesSingleCore();
+    // Init all components which are not a part of a vmx module
+    WinInitializeComponents();
+    // Back to VMX-non root mode
+    if(VmmSetupCompleteBackToGuestState() != STATUS_SUCCESS)
+    {
+        // Should never arrive here
+        Print("FLAGS: %8, instruction error: %8\n", __readflags(), vmread(VM_INSTRUCTION_ERROR));
+        ASSERT(FALSE);
+    }
     // Enable 2xAPIC
     ApicEnableX2APIC();
     // Initialize hypervisor on all cores except the BSP
     for(QWORD i = 1; i < numberOfCores; i++)
         ASSERT(ApicActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
             == STATUS_SUCCESS);
-    // Initialize hypervisor on BSP
-    VmmInitializeSingleHypervisor(sharedData->cpuData[0]);
     // Hook E820
     ASSERT(VmmSetupE820Hook(sharedData) == STATUS_SUCCESS);
 }

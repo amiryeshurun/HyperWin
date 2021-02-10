@@ -95,7 +95,8 @@ STATUS VmmSetupHypervisorCodeProtection(IN PSHARED_CPU_DATA data, IN QWORD codeB
 STATUS VmmUpdateEptAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD base, IN QWORD length, IN QWORD access);
 BOOL VmmCheckAccessToHiddenBase(IN PSHARED_CPU_DATA data, IN QWORD accessedAddress);
 STATUS VmmSetupE820Hook(IN PSHARED_CPU_DATA sharedData);
-VOID RegisterAllModules(IN PSINGLE_CPU_DATA sharedData);
+VOID VmmGlobalRegisterAllModules();
+VOID VmmInitModulesSingleCore();
 STATUS VmmUpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN BOOL read, IN BOOL write);
 STATUS VmmInjectGuestInterrupt(IN BYTE vector, IN QWORD errorCode);
 
