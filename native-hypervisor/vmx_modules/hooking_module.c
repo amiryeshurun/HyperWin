@@ -66,12 +66,15 @@ STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE modu
 {
     PHOOKING_MODULE_EXTENSION ext;
     BYTE_PTR ssdt, ntoskrnl, win32k;
+    static SPIN_LOCK lock = SPIN_LOCK_INIT;
 
     ext = (PHOOKING_MODULE_EXTENSION)module->moduleExtension;
+    // All cores must wait until data is successfully hooked
+    SPIN_LOCK(&lock);
     if(ext->exitCount++ >= COUNT_UNTIL_HOOK)
     {
-        // perform lock-checking
         module->hasDefaultHandler = FALSE;
+        module->isHandledOnVmExit[EXIT_REASON_MSR_WRITE] = FALSE;
         HookingLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         HookingGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
         ASSERT(HookingHookSystemCalls(ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE, 
@@ -79,6 +82,8 @@ STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE modu
         Print("System calls were successfully hooked\n");
         return STATUS_SUCCESS;
     }
+    SPIN_UNLOCK(&lock);
+
 NotHandled:
     return STATUS_VM_EXIT_NOT_HANDLED;
 }

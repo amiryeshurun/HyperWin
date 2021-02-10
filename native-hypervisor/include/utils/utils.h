@@ -38,11 +38,12 @@
 typedef struct _SPIN_LOCK
 {
 	volatile QWORD lockValue;
-}SPIN_LOCK, *PSPIN_LOCK;
+} SPIN_LOCK, *PSPIN_LOCK;
 
-#define SPIN_LOCK_INIT(slock) (slock)->lockValue = 0
-#define SPIN_LOCK(slock) while(!__sync_bool_compare_and_swap(&((slock)->lock), 0, 1))
+#define SPIN_LOCK_INIT { 0 }
+#define SPIN_LOCK(slock) while(!__sync_bool_compare_and_swap(&((slock)->lockValue), 0, 1))
 #define SPIN_UNLOCK(slock) (slock)->lockValue = 0
+#define IS_LOCKED(slock) (((slock)->lockValue == 1) ? TRUE : FALSE)
 
 VOID HwCopyMemory(OUT BYTE_PTR dest, IN BYTE_PTR src, IN QWORD count);
 INT HwCompareMemory(IN BYTE_PTR buff1, IN BYTE_PTR buff2, IN QWORD length);

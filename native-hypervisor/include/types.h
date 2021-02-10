@@ -58,10 +58,4 @@ typedef struct _QWORD_PAIR
     QWORD value;
 } QWORD_PAIR, *PQWORD_PAIR;
 
-typedef struct _KSPIN_LOCK
-{
-    volatile QWORD lock;
-    BYTE ownedBy;
-} KSPIN_LOCK, *PKSPIN_LOCK;
-
 #endif
