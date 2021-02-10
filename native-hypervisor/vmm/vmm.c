@@ -12,7 +12,6 @@
 #include <bios/apic.h>
 #include <vmx_modules/default_module.h>
 #include <win_kernel/process.h>
-#include <guest_communication/communication_block.h>
 
 VOID VmmInitializeSingleHypervisor(IN PVOID data)
 {
@@ -339,8 +338,8 @@ VOID VmmGlobalRegisterAllModules()
     PMODULE allocatedModule;
     QWORD modulesCount;
     
-    modulesConfig = &__modules_config_segment;
-    modulesConfigEnd = &__modules_config_segment_end;
+    modulesConfig = PhysicalToVirtual(&__modules_config_segment);
+    modulesConfigEnd = PhysicalToVirtual(&__modules_config_segment_end);
     modulesCount = (modulesConfigEnd - modulesConfig) / sizeof(MODULE_INIT_DATA);
     sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
     // Initialize global modules data only once
@@ -362,8 +361,8 @@ VOID VmmInitModulesSingleCore()
     BYTE_PTR modulesConfig, modulesConfigEnd;
     PMODULE_INIT_DATA currentModule;
     
-    modulesConfig = &__modules_config_segment;
-    modulesConfigEnd = &__modules_config_segment_end;
+    modulesConfig = PhysicalToVirtual(&__modules_config_segment);
+    modulesConfigEnd = PhysicalToVirtual(&__modules_config_segment_end);
     sharedData = VmmGetVmmStruct()->currentCPU->sharedData;
 
     // Single-core initializer

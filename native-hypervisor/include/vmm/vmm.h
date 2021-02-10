@@ -4,7 +4,6 @@
 #include <types.h>
 #include <bios/bios_os_loader.h>
 #include <x86_64.h>
-#include <guest_communication/communication_structs.h>
 #include <utils/allocation.h>
 #include <vmx_modules/module.h>
 
@@ -34,14 +33,13 @@ typedef struct _SHARED_CPU_DATA
     HEAP heap;
     MODULE defaultModule;
     PMODULE* modules;
-    BOOL wereModulesInitiated;
     QWORD modulesCount;
     struct _SINGLE_CPU_DATA* cpuData[MAX_CORES];
     struct _CURRENT_GUEST_STATE* currentState[MAX_CORES];
     E820_LIST_ENTRY validRam[E820_OUTPUT_MAX_ENTRIES];
-    BYTE validRamCount;
+    WORD validRamCount;
     E820_LIST_ENTRY allRam[E820_OUTPUT_MAX_ENTRIES];
-    BYTE memoryRangesCount;
+    WORD memoryRangesCount;
     BYTE numberOfCores;
     BYTE_PTR hypervisorBase;
     QWORD physicalHypervisorBase;
@@ -51,8 +49,6 @@ typedef struct _SHARED_CPU_DATA
     QWORD codeBaseSize;
     QWORD int15Segment;
     QWORD int15Offset;
-    COMMUNICATION_PIPE readPipe;
-    COMMUNICATION_PIPE writePipe;
 } SHARED_CPU_DATA, *PSHARED_CPU_DATA;
 
 typedef struct _SINGLE_CPU_DATA
