@@ -5,6 +5,7 @@
 #include <vmm/vmm.h>
 #include <utils/allocation.h>
 #include <utils/utils.h>
+#include <win_kernel/component.h>
 
 QWORD_MAP g_groupsData;
 
@@ -69,3 +70,5 @@ QWORD PspGetCurrentThreadId()
     ObjGetObjectField(ETHREAD, ethread, ETHREAD_THREAD_ID, &threadId);
     return threadId;
 }
+
+REGISTER_COMPONENT(PspInit, psp);

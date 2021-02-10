@@ -81,8 +81,8 @@ typedef union _EPT_PTE
 }__attribute__((__packed__)) EPT_PTE, *PEPT_PTE;
 
 VOID VmmSetupVirtualAddress(IN QWORD pml4BaseAddress);
-QWORD VirtualToPhysical(IN QWORD address);
-QWORD PhysicalToVirtual(IN QWORD address);
+QWORD VirtualToPhysical(IN BYTE_PTR address);
+BYTE_PTR PhysicalToVirtual(IN QWORD address);
 QWORD VmmInitializeHypervisorPaging(IN PSINGLE_CPU_DATA cpuData);
 QWORD VmmInitializeExtendedPageTable(IN PSINGLE_CPU_DATA cpuData);
 QWORD VmmCreateEptEntry(IN QWORD physicalAddress, IN QWORD access);

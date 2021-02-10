@@ -6,6 +6,7 @@
 #include <win_kernel/process.h>
 #include <win_kernel/utils.h>
 #include <vmm/memory_manager.h>
+#include <win_kernel/component.h>
 
 QWORD_MAP g_filesData;
 
@@ -317,3 +318,5 @@ cleanup:
     regs->rip = threadEvent->returnAddress;
     return status;
 }
+
+REGISTER_COMPONENT(FileInit, file);

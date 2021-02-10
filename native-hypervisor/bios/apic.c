@@ -34,7 +34,6 @@ STATUS ApicGetCoresData(IN BYTE_PTR apicTable, OUT BYTE_PTR processorsCount, OUT
 STATUS ApicDetectX2APICAvailability()
 {
     QWORD tmp, ecx;
-
     __cpuid(1, 0, &tmp, &tmp, &ecx, &tmp);
     return (ecx & CPUID_2XAPIC_AVAILABLE) ? STATUS_SUCCESS : STATUS_2XAPIC_NOT_AVAILABLE;
 }

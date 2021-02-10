@@ -4,7 +4,8 @@
 #include <vmx_modules/hooking_module.h>
 #include <win_kernel/file.h>
 #include <win_kernel/process.h>
-#include <guest_communication/communication_block.h>
+#include <win_kernel/component.h>
+#include <vmm/memory_manager.h>
 
 static __attribute__((section(".nt_thread_events"))) THREAD_EVENT g_threadEvents[25000];
 
@@ -55,7 +56,17 @@ PTHREAD_EVENT WinGetEventForThread(IN QWORD threadId)
 
 VOID WinInitializeComponents()
 {
-    PspInit();
-    ComInit();
-    FileInit();
+    BYTE_PTR componentsBegin, componentsEnd;
+    QWORD componentsCount;
+    PCOMPONENT_INIT_DATA currentComponent;
+
+    componentsBegin = PhysicalToVirtual(&__components_config_segment);
+    componentsEnd = PhysicalToVirtual(&__components_config_segment_end);
+    componentsCount = (componentsEnd - componentsBegin) / sizeof(COMPONENT_INIT_DATA);
+
+    for (QWORD i = 0; i < componentsCount; i++)
+    {
+        currentComponent = componentsBegin + i * sizeof(COMPONENT_INIT_DATA);
+        currentComponent->initializer();
+    }
 }

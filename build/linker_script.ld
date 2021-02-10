@@ -20,6 +20,18 @@ SECTIONS
         __hooking_config_segment = .;
         *(.hooking_config)
     }
+    .modules_config :
+    {
+        __modules_config_segment = .;
+        *(.modules_config)
+        __modules_config_segment_end = .;
+    }
+    .components_config :
+    {
+        __components_config_segment = .;
+        *(.components_config)
+        __components_config_segment_end = .;
+    }
     /DISCARD/ :
     {
         *(.eh_frame)

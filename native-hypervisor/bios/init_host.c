@@ -6,7 +6,6 @@
 #include <debug.h>
 #include <x86_64.h>
 #include <bios/apic.h>
-#include <guest_communication/communication_block.h>
 #include <utils/allocation.h>
 #include <vmm/vm_operations.h>
 #include <vmm/vmcs.h>
@@ -24,7 +23,7 @@ VOID BiosInitialize()
 VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
 {
     BYTE rsdtType, numberOfCores, processorIdentifires[MAX_CORES];
-    BYTE_PTR apicTable, rsdtTable, physicalHypervisorBase, physicalReadPipe, physicalWritePipe;
+    BYTE_PTR apicTable, rsdtTable, physicalHypervisorBase;
     WORD memoryRegionsCount;
     QWORD allocationSize, hypervisorBase;
     DWORD validRamCount;
@@ -45,17 +44,6 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         Print("Allocation of %8 bytes failed.\n", allocationSize);
         ASSERT(FALSE);
     }
-    if(BiosAllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalReadPipe))
-    {
-        Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
-        ASSERT(FALSE);
-    }
-    if(BiosAllocateMemoryUsingMemoryMap(memoryMap, memoryRegionsCount, LARGE_PAGE_SIZE, &physicalWritePipe))
-    {
-        Print("Allocation of %8 bytes failed.\n", LARGE_PAGE_SIZE);
-        ASSERT(FALSE);
-    }
-    ASSERT(BiosHideCodeBase(memoryMap, &memoryRegionsCount, codeBase, codeLength) == STATUS_SUCCESS);
     hypervisorBase = PhysicalToVirtual(physicalHypervisorBase);
     HwSetMemory(hypervisorBase, 0, allocationSize);
     sharedData = hypervisorBase;
@@ -66,11 +54,6 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     sharedData->codeBase = PhysicalToVirtual(codeBase);
     sharedData->physicalCodeBase = codeBase;
     sharedData->codeBaseSize = ALIGN_UP(codeLength, PAGE_SIZE);
-    // Save communication block area in global memory & initialize
-    HwSetMemory(PhysicalToVirtual(physicalReadPipe), 0, LARGE_PAGE_SIZE);
-    ComInitPipe(&sharedData->readPipe, physicalReadPipe, PhysicalToVirtual(physicalReadPipe), 0);
-    HwSetMemory(PhysicalToVirtual(physicalWritePipe), 0 , LARGE_PAGE_SIZE);
-    ComInitPipe(&sharedData->writePipe, physicalWritePipe, PhysicalToVirtual(physicalWritePipe), 0);
     // Initialize cores data
     for(BYTE i = 0; i < numberOfCores; i++)
     {
@@ -100,8 +83,7 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
         sharedData->allRam[i].extendedAttribute = memoryMap[i].extendedAttribute;
     }
     sharedData->memoryRangesCount = memoryRegionsCount;
-    sharedData->validRamCount = validRamCount;
-    sharedData->wereModulesInitiated = FALSE;
+    sharedData->validRamCount = validRamCount;    
     // Init heap before registering modules
     HeapInit(&sharedData->heap, HEAP_SIZE, HEAP_FREE_CYCLE, HeapAllocate, HeapDeallocate, HeapDefragment);
     // Initialize hypervisor on BSP
@@ -125,6 +107,7 @@ VOID BiosInitializeHypervisorsSharedData(IN QWORD codeBase, IN QWORD codeLength)
     for(QWORD i = 1; i < numberOfCores; i++)
         ASSERT(ApicActivateHypervisorOnProcessor(processorIdentifires[i], sharedData->cpuData[i])
             == STATUS_SUCCESS);
+    ASSERT(BiosHideCodeBase(sharedData->allRam, &sharedData->memoryRangesCount, codeBase, codeLength) == STATUS_SUCCESS);
     // Hook E820
     ASSERT(VmmSetupE820Hook(sharedData) == STATUS_SUCCESS);
 }

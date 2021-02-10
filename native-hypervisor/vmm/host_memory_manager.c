@@ -6,12 +6,12 @@ VOID VmmSetupVirtualAddress(IN QWORD pml4BaseAddress)
     ((QWORD_PTR)pml4BaseAddress)[200] = ((QWORD_PTR)pml4BaseAddress)[0];
 }
 
-QWORD VirtualToPhysical(IN QWORD address)
+QWORD VirtualToPhysical(IN BYTE_PTR address)
 {
     return address - VIRTUAL_ADDRESS_OFFET;
 }
 
-QWORD PhysicalToVirtual(IN QWORD address)
+BYTE_PTR PhysicalToVirtual(IN QWORD address)
 {
     return address + VIRTUAL_ADDRESS_OFFET;
 }

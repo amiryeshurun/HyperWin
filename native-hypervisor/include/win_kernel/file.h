@@ -6,6 +6,8 @@
 #include <error_codes.h>
 #include <vmx_modules/hooking_module.h>
 
+#define FILE_PATH_MAX_LENGTH 256
+
 enum
 {
     FILE_HIDE_CONTENT = 1
