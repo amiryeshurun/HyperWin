@@ -306,7 +306,7 @@ STATUS VmmUpdateMsrAccessPolicy(IN PSINGLE_CPU_DATA data, IN QWORD msrNumber, IN
     else
         bitmap[msrReadIdx] &= ~(1 << (msrNumber % 8));
     if(write)
-            bitmap[msrWriteIdx] |= (1 << (msrNumber % 8));
+        bitmap[msrWriteIdx] |= (1 << (msrNumber % 8));
     else
         bitmap[msrWriteIdx] &= ~(1 << (msrNumber % 8));
     return STATUS_SUCCESS;

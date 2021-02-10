@@ -75,6 +75,8 @@ STATUS HookingDefaultHandler(IN PCURRENT_GUEST_STATE sharedData, IN PMODULE modu
     {
         module->hasDefaultHandler = FALSE;
         module->isHandledOnVmExit[EXIT_REASON_MSR_WRITE] = FALSE;
+        for (QWORD i = 0; i < sharedData->currentCPU->sharedData->numberOfCores; i++)
+            VmmUpdateMsrAccessPolicy(sharedData->currentCPU->sharedData->cpuData[i], MSR_IA32_LSTAR, FALSE, TRUE);
         HookingLocateSSDT(ext->lstar, &ssdt, ext->guestCr3);
         HookingGetSystemTables(ssdt, &ext->ntoskrnl, &ext->win32k, ext->guestCr3);
         ASSERT(HookingHookSystemCalls(ext->guestCr3, ext->ntoskrnl, ext->win32k, 1, NT_READ_FILE, 
