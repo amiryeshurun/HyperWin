@@ -27,7 +27,7 @@ The above request tells HyperWin to censor all appearances of the letter `a` in 
 
 ### How it works?
 
-HyperWin intercepts all attempts to access files using `NtfsFsdRead` and `NtfsCopyReadA`. The former is called whenever an IRP (Io Request Packet) is issued in order to read the content of a file, whereas the latter is used by the Fast Io mechanism (only available when the file is cached). Based on the file id (`MFTIndex` which resides in the `FCB`) of `Sample.txt`, HyperWin censors the that was readen by the NTFS driver.
+HyperWin intercepts all attempts to access files using `NtfsFsdRead` and `NtfsCopyReadA`. The former is called whenever an IRP (Io Request Packet) is issued in order to read the content of a file, whereas the latter is used by the Fast Io mechanism (only available when the file is cached). Based on the file id (`MFTIndex` which resides in the `FCB`) of `Sample.txt`, HyperWin censors the data that was readen by the NTFS driver.
 
 ## Compilation
 HyperWin can be installed on any computer that is using an MBR disk. The compilation process is super easy:
