@@ -35,7 +35,7 @@ HyperWin can be installed on any computer that is using an MBR disk. The compila
 $ cd HyperWin
 $ make
 ```
-After running the above commands, a new file called `hypervisor.iso` will be generated inside the `build` directory. Burn it to a USB stick, plug the stick to a computer and make sure to change the boot order from the BIOS menu (the USB stick must be choosed as the first option).
+After running the above commands, a new file called `hypervisor.iso` will be generated inside the `build` directory. Burn it to a USB stick, plug the stick to a computer and make sure to change the boot order from the BIOS menu (the USB stick must be chosen as the first option).
 Once the computer boots to HyperWin, it will automatically load Windows after it finishes the initialization process.
 
 License
